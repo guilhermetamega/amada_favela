@@ -168,7 +168,7 @@ export default function AuthPage() {
         {mode === "login" ? (
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm text-zinc-300" htmlFor="cpf">
+              <label className="mb-1 block text-sm text-zinc-400" htmlFor="cpf">
                 CPF
               </label>
               <input
