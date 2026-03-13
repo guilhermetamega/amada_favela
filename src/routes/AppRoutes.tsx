@@ -7,6 +7,7 @@ import LostAnimalsDetailsPage from "@/pages/LostAnimalsDeatils";
 import LostAnimalsPage from "@/pages/LostAnimals";
 import HomeRentDetailsPage from "@/pages/HomeRentDetails";
 import HomeRentPage from "@/pages/HomeRent";
+import ProtectedRoute from "./ProtectedRoute";
 
 export function AppRoutes() {
   return (
@@ -14,28 +15,31 @@ export function AppRoutes() {
       <Routes>
         <Route path="/" element={<AuthPage />} />
         <Route path="/auth" element={<AuthPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
 
-        <Route
-          path="/dashboard/lost-and-found"
-          element={<LostAndFoundPage />}
-        />
-        <Route
-          path="/dashboard/lost-and-found/:id"
-          element={<LostAndFoundDetailsPage />}
-        />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
 
-        <Route path="/dashboard/lost-animals" element={<LostAnimalsPage />} />
-        <Route
-          path="/dashboard/lost-animals/:id"
-          element={<LostAnimalsDetailsPage />}
-        />
+          <Route
+            path="/dashboard/lost-and-found"
+            element={<LostAndFoundPage />}
+          />
+          <Route
+            path="/dashboard/lost-and-found/:id"
+            element={<LostAndFoundDetailsPage />}
+          />
 
-        <Route path="/dashboard/home-rent" element={<HomeRentPage />} />
-        <Route
-          path="/dashboard/home-rent/:id"
-          element={<HomeRentDetailsPage />}
-        />
+          <Route path="/dashboard/lost-animals" element={<LostAnimalsPage />} />
+          <Route
+            path="/dashboard/lost-animals/:id"
+            element={<LostAnimalsDetailsPage />}
+          />
+
+          <Route path="/dashboard/home-rent" element={<HomeRentPage />} />
+          <Route
+            path="/dashboard/home-rent/:id"
+            element={<HomeRentDetailsPage />}
+          />
+        </Route>
       </Routes>
     </BrowserRouter>
   );
