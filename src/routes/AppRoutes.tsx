@@ -9,6 +9,8 @@ import HomeRentDetailsPage from "@/pages/HomeRentDetails";
 import HomeRentPage from "@/pages/HomeRent";
 import ProtectedRoute from "./ProtectedRoute";
 import RoleGuard from "./RoleGuard";
+import AdminPage from "@/pages/Admin";
+import SuperAdminPage from "@/pages/SuperAdmin";
 
 export function AppRoutes() {
   return (
@@ -44,14 +46,11 @@ export function AppRoutes() {
           />
           {/* {Guardião de rotas para segurança extra} */}
           <Route element={<RoleGuard allowedRoles={["admin", "president"]} />}>
-            <Route path="/dashboard/admin" element={<div>Admin Area</div>} />
+            <Route path="/dashboard/admin" element={<AdminPage />} />
           </Route>
 
           <Route element={<RoleGuard allowedRoles={["admin"]} />}>
-            <Route
-              path="/dashboard/super-admin"
-              element={<div>Super Admin</div>}
-            />
+            <Route path="/dashboard/super-admin" element={<SuperAdminPage />} />
           </Route>
 
           <Route
