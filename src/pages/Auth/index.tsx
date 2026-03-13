@@ -1,4 +1,5 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import type { AuthMode, LoginFormData, RegisterFormData } from "@/types/auth";
 import { signInWithCpf, signUpWithEmail } from "@/services/supabase/auth";
 import { formatCpf } from "@/utils/cpf";
@@ -22,6 +23,8 @@ const initialRegisterForm: RegisterFormData = {
 };
 
 export default function AuthPage() {
+  const navigate = useNavigate();
+
   const [mode, setMode] = useState<AuthMode>("login");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -51,10 +54,30 @@ export default function AuthPage() {
   function handleRegisterChange(event: ChangeEvent<HTMLInputElement>) {
     const { name, value } = event.target;
 
+    if (name === "cpf") {
+      setRegisterForm((prev) => ({
+        ...prev,
+        cpf: formatCpf(value),
+      }));
+      return;
+    }
+
     setRegisterForm((prev) => ({
       ...prev,
       [name]: value,
     }));
+  }
+
+  function switchToLogin() {
+    setMode("login");
+    setErrorMessage("");
+    setSuccessMessage("");
+  }
+
+  function switchToRegister() {
+    setMode("register");
+    setErrorMessage("");
+    setSuccessMessage("");
   }
 
   async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
@@ -68,7 +91,7 @@ export default function AuthPage() {
 
     try {
       await signInWithCpf(loginForm);
-      setSuccessMessage("Login realizado com sucesso.");
+      navigate("/dashboard");
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Erro ao realizar login.";
@@ -96,10 +119,11 @@ export default function AuthPage() {
     try {
       await signUpWithEmail(registerForm);
       setSuccessMessage(
-        "Cadastro realizado com sucesso. Verifique seu e-mail para confirmar a conta, se necessário.",
+        "Cadastro realizado com sucesso. Faça seu login para continuar.",
       );
       setRegisterForm(initialRegisterForm);
       setMode("login");
+      setLoginForm(initialLoginForm);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Erro ao realizar cadastro.";
@@ -122,11 +146,7 @@ export default function AuthPage() {
         <div className="mb-6 flex w-full rounded-xl bg-zinc-800 p-1">
           <button
             type="button"
-            onClick={() => {
-              setMode("login");
-              setErrorMessage("");
-              setSuccessMessage("");
-            }}
+            onClick={switchToLogin}
             className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition ${
               mode === "login"
                 ? "bg-white text-zinc-900"
@@ -138,11 +158,7 @@ export default function AuthPage() {
 
           <button
             type="button"
-            onClick={() => {
-              setMode("register");
-              setErrorMessage("");
-              setSuccessMessage("");
-            }}
+            onClick={switchToRegister}
             className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition ${
               mode === "register"
                 ? "bg-white text-zinc-900"
@@ -168,11 +184,14 @@ export default function AuthPage() {
         {mode === "login" ? (
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm text-zinc-400" htmlFor="cpf">
+              <label
+                className="mb-1 block text-sm text-zinc-400"
+                htmlFor="login-cpf"
+              >
                 CPF
               </label>
               <input
-                id="cpf"
+                id="login-cpf"
                 name="cpf"
                 type="text"
                 inputMode="numeric"
@@ -188,12 +207,12 @@ export default function AuthPage() {
             <div>
               <label
                 className="mb-1 block text-sm text-zinc-300"
-                htmlFor="password"
+                htmlFor="login-password"
               >
                 Senha
               </label>
               <input
-                id="password"
+                id="login-password"
                 name="password"
                 type="password"
                 value={loginForm.password}
@@ -236,16 +255,22 @@ export default function AuthPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm text-zinc-300" htmlFor="cpf">
+              <label
+                className="mb-1 block text-sm text-zinc-300"
+                htmlFor="register-cpf"
+              >
                 CPF
               </label>
               <input
-                id="cpf"
+                id="register-cpf"
                 name="cpf"
                 type="text"
+                inputMode="numeric"
+                maxLength={14}
                 value={registerForm.cpf}
                 onChange={handleRegisterChange}
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-white outline-none transition focus:border-zinc-500"
+                placeholder="000.000.000-00"
                 required
               />
             </div>
@@ -358,12 +383,12 @@ export default function AuthPage() {
             <div>
               <label
                 className="mb-1 block text-sm text-zinc-300"
-                htmlFor="password"
+                htmlFor="register-password"
               >
                 Senha
               </label>
               <input
-                id="password"
+                id="register-password"
                 name="password"
                 type="password"
                 value={registerForm.password}
