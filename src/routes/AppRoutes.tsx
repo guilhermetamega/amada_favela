@@ -8,6 +8,7 @@ import LostAnimalsPage from "@/pages/LostAnimals";
 import HomeRentDetailsPage from "@/pages/HomeRentDetails";
 import HomeRentPage from "@/pages/HomeRent";
 import ProtectedRoute from "./ProtectedRoute";
+import RoleGuard from "./RoleGuard";
 
 export function AppRoutes() {
   return (
@@ -16,7 +17,9 @@ export function AppRoutes() {
         <Route path="/" element={<AuthPage />} />
         <Route path="/auth" element={<AuthPage />} />
 
+        {/* {Rotas necessárias ter feito autenticação para acessar} */}
         <Route element={<ProtectedRoute />}>
+          {/* {Rotas padrão} */}
           <Route path="/dashboard" element={<DashboardPage />} />
 
           <Route
@@ -39,6 +42,26 @@ export function AppRoutes() {
             path="/dashboard/home-rent/:id"
             element={<HomeRentDetailsPage />}
           />
+          {/* {Guardião de rotas para segurança extra} */}
+          <Route element={<RoleGuard allowedRoles={["admin", "president"]} />}>
+            <Route path="/dashboard/admin" element={<div>Admin Area</div>} />
+          </Route>
+
+          <Route element={<RoleGuard allowedRoles={["admin"]} />}>
+            <Route
+              path="/dashboard/super-admin"
+              element={<div>Super Admin</div>}
+            />
+          </Route>
+
+          <Route
+            element={
+              <RoleGuard
+                allowedRoles={["admin", "president", "employee", "user"]}
+                requirePartner
+              />
+            }
+          ></Route>
         </Route>
       </Routes>
     </BrowserRouter>
