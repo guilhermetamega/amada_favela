@@ -1,6 +1,10 @@
 import { supabase } from "@/services/supabase/client";
 import type { LoginFormData, RegisterFormData } from "@/types/auth";
 
+type GetEmailByCpfRow = {
+  email: string;
+};
+
 function normalizeAuthErrorMessage(message: string) {
   const normalizedMessage = message.toLowerCase();
 
@@ -34,26 +38,32 @@ function sanitizeCpf(cpf: string) {
 export async function signInWithCpf({ cpf, password }: LoginFormData) {
   const sanitizedCpf = sanitizeCpf(cpf);
 
-  const { data: userProfile, error: userError } = await supabase
-    .from("users")
-    .select("email")
-    .eq("cpf", sanitizedCpf)
-    .single();
+  const { data, error: lookupError } = await supabase.rpc("get_email_by_cpf", {
+    input_cpf: sanitizedCpf,
+  });
 
-  if (userError || !userProfile?.email) {
+  if (lookupError) {
+    throw new Error("Erro ao buscar usuário para login.");
+  }
+
+  const result = data as GetEmailByCpfRow[] | null;
+  const email = result?.[0]?.email;
+
+  if (!email) {
     throw new Error("CPF ou senha inválidos.");
   }
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: userProfile.email,
-    password,
-  });
+  const { data: authData, error: authError } =
+    await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-  if (error) {
-    throw new Error(normalizeAuthErrorMessage(error.message));
+  if (authError) {
+    throw new Error(normalizeAuthErrorMessage(authError.message));
   }
 
-  return data;
+  return authData;
 }
 
 export async function signUpWithEmail(data: RegisterFormData) {
@@ -72,6 +82,7 @@ export async function signUpWithEmail(data: RegisterFormData) {
   const sanitizedEmail = email.trim().toLowerCase();
   const sanitizedFullname = fullname.trim();
   const sanitizedCpf = sanitizeCpf(cpf);
+  const sanitizedBirth = birth;
   const sanitizedAddress1 = address_1.trim();
   const sanitizedAddress2 = address_2.trim();
   const sanitizedComunity = comunity.trim();
@@ -96,7 +107,7 @@ export async function signUpWithEmail(data: RegisterFormData) {
     id: userId,
     fullname: sanitizedFullname,
     cpf: sanitizedCpf,
-    birth,
+    birth: sanitizedBirth,
     address_1: sanitizedAddress1,
     address_2: sanitizedAddress2 || null,
     comunity: sanitizedComunity || null,

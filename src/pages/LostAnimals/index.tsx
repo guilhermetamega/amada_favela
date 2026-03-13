@@ -3,6 +3,7 @@ import { getLostAnimalsItems } from "@/services/supabase/lost_animals";
 import type { LostAnimalsItem } from "@/types/lost_animals";
 import CreateLostAnimalsModal from "@/components/ui/CreateLostAnimalsModal";
 import { useNavigate } from "react-router-dom";
+import DashboardLayout from "@/components/layout/DashboardLayout";
 
 export default function LostAnimalsPage() {
   const [items, setItems] = useState<LostAnimalsItem[]>([]);
@@ -39,7 +40,7 @@ export default function LostAnimalsPage() {
   }
 
   return (
-    <>
+    <DashboardLayout>
       <main className="min-h-screen bg-zinc-950 px-4 py-10">
         <div className="mx-auto max-w-7xl">
           <header className="mb-8 flex flex-row justify-between">
@@ -164,6 +165,6 @@ export default function LostAnimalsPage() {
         onClose={() => setIsCreateModalOpen(false)}
         onCreated={handleCreatedItem}
       />
-    </>
+    </DashboardLayout>
   );
 }

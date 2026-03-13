@@ -3,6 +3,7 @@ import { getHomeRentItems } from "@/services/supabase/home_rent";
 import type { HomeRentItem } from "@/types/home_rent";
 import CreateHomeRentModal from "@/components/ui/CreateHomeRentModal";
 import { useNavigate } from "react-router-dom";
+import DashboardLayout from "@/components/layout/DashboardLayout";
 
 export default function HomeRentPage() {
   const [items, setItems] = useState<HomeRentItem[]>([]);
@@ -39,7 +40,7 @@ export default function HomeRentPage() {
   }
 
   return (
-    <>
+    <DashboardLayout>
       <main className="min-h-screen bg-zinc-950 px-4 py-10">
         <div className="mx-auto max-w-7xl">
           <header className="mb-8 flex flex-row justify-between">
@@ -160,6 +161,6 @@ export default function HomeRentPage() {
         onClose={() => setIsCreateModalOpen(false)}
         onCreated={handleCreatedItem}
       />
-    </>
+    </DashboardLayout>
   );
 }

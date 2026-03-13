@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getHomeRentItemById } from "@/services/supabase/home_rent";
 import type { HomeRentItem } from "@/types/home_rent";
+import DashboardLayout from "@/components/layout/DashboardLayout";
 
 function normalizePhoneToWhatsapp(phone: string) {
   return phone.replace(/\D/g, "");
@@ -99,148 +100,152 @@ export default function HomeRentDetailsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 px-4 py-10">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-6">
-          <button
-            type="button"
-            onClick={() => navigate("/dashboard/home-rent")}
-            className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-800"
-          >
-            Voltar
-          </button>
-        </div>
+    <DashboardLayout>
+      <main className="min-h-screen bg-zinc-950 px-4 py-10">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-6">
+            <button
+              type="button"
+              onClick={() => navigate("/dashboard/home-rent")}
+              className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-800"
+            >
+              Voltar
+            </button>
+          </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 shadow-xl">
-            {images.length > 0 ? (
-              <>
-                <div className="relative overflow-hidden rounded-2xl bg-zinc-800">
-                  <div className="aspect-square w-full">
-                    <img
-                      src={images[currentImageIndex]}
-                      alt={item.title}
-                      className="h-full w-full object-cover"
-                    />
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 shadow-xl">
+              {images.length > 0 ? (
+                <>
+                  <div className="relative overflow-hidden rounded-2xl bg-zinc-800">
+                    <div className="aspect-square w-full">
+                      <img
+                        src={images[currentImageIndex]}
+                        alt={item.title}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+
+                    {images.length > 1 ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handlePreviousImage}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 px-3 py-2 text-white"
+                          aria-label="Imagem anterior"
+                        >
+                          ←
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleNextImage}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 px-3 py-2 text-white"
+                          aria-label="Próxima imagem"
+                        >
+                          →
+                        </button>
+                      </>
+                    ) : null}
                   </div>
 
                   {images.length > 1 ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={handlePreviousImage}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 px-3 py-2 text-white"
-                        aria-label="Imagem anterior"
-                      >
-                        ←
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleNextImage}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 px-3 py-2 text-white"
-                        aria-label="Próxima imagem"
-                      >
-                        →
-                      </button>
-                    </>
+                    <div className="mt-4 grid grid-cols-3 gap-3">
+                      {images.map((image, index) => (
+                        <button
+                          key={image}
+                          type="button"
+                          onClick={() => setCurrentImageIndex(index)}
+                          className={`overflow-hidden rounded-xl border ${
+                            currentImageIndex === index
+                              ? "border-white"
+                              : "border-zinc-700"
+                          }`}
+                        >
+                          <div className="aspect-square w-full bg-zinc-800">
+                            <img
+                              src={image}
+                              alt={`${item.title} ${index + 1}`}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   ) : null}
+                </>
+              ) : (
+                <div className="flex aspect-square items-center justify-center rounded-2xl bg-zinc-800 text-zinc-400">
+                  Sem imagens
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-xl">
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h1 className="text-3xl font-bold text-white">
+                    {item.title}
+                  </h1>
+                  <p className="mt-2 text-sm text-zinc-400">
+                    Publicado em{" "}
+                    {new Date(item.created_at).toLocaleDateString("pt-BR")}
+                  </p>
                 </div>
 
-                {images.length > 1 ? (
-                  <div className="mt-4 grid grid-cols-3 gap-3">
-                    {images.map((image, index) => (
-                      <button
-                        key={image}
-                        type="button"
-                        onClick={() => setCurrentImageIndex(index)}
-                        className={`overflow-hidden rounded-xl border ${
-                          currentImageIndex === index
-                            ? "border-white"
-                            : "border-zinc-700"
-                        }`}
-                      >
-                        <div className="aspect-square w-full bg-zinc-800">
-                          <img
-                            src={image}
-                            alt={`${item.title} ${index + 1}`}
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </>
-            ) : (
-              <div className="flex aspect-square items-center justify-center rounded-2xl bg-zinc-800 text-zinc-400">
-                Sem imagens
+                <span
+                  className={`rounded-full px-3 py-1 text-sm font-semibold ${
+                    item.type === "sell"
+                      ? "bg-emerald-500/15 text-emerald-300"
+                      : "bg-amber-500/15 text-amber-300"
+                  }`}
+                >
+                  {item.type === "sell" ? "Compra" : "Aluguel"}
+                </span>
               </div>
-            )}
-          </section>
 
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-xl">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <h1 className="text-3xl font-bold text-white">{item.title}</h1>
-                <p className="mt-2 text-sm text-zinc-400">
-                  Publicado em{" "}
-                  {new Date(item.created_at).toLocaleDateString("pt-BR")}
+              <div className="space-y-3 text-sm text-zinc-300">
+                <p>
+                  <span className="font-semibold text-white">Comunidade:</span>{" "}
+                  {item.community}
+                </p>
+                <p>
+                  <span className="font-semibold text-white">Endereço:</span>{" "}
+                  {item.address}
+                </p>
+                <p>
+                  <span className="font-semibold text-white">Status:</span>{" "}
+                  {item.status === "open" ? "Em aberto" : "Resolvido"}
+                </p>
+                <p>
+                  <span className="font-semibold text-white">Telefone:</span>{" "}
+                  {item.phone}
                 </p>
               </div>
 
-              <span
-                className={`rounded-full px-3 py-1 text-sm font-semibold ${
-                  item.type === "sell"
-                    ? "bg-emerald-500/15 text-emerald-300"
-                    : "bg-amber-500/15 text-amber-300"
-                }`}
-              >
-                {item.type === "sell" ? "Compra" : "Aluguel"}
-              </span>
-            </div>
+              <div className="mt-6">
+                <h2 className="mb-2 text-lg font-semibold text-white">
+                  Descrição
+                </h2>
+                <p className="whitespace-pre-line text-zinc-300">
+                  {item.description}
+                </p>
+              </div>
 
-            <div className="space-y-3 text-sm text-zinc-300">
-              <p>
-                <span className="font-semibold text-white">Comunidade:</span>{" "}
-                {item.community}
-              </p>
-              <p>
-                <span className="font-semibold text-white">Endereço:</span>{" "}
-                {item.address}
-              </p>
-              <p>
-                <span className="font-semibold text-white">Status:</span>{" "}
-                {item.status === "open" ? "Em aberto" : "Resolvido"}
-              </p>
-              <p>
-                <span className="font-semibold text-white">Telefone:</span>{" "}
-                {item.phone}
-              </p>
-            </div>
-
-            <div className="mt-6">
-              <h2 className="mb-2 text-lg font-semibold text-white">
-                Descrição
-              </h2>
-              <p className="whitespace-pre-line text-zinc-300">
-                {item.description}
-              </p>
-            </div>
-
-            <div className="mt-8">
-              <a
-                href={whatsappLink}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex w-full items-center justify-center rounded-xl bg-green-500 px-4 py-3 text-center font-semibold text-white transition hover:opacity-90"
-              >
-                Entrar em contato via WhatsApp
-              </a>
-            </div>
-          </section>
+              <div className="mt-8">
+                <a
+                  href={whatsappLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex w-full items-center justify-center rounded-xl bg-green-500 px-4 py-3 text-center font-semibold text-white transition hover:opacity-90"
+                >
+                  Entrar em contato via WhatsApp
+                </a>
+              </div>
+            </section>
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </DashboardLayout>
   );
 }

@@ -3,6 +3,7 @@ import { getLostAndFoundItems } from "@/services/supabase/lost_and_found";
 import type { LostAndFoundItem } from "@/types/lost_and_found";
 import CreateLostAndFoundModal from "@/components/ui/CreateLostAndFoundModal";
 import { useNavigate } from "react-router-dom";
+import DashboardLayout from "@/components/layout/DashboardLayout";
 
 export default function LostAndFoundPage() {
   const [items, setItems] = useState<LostAndFoundItem[]>([]);
@@ -39,7 +40,7 @@ export default function LostAndFoundPage() {
   }
 
   return (
-    <>
+    <DashboardLayout>
       <main className="min-h-screen bg-zinc-950 px-4 py-10">
         <div className="mx-auto max-w-7xl">
           <header className="mb-8 flex flex-row justify-between">
@@ -164,6 +165,6 @@ export default function LostAndFoundPage() {
         onClose={() => setIsCreateModalOpen(false)}
         onCreated={handleCreatedItem}
       />
-    </>
+    </DashboardLayout>
   );
 }
