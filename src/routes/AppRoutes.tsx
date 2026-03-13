@@ -11,6 +11,7 @@ import ProtectedRoute from "./ProtectedRoute";
 import RoleGuard from "./RoleGuard";
 import AdminPage from "@/pages/Admin";
 import SuperAdminPage from "@/pages/SuperAdmin";
+import AdminMailPage from "@/pages/Mail";
 
 export function AppRoutes() {
   return (
@@ -48,6 +49,8 @@ export function AppRoutes() {
           <Route element={<RoleGuard allowedRoles={["admin", "president"]} />}>
             <Route path="/dashboard/admin" element={<AdminPage />} />
           </Route>
+
+          <Route path="/dashboard/admin/mail" element={<AdminMailPage />} />
 
           <Route element={<RoleGuard allowedRoles={["admin"]} />}>
             <Route path="/dashboard/super-admin" element={<SuperAdminPage />} />

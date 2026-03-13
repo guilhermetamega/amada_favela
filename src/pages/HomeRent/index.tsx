@@ -5,6 +5,7 @@ import CreateHomeRentModal from "@/components/ui/CreateHomeRentModal";
 import { getHomeRentItems } from "@/services/supabase/home_rent";
 import type { HomeRentItem } from "@/types/home_rent";
 import { usePermissions } from "@/hooks/usePermissions";
+import DashboardHeader from "@/components/layout/DashboardHeader";
 
 export default function HomeRentPage() {
   const [items, setItems] = useState<HomeRentItem[]>([]);
@@ -58,22 +59,11 @@ export default function HomeRentPage() {
     <DashboardLayout>
       <main className="min-h-screen bg-zinc-950 px-4 py-10">
         <div className="mx-auto max-w-7xl">
-          <header className="mb-8 flex flex-row justify-between gap-4">
-            <div className="flex w-full flex-col justify-center">
-              <h1 className="text-3xl font-bold text-white">Moradia</h1>
-              <p className="mt-2 text-sm text-zinc-400">
-                Confira as casas oferecidas pela comunidade.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => navigate("/dashboard")}
-              className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-800"
-            >
-              Voltar
-            </button>
-          </header>
+          <DashboardHeader
+            title="Moradias"
+            description="Confira as casas oferecidas na comunidade."
+            showBackButton
+          />
 
           {loading || permissionsLoading ? (
             <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-zinc-300">

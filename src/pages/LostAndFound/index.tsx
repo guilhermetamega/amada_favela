@@ -4,6 +4,7 @@ import type { LostAndFoundItem } from "@/types/lost_and_found";
 import CreateLostAndFoundModal from "@/components/ui/CreateLostAndFoundModal";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardHeader from "@/components/layout/DashboardHeader";
 
 export default function LostAndFoundPage() {
   const [items, setItems] = useState<LostAndFoundItem[]>([]);
@@ -43,23 +44,11 @@ export default function LostAndFoundPage() {
     <DashboardLayout>
       <main className="min-h-screen bg-zinc-950 px-4 py-10">
         <div className="mx-auto max-w-7xl">
-          <header className="mb-8 flex flex-row justify-between">
-            <div className="flex-col justify-center w-full">
-              <h1 className="text-3xl font-bold text-white">
-                Achados e Perdidos
-              </h1>
-              <p className="mt-2 text-sm text-zinc-400">
-                Confira os itens cadastrados pela comunidade.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => navigate("/dashboard")}
-              className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-800"
-            >
-              Voltar
-            </button>
-          </header>
+          <DashboardHeader
+            title="Achados e Perdidos"
+            description="Confira os itens cadastrados pela comunidade."
+            showBackButton
+          />
 
           {loading ? (
             <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-zinc-300">

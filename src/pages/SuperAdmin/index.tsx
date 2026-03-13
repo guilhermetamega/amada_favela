@@ -5,6 +5,7 @@ import {
   updateUserRoleAsAdmin,
 } from "@/services/supabase/admin";
 import type { ManageableUser, UserRole } from "@/types/admin";
+import DashboardHeader from "@/components/layout/DashboardHeader";
 
 export default function SuperAdminPage() {
   const [users, setUsers] = useState<ManageableUser[]>([]);
@@ -58,12 +59,11 @@ export default function SuperAdminPage() {
     <DashboardLayout>
       <main className="px-4 py-10">
         <div className="mx-auto max-w-6xl">
-          <header className="mb-8">
-            <h1 className="text-3xl font-bold text-white">Super Admin</h1>
-            <p className="mt-2 text-sm text-zinc-400">
-              Gerencie roles globais dos usuários.
-            </p>
-          </header>
+          <DashboardHeader
+            title="Super Admin"
+            description="Gerencie os usuários globais."
+            showBackButton
+          />
 
           {loading ? (
             <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-zinc-300">
@@ -116,9 +116,9 @@ export default function SuperAdminPage() {
                         disabled={updatingUserId === user.id}
                         className="rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-white outline-none focus:border-zinc-500 disabled:opacity-60"
                       >
-                        <option value="user">User</option>
-                        <option value="employee">Employee</option>
-                        <option value="president">President</option>
+                        <option value="user">Usuário</option>
+                        <option value="employee">Funcionário</option>
+                        <option value="president">Presidente</option>
                       </select>
                     </div>
                   </div>
