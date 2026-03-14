@@ -36,7 +36,7 @@ async function getCurrentProfile() {
 
   const { data: profile, error: profileError } = await supabase
     .from("users")
-    .select("id, role, comunity")
+    .select("id, role, comunity, fullname, address_1, address_2")
     .eq("id", user.id)
     .single();
 
@@ -145,6 +145,59 @@ export async function createMail(input: {
 
 export async function deleteMail(mailId: string) {
   const { error } = await supabase.from("mail").delete().eq("id", mailId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function getCurrentUserPendingMail() {
+  const profile = await getCurrentProfile();
+
+  const { data: partner, error: partnerError } = await supabase
+    .from("partners")
+    .select("expires_at")
+    .eq("user_id", profile.id)
+    .order("expires_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (partnerError) {
+    throw new Error(partnerError.message);
+  }
+
+  const isPartnerActive =
+    !!partner && new Date(partner.expires_at) >= new Date();
+
+  if (!isPartnerActive) {
+    throw new Error(
+      "Você precisa ter uma assinatura partner ativa para acessar suas cartas.",
+    );
+  }
+
+  const { data, error } = await supabase
+    .from("mail")
+    .select("*")
+    .eq("owner_id", profile.id)
+    .eq("status", "not_withdraw")
+    .gte("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return {
+    profile,
+    items: (data ?? []) as MailItem[],
+  };
+}
+
+export async function markMailAsWithdrawn(mailId: string) {
+  const { error } = await supabase
+    .from("mail")
+    .update({ status: "withdrawn" })
+    .eq("id", mailId);
 
   if (error) {
     throw new Error(error.message);

@@ -11,7 +11,8 @@ import ProtectedRoute from "./ProtectedRoute";
 import RoleGuard from "./RoleGuard";
 import AdminPage from "@/pages/Admin";
 import SuperAdminPage from "@/pages/SuperAdmin";
-import AdminMailPage from "@/pages/Mail";
+import AdminMailPage from "@/pages/AdminMail";
+import MailsPage from "@/pages/Mails";
 
 export function AppRoutes() {
   return (
@@ -45,6 +46,9 @@ export function AppRoutes() {
             path="/dashboard/home-rent/:id"
             element={<HomeRentDetailsPage />}
           />
+
+          <Route path="/dashboard/mails" element={<MailsPage />} />
+
           {/* {Guardião de rotas para segurança extra} */}
           <Route element={<RoleGuard allowedRoles={["admin", "president"]} />}>
             <Route path="/dashboard/admin" element={<AdminPage />} />
