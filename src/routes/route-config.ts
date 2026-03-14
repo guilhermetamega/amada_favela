@@ -104,6 +104,18 @@ export const appRoutes: AppRouteConfig[] = [
     showInDashboard: true,
     canAccess: (permissions) => !!permissions && permissions.isAdmin,
   },
+  {
+    path: "/dashboard/admin/create-warnings",
+    label: "Criar Comunicados",
+    description: "Publique banners de aviso para a comunidade.",
+    showInSidebar: true,
+    showInDashboard: false,
+    canAccess: (permissions) =>
+      !!permissions &&
+      (permissions.isEmployee ||
+        permissions.isPresident ||
+        permissions.isAdmin),
+  },
 ];
 
 export function getSidebarRoutes(permissions: Permissions | null) {

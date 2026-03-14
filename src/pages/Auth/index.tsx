@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { AuthMode, LoginFormData, RegisterFormData } from "@/types/auth";
 import { signInWithCpf, signUpWithEmail } from "@/services/supabase/auth";
 import { formatCpf } from "@/utils/cpf";
+import developedByLogo from "@/assets/developed_by_logo.png";
 
 const initialLoginForm: LoginFormData = {
   cpf: "",
@@ -427,6 +428,18 @@ export default function AuthPage() {
             </div>
           </form>
         )}
+
+        <footer className="mt-10 border-t border-zinc-800 pt-6 text-center">
+          <p className="text-sm text-zinc-400">Desenvolvido Pela Equipe das:</p>
+
+          <div className="mt-3 flex justify-center">
+            <img
+              src={developedByLogo}
+              alt="Equipe de Desenvolvimento"
+              className="h-14 object-contain opacity-80 hover:opacity-100 transition"
+            />
+          </div>
+        </footer>
       </div>
     </main>
   );

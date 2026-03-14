@@ -13,6 +13,7 @@ import AdminPage from "@/pages/Admin";
 import SuperAdminPage from "@/pages/SuperAdmin";
 import AdminMailPage from "@/pages/AdminMail";
 import MailsPage from "@/pages/Mails";
+import CreateWarningsPage from "@/pages/CreateWarnings";
 
 export function AppRoutes() {
   return (
@@ -55,6 +56,11 @@ export function AppRoutes() {
           </Route>
 
           <Route path="/dashboard/admin/mail" element={<AdminMailPage />} />
+
+          <Route
+            path="/dashboard/admin/create-warnings"
+            element={<CreateWarningsPage />}
+          />
 
           <Route element={<RoleGuard allowedRoles={["admin"]} />}>
             <Route path="/dashboard/super-admin" element={<SuperAdminPage />} />
