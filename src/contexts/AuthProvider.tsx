@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/services/supabase/client";
 import { AuthContext } from "./auth-context";
+import { ProfileProvider } from "./ProfileContext";
 
 type AuthProviderProps = {
   children: ReactNode;
@@ -64,5 +65,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     [user, session, loading],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {" "}
+      <ProfileProvider>{children}</ProfileProvider>
+    </AuthContext.Provider>
+  );
 }
