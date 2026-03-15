@@ -1,9 +1,21 @@
+import type { LucideIcon } from "lucide-react";
+import {
+  Bell,
+  Dog,
+  FolderSearch,
+  Home,
+  LayoutDashboard,
+  Mail,
+  Shield,
+  ShieldCheck,
+} from "lucide-react";
 import type { Permissions } from "@/lib/permissions";
 
 export type AppRouteConfig = {
   path: string;
   label: string;
   description?: string;
+  icon?: LucideIcon;
   showInSidebar?: boolean;
   showInDashboard?: boolean;
   isDetailRoute?: boolean;
@@ -14,6 +26,7 @@ export const appRoutes: AppRouteConfig[] = [
   {
     path: "/dashboard",
     label: "Dashboard",
+    icon: LayoutDashboard,
     showInSidebar: true,
     showInDashboard: false,
     canAccess: (permissions) => !!permissions,
@@ -22,6 +35,7 @@ export const appRoutes: AppRouteConfig[] = [
     path: "/dashboard/lost-and-found",
     label: "Achados e Perdidos",
     description: "Acesse os itens encontrados e perdidos.",
+    icon: FolderSearch,
     showInSidebar: true,
     showInDashboard: true,
     canAccess: (permissions) => !!permissions,
@@ -38,6 +52,7 @@ export const appRoutes: AppRouteConfig[] = [
     path: "/dashboard/lost-animals",
     label: "Animais Perdidos",
     description: "Acesse os animais encontrados e perdidos.",
+    icon: Dog,
     showInSidebar: true,
     showInDashboard: true,
     canAccess: (permissions) => !!permissions,
@@ -54,6 +69,7 @@ export const appRoutes: AppRouteConfig[] = [
     path: "/dashboard/home-rent",
     label: "Moradia",
     description: "Acesse as casas para comprar e alugar.",
+    icon: Home,
     showInSidebar: true,
     showInDashboard: true,
     canAccess: (permissions) => !!permissions,
@@ -70,6 +86,7 @@ export const appRoutes: AppRouteConfig[] = [
     path: "/dashboard/mails",
     label: "Minhas Cartas",
     description: "Visualize e confirme o recebimento das suas cartas.",
+    icon: Mail,
     showInSidebar: true,
     showInDashboard: true,
     canAccess: (permissions) => !!permissions && permissions.canAccessPremium,
@@ -79,6 +96,7 @@ export const appRoutes: AppRouteConfig[] = [
     label: "Administração",
     description:
       "Gerencie funções administrativas e recursos da sua comunidade.",
+    icon: ShieldCheck,
     showInSidebar: true,
     showInDashboard: true,
     canAccess: (permissions) =>
@@ -88,6 +106,7 @@ export const appRoutes: AppRouteConfig[] = [
     path: "/dashboard/admin/mail",
     label: "Criar Notificação de Cartas",
     description: "Gerencie cartas por usuário da comunidade.",
+    icon: Bell,
     showInSidebar: true,
     showInDashboard: false,
     canAccess: (permissions) =>
@@ -100,34 +119,21 @@ export const appRoutes: AppRouteConfig[] = [
     path: "/dashboard/super-admin",
     label: "Super Admin",
     description: "Gerencie funções globais dos usuários.",
+    icon: Shield,
     showInSidebar: true,
     showInDashboard: true,
     canAccess: (permissions) => !!permissions && permissions.isAdmin,
   },
-  {
-    path: "/dashboard/admin/create-warnings",
-    label: "Criar Comunicados",
-    description: "Publique banners de aviso para a comunidade.",
-    showInSidebar: true,
-    showInDashboard: false,
-    canAccess: (permissions) =>
-      !!permissions &&
-      (permissions.isEmployee ||
-        permissions.isPresident ||
-        permissions.isAdmin),
-  },
 ];
 
 export function getSidebarRoutes(permissions: Permissions | null) {
-  return appRoutes.filter((route) => {
-    if (!route.showInSidebar) return false;
-    return route.canAccess(permissions);
-  });
+  return appRoutes.filter(
+    (route) => route.showInSidebar && route.canAccess(permissions),
+  );
 }
 
 export function getDashboardRoutes(permissions: Permissions | null) {
-  return appRoutes.filter((route) => {
-    if (!route.showInDashboard) return false;
-    return route.canAccess(permissions);
-  });
+  return appRoutes.filter(
+    (route) => route.showInDashboard && route.canAccess(permissions),
+  );
 }

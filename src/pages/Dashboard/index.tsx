@@ -68,7 +68,7 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout>
-      <main className="px-4 py-10">
+      <main className="px-4 py-6 sm:py-8 md:py-10">
         <div className="mx-auto max-w-5xl">
           <DashboardHeader
             title="Dashboard"
@@ -76,10 +76,10 @@ export default function DashboardPage() {
           />
 
           {!warningsLoading && currentWarning ? (
-            <section className="mb-8">
+            <section className="mb-6 md:mb-8">
               <div className="relative overflow-hidden rounded-2xl border border-zinc-800">
                 <article
-                  className="relative min-h-[220px] overflow-hidden md:min-h-[280px]"
+                  className="relative min-h-[180px] overflow-hidden sm:min-h-[200px] md:min-h-[280px]"
                   style={{
                     backgroundImage: `url(${warningBg})`,
                     backgroundSize: "cover",
@@ -88,9 +88,9 @@ export default function DashboardPage() {
                 >
                   <div className="absolute inset-0 bg-black/80" />
 
-                  <div className="relative flex min-h-[220px] items-center justify-center px-6 py-8 text-center md:min-h-[280px] md:px-8 md:py-10">
+                  <div className="relative flex min-h-[180px] items-center justify-center px-5 py-8 text-center sm:min-h-[200px] sm:px-6 md:min-h-[280px] md:px-8 md:py-10">
                     <p
-                      className="max-w-3xl text-lg font-semibold md:text-2xl"
+                      className="max-w-3xl text-base font-semibold sm:text-lg md:text-2xl"
                       style={{ color: currentWarning.text_color }}
                     >
                       {currentWarning.message}
@@ -102,7 +102,7 @@ export default function DashboardPage() {
                       <button
                         type="button"
                         onClick={handlePreviousWarning}
-                        className="absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/45 px-3 py-2 text-white transition hover:bg-black/60"
+                        className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/45 px-3 py-2 text-white transition hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                         aria-label="Comunicado anterior"
                       >
                         ←
@@ -111,7 +111,7 @@ export default function DashboardPage() {
                       <button
                         type="button"
                         onClick={handleNextWarning}
-                        className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/45 px-3 py-2 text-white transition hover:bg-black/60"
+                        className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/45 px-3 py-2 text-white transition hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                         aria-label="Próximo comunicado"
                       >
                         →
@@ -142,42 +142,65 @@ export default function DashboardPage() {
           ) : null}
 
           {loading ? (
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-zinc-300">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 text-sm text-zinc-300 md:p-6">
               Carregando módulos...
             </div>
           ) : null}
 
           {!loading && dashboardRoutes.length === 0 ? (
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-zinc-300">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 text-sm text-zinc-300 md:p-6">
               Nenhuma funcionalidade disponível para o seu perfil.
             </div>
           ) : null}
 
           {!loading && dashboardRoutes.length > 0 ? (
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6">
-              {dashboardRoutes.map((route) => (
-                <button
-                  key={route.path}
-                  type="button"
-                  onClick={() => navigate(route.path)}
-                  className="aspect-square rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-left shadow-xl transition hover:border-zinc-700 hover:bg-zinc-800"
-                >
-                  <div className="flex h-full flex-col justify-between">
-                    <div>
-                      <h2 className="text-xl font-semibold text-white">
-                        {route.label}
-                      </h2>
-                      <p className="mt-2 text-sm text-zinc-400">
-                        {route.description || "Abrir funcionalidade."}
-                      </p>
-                    </div>
+            <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:gap-5">
+              {dashboardRoutes.map((route) => {
+                const Icon = route.icon;
 
-                    <span className="text-sm font-medium text-zinc-300">
-                      Abrir módulo →
-                    </span>
-                  </div>
-                </button>
-              ))}
+                return (
+                  <button
+                    key={route.path}
+                    type="button"
+                    onClick={() => navigate(route.path)}
+                    className="group min-h-[132px] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-left shadow-lg transition duration-200 hover:border-zinc-700 hover:bg-zinc-800 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 sm:min-h-[148px] sm:p-5"
+                  >
+                    <div className="flex h-full flex-col justify-between gap-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-800 text-zinc-300 transition group-hover:border-zinc-600 group-hover:bg-zinc-700 group-hover:text-white">
+                            <Icon size={20} />
+                          </div>
+
+                          <div className="min-w-0">
+                            <h2 className="text-base font-semibold text-white sm:text-lg">
+                              {route.label}
+                            </h2>
+
+                            <p className="mt-1 line-clamp-2 text-sm leading-5 text-zinc-400">
+                              {route.description || "Abrir funcionalidade."}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center text-zinc-500 transition group-hover:text-white">
+                          →
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-xs font-medium text-zinc-300">
+                          Acessar
+                        </span>
+
+                        <span className="text-xs text-zinc-500 transition group-hover:text-zinc-400">
+                          Toque para abrir
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </section>
           ) : null}
         </div>
