@@ -1,9 +1,10 @@
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import type { AuthMode, LoginFormData, RegisterFormData } from "@/types/auth";
 import { signInWithCpf, signUpWithEmail } from "@/services/supabase/auth";
 import { formatCpf } from "@/utils/cpf";
 import developedByLogo from "@/assets/developed_by_logo.png";
+import { useAuth } from "@/hooks";
 
 const initialLoginForm: LoginFormData = {
   cpf: "",
@@ -25,6 +26,13 @@ const initialRegisterForm: RegisterFormData = {
 
 export default function AuthPage() {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, authLoading, navigate]);
 
   const [mode, setMode] = useState<AuthMode>("login");
   const [loading, setLoading] = useState(false);
@@ -92,7 +100,7 @@ export default function AuthPage() {
 
     try {
       await signInWithCpf(loginForm);
-      navigate("/dashboard");
+      // não navegue aqui
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Erro ao realizar login.";

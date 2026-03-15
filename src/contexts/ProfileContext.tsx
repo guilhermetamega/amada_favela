@@ -4,6 +4,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useCallback,
   type ReactNode,
 } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -36,7 +37,7 @@ export function ProfileProvider({ children }: ProfileProviderProps) {
   const [permissions, setPermissions] = useState<Permissions | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function loadPermissions() {
+  const loadPermissions = useCallback(async () => {
     if (!user) {
       setPermissions(null);
       setLoading(false);
@@ -56,12 +57,12 @@ export function ProfileProvider({ children }: ProfileProviderProps) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [user]);
 
   useEffect(() => {
     if (authLoading) return;
     void loadPermissions();
-  }, [user, authLoading]);
+  }, [authLoading, loadPermissions]);
 
   const value = useMemo(
     () => ({
@@ -69,7 +70,7 @@ export function ProfileProvider({ children }: ProfileProviderProps) {
       loading: authLoading || loading,
       refreshPermissions: loadPermissions,
     }),
-    [permissions, loading, authLoading],
+    [permissions, loading, authLoading, loadPermissions],
   );
 
   return (
