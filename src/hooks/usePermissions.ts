@@ -1,10 +1,5 @@
-import { ProfileContextType } from "@/contexts/ProfileContext";
-import { createContext, useContext } from "react";
-
-export const ProfileContext = createContext<ProfileContextType>({
-  permissions: null,
-  loading: true,
-});
+import { useContext } from "react";
+import { ProfileContext } from "@/contexts/ProfileContext";
 
 export function usePermissions() {
   return useContext(ProfileContext);
