@@ -15,7 +15,7 @@ export type AppRouteConfig = {
   path: string;
   label: string;
   description?: string;
-  icon?: LucideIcon;
+  icon: LucideIcon;
   showInSidebar?: boolean;
   showInDashboard?: boolean;
   isDetailRoute?: boolean;
@@ -43,6 +43,7 @@ export const appRoutes: AppRouteConfig[] = [
   {
     path: "/dashboard/lost-and-found/:id",
     label: "Detalhe Achados e Perdidos",
+    icon: FolderSearch,
     showInSidebar: false,
     showInDashboard: false,
     isDetailRoute: true,
@@ -60,6 +61,7 @@ export const appRoutes: AppRouteConfig[] = [
   {
     path: "/dashboard/lost-animals/:id",
     label: "Detalhe Animais Perdidos",
+    icon: Dog,
     showInSidebar: false,
     showInDashboard: false,
     isDetailRoute: true,
@@ -77,6 +79,7 @@ export const appRoutes: AppRouteConfig[] = [
   {
     path: "/dashboard/home-rent/:id",
     label: "Detalhe Moradia",
+    icon: Home,
     showInSidebar: false,
     showInDashboard: false,
     isDetailRoute: true,
