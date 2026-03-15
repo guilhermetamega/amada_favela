@@ -1,18 +1,10 @@
 import { supabase } from "@/services/supabase/client";
 
-export async function getCurrentUserProfile() {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    throw new Error("Usuário não autenticado");
-  }
-
+export async function getCurrentUserProfile(userId: string) {
   const { data: profile, error } = await supabase
     .from("users")
     .select("id, role")
-    .eq("id", user.id)
+    .eq("id", userId)
     .single();
 
   if (error) {
