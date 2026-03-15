@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -15,6 +15,8 @@ import type { AuthMode, LoginFormData, RegisterFormData } from "@/types/auth";
 import { signInWithCpf, signUpWithEmail } from "@/services/supabase/auth";
 import { formatCpf } from "@/utils/cpf";
 import developedByLogo from "@/assets/developed_by_logo.png";
+import { useAuth } from "@/hooks";
+import { supabase } from "@/services/supabase/client";
 
 const initialLoginForm: LoginFormData = {
   cpf: "",
@@ -48,15 +50,28 @@ function fieldIconClassName(color: string) {
 
 export default function AuthPage() {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
 
   const [mode, setMode] = useState<AuthMode>("login");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [isRegisterFlow, setIsRegisterFlow] = useState(false);
 
   const [loginForm, setLoginForm] = useState<LoginFormData>(initialLoginForm);
   const [registerForm, setRegisterForm] =
     useState<RegisterFormData>(initialRegisterForm);
+
+  useEffect(() => {
+    if (authLoading) return;
+
+    // Só redireciona automaticamente se:
+    // - existir usuário autenticado
+    // - não estivermos no fluxo de cadastro
+    if (user && !isRegisterFlow) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, authLoading, isRegisterFlow, navigate]);
 
   function handleLoginChange(event: ChangeEvent<HTMLInputElement>) {
     const { name, value } = event.target;
@@ -96,6 +111,7 @@ export default function AuthPage() {
     setMode("login");
     setErrorMessage("");
     setSuccessMessage("");
+    setIsRegisterFlow(false);
   }
 
   function switchToRegister() {
@@ -111,6 +127,7 @@ export default function AuthPage() {
 
     setErrorMessage("");
     setSuccessMessage("");
+    setIsRegisterFlow(false);
     setLoading(true);
 
     try {
@@ -139,21 +156,28 @@ export default function AuthPage() {
     }
 
     setLoading(true);
+    setIsRegisterFlow(true);
 
     try {
       await signUpWithEmail(registerForm);
+
+      // Garante que nenhum login residual do signup permaneça ativo
+      // e interfira no fluxo ou no redirecionamento automático.
+      await supabase.auth.signOut();
+
       setSuccessMessage(
         "Cadastro realizado com sucesso. Faça seu login para continuar.",
       );
       setRegisterForm(initialRegisterForm);
-      setMode("login");
       setLoginForm(initialLoginForm);
+      setMode("login");
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Erro ao realizar cadastro.";
       setErrorMessage(message);
     } finally {
       setLoading(false);
+      setIsRegisterFlow(false);
     }
   }
 
