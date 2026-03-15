@@ -199,12 +199,6 @@ export default function DashboardPage() {
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${color.badge}`}
-                        >
-                          Acessar
-                        </span>
-
                         <span className="text-xs text-zinc-500 transition group-hover:text-zinc-300">
                           Toque para abrir
                         </span>
