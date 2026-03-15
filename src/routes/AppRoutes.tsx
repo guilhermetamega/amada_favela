@@ -14,6 +14,9 @@ import SuperAdminPage from "@/pages/SuperAdmin";
 import AdminMailPage from "@/pages/AdminMail";
 import MailsPage from "@/pages/Mails";
 import CreateWarningsPage from "@/pages/CreateWarnings";
+import SocialProjectsPage from "@/pages/SocialProjects";
+import SocialProjectsDetailsPage from "@/pages/SocialProjectsDetails";
+import AdminSocialProjectsPage from "@/pages/AdminSocialProjects";
 
 export function AppRoutes() {
   return (
@@ -50,6 +53,15 @@ export function AppRoutes() {
 
           <Route path="/dashboard/mails" element={<MailsPage />} />
 
+          <Route
+            path="/dashboard/social-projects"
+            element={<SocialProjectsPage />}
+          />
+          <Route
+            path="/dashboard/social-projects/:id"
+            element={<SocialProjectsDetailsPage />}
+          />
+
           {/* {Guardião de rotas para segurança extra} */}
           <Route element={<RoleGuard allowedRoles={["admin", "president"]} />}>
             <Route path="/dashboard/admin" element={<AdminPage />} />
@@ -60,6 +72,11 @@ export function AppRoutes() {
           <Route
             path="/dashboard/admin/create-warnings"
             element={<CreateWarningsPage />}
+          />
+
+          <Route
+            path="/dashboard/admin/social-projects"
+            element={<AdminSocialProjectsPage />}
           />
 
           <Route element={<RoleGuard allowedRoles={["admin"]} />}>

@@ -3,6 +3,7 @@ import {
   Bell,
   Dog,
   FolderSearch,
+  HeartHandshake,
   Home,
   LayoutDashboard,
   Mail,
@@ -145,6 +146,44 @@ export const appRoutes: AppRouteConfig[] = [
     showInSidebar: true,
     showInDashboard: true,
     canAccess: (permissions) => !!permissions && permissions.isAdmin,
+  },
+  {
+    path: "/dashboard/social-projects",
+    label: "Projetos Sociais",
+    description: "Conheça e apoie projetos sociais da comunidade.",
+    icon: HeartHandshake,
+    colorClass: "emerald",
+    showInSidebar: true,
+    showInDashboard: true,
+    canAccess: (permissions) =>
+      !!permissions &&
+      (permissions.isEmployee ||
+        permissions.isPresident ||
+        permissions.isAdmin),
+  },
+  {
+    path: "/dashboard/social-projects/:id",
+    label: "Detalhe Projeto Social",
+    icon: HeartHandshake,
+    colorClass: "emerald",
+    showInSidebar: false,
+    showInDashboard: false,
+    isDetailRoute: true,
+    canAccess: (permissions) => !!permissions,
+  },
+  {
+    path: "/dashboard/admin/social-projects",
+    label: "Gerenciar Projetos Sociais",
+    description: "Crie, edite e exclua projetos sociais.",
+    icon: HeartHandshake,
+    colorClass: "emerald",
+    showInSidebar: true,
+    showInDashboard: true,
+    canAccess: (permissions) =>
+      !!permissions &&
+      (permissions.isEmployee ||
+        permissions.isPresident ||
+        permissions.isAdmin),
   },
 ];
 

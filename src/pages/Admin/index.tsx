@@ -270,6 +270,27 @@ export default function AdminPage() {
               </div>
             </button>
 
+            <button
+              type="button"
+              onClick={() => navigate("/dashboard/admin/social-projects")}
+              className="aspect-square rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-left shadow-xl transition hover:border-zinc-700 hover:bg-zinc-800"
+            >
+              <div className="flex h-full flex-col justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-white">
+                    Projetos Sociais
+                  </h2>
+                  <p className="mt-2 text-sm text-zinc-400">
+                    Cadastre, edite e remova projetos sociais da comunidade.
+                  </p>
+                </div>
+
+                <span className="text-sm font-medium text-zinc-300">
+                  Abrir módulo →
+                </span>
+              </div>
+            </button>
+
             <div className="aspect-square rounded-2xl border border-dashed border-zinc-800 bg-zinc-900 p-6 text-left shadow-xl">
               <div className="flex h-full flex-col justify-between">
                 <div>
