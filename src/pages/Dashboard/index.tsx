@@ -7,6 +7,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { getCurrentCommunityWarningBanners } from "@/services/supabase/warning_banners";
 import type { WarningBanner } from "@/types/warning_banners";
 import warningBg from "@/assets/warning_bg.png";
+import { getDashboardRouteTheme } from "@/lib/route-theme";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -86,7 +87,7 @@ export default function DashboardPage() {
                     backgroundPosition: "center",
                   }}
                 >
-                  <div className="absolute inset-0 bg-black/80" />
+                  <div className="absolute inset-0 bg-black/75" />
 
                   <div className="relative flex min-h-[180px] items-center justify-center px-5 py-8 text-center sm:min-h-[200px] sm:px-6 md:min-h-[280px] md:px-8 md:py-10">
                     <p
@@ -129,7 +130,7 @@ export default function DashboardPage() {
                         onClick={() => setCurrentWarningIndex(index)}
                         className={`h-2.5 rounded-full transition ${
                           currentWarningIndex === index
-                            ? "w-8 bg-white"
+                            ? "w-8 bg-emerald-400"
                             : "w-2.5 bg-white/50 hover:bg-white/70"
                         }`}
                         aria-label={`Ir para comunicado ${index + 1}`}
@@ -157,18 +158,25 @@ export default function DashboardPage() {
             <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:gap-5">
               {dashboardRoutes.map((route) => {
                 const Icon = route.icon;
+                const color = getDashboardRouteTheme(route.colorClass);
 
                 return (
                   <button
                     key={route.path}
                     type="button"
                     onClick={() => navigate(route.path)}
-                    className="group min-h-[132px] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-left shadow-lg transition duration-200 hover:border-zinc-700 hover:bg-zinc-800 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 sm:min-h-[148px] sm:p-5"
+                    className={`group relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/95 p-4 text-left shadow-lg transition duration-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 sm:min-h-[148px] sm:p-5 ${color.borderHover} ${color.hoverGlow}`}
                   >
+                    <div
+                      className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${color.topBar}`}
+                    />
+
                     <div className="flex h-full flex-col justify-between gap-4">
                       <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-800 text-zinc-300 transition group-hover:border-zinc-600 group-hover:bg-zinc-700 group-hover:text-white">
+                        <div className="flex min-w-0 items-start gap-3">
+                          <div
+                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition ${color.iconBox}`}
+                          >
                             <Icon size={20} />
                           </div>
 
@@ -177,23 +185,27 @@ export default function DashboardPage() {
                               {route.label}
                             </h2>
 
-                            <p className="mt-1 line-clamp-2 text-sm leading-5 text-zinc-400">
+                            <p className="mt-1 line-clamp-2 text-sm leading-5 text-zinc-300/80">
                               {route.description || "Abrir funcionalidade."}
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center text-zinc-500 transition group-hover:text-white">
+                        <div
+                          className={`flex h-8 w-8 shrink-0 items-center justify-center text-zinc-500 transition ${color.arrow}`}
+                        >
                           →
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <span className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-xs font-medium text-zinc-300">
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${color.badge}`}
+                        >
                           Acessar
                         </span>
 
-                        <span className="text-xs text-zinc-500 transition group-hover:text-zinc-400">
+                        <span className="text-xs text-zinc-500 transition group-hover:text-zinc-300">
                           Toque para abrir
                         </span>
                       </div>

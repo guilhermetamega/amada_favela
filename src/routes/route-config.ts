@@ -16,6 +16,14 @@ export type AppRouteConfig = {
   label: string;
   description?: string;
   icon: LucideIcon;
+  colorClass:
+    | "emerald"
+    | "amber"
+    | "sky"
+    | "rose"
+    | "violet"
+    | "cyan"
+    | "orange";
   showInSidebar?: boolean;
   showInDashboard?: boolean;
   isDetailRoute?: boolean;
@@ -27,6 +35,7 @@ export const appRoutes: AppRouteConfig[] = [
     path: "/dashboard",
     label: "Dashboard",
     icon: LayoutDashboard,
+    colorClass: "emerald",
     showInSidebar: true,
     showInDashboard: false,
     canAccess: (permissions) => !!permissions,
@@ -36,6 +45,7 @@ export const appRoutes: AppRouteConfig[] = [
     label: "Achados e Perdidos",
     description: "Acesse os itens encontrados e perdidos.",
     icon: FolderSearch,
+    colorClass: "amber",
     showInSidebar: true,
     showInDashboard: true,
     canAccess: (permissions) => !!permissions,
@@ -44,6 +54,7 @@ export const appRoutes: AppRouteConfig[] = [
     path: "/dashboard/lost-and-found/:id",
     label: "Detalhe Achados e Perdidos",
     icon: FolderSearch,
+    colorClass: "amber",
     showInSidebar: false,
     showInDashboard: false,
     isDetailRoute: true,
@@ -54,6 +65,7 @@ export const appRoutes: AppRouteConfig[] = [
     label: "Animais Perdidos",
     description: "Acesse os animais encontrados e perdidos.",
     icon: Dog,
+    colorClass: "rose",
     showInSidebar: true,
     showInDashboard: true,
     canAccess: (permissions) => !!permissions,
@@ -62,6 +74,7 @@ export const appRoutes: AppRouteConfig[] = [
     path: "/dashboard/lost-animals/:id",
     label: "Detalhe Animais Perdidos",
     icon: Dog,
+    colorClass: "rose",
     showInSidebar: false,
     showInDashboard: false,
     isDetailRoute: true,
@@ -72,6 +85,7 @@ export const appRoutes: AppRouteConfig[] = [
     label: "Moradia",
     description: "Acesse as casas para comprar e alugar.",
     icon: Home,
+    colorClass: "sky",
     showInSidebar: true,
     showInDashboard: true,
     canAccess: (permissions) => !!permissions,
@@ -80,6 +94,7 @@ export const appRoutes: AppRouteConfig[] = [
     path: "/dashboard/home-rent/:id",
     label: "Detalhe Moradia",
     icon: Home,
+    colorClass: "sky",
     showInSidebar: false,
     showInDashboard: false,
     isDetailRoute: true,
@@ -90,6 +105,7 @@ export const appRoutes: AppRouteConfig[] = [
     label: "Minhas Cartas",
     description: "Visualize e confirme o recebimento das suas cartas.",
     icon: Mail,
+    colorClass: "violet",
     showInSidebar: true,
     showInDashboard: true,
     canAccess: (permissions) => !!permissions && permissions.canAccessPremium,
@@ -100,6 +116,7 @@ export const appRoutes: AppRouteConfig[] = [
     description:
       "Gerencie funções administrativas e recursos da sua comunidade.",
     icon: ShieldCheck,
+    colorClass: "cyan",
     showInSidebar: true,
     showInDashboard: true,
     canAccess: (permissions) =>
@@ -110,6 +127,7 @@ export const appRoutes: AppRouteConfig[] = [
     label: "Criar Notificação de Cartas",
     description: "Gerencie cartas por usuário da comunidade.",
     icon: Bell,
+    colorClass: "orange",
     showInSidebar: true,
     showInDashboard: false,
     canAccess: (permissions) =>
@@ -123,6 +141,7 @@ export const appRoutes: AppRouteConfig[] = [
     label: "Super Admin",
     description: "Gerencie funções globais dos usuários.",
     icon: Shield,
+    colorClass: "emerald",
     showInSidebar: true,
     showInDashboard: true,
     canAccess: (permissions) => !!permissions && permissions.isAdmin,
