@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -15,7 +15,6 @@ import type { AuthMode, LoginFormData, RegisterFormData } from "@/types/auth";
 import { signInWithCpf, signUpWithEmail } from "@/services/supabase/auth";
 import { formatCpf } from "@/utils/cpf";
 import developedByLogo from "@/assets/developed_by_logo.png";
-import { useAuth } from "@/hooks";
 
 const initialLoginForm: LoginFormData = {
   cpf: "",
@@ -49,13 +48,6 @@ function fieldIconClassName(color: string) {
 
 export default function AuthPage() {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      navigate("/dashboard", { replace: true });
-    }
-  }, [user, authLoading, navigate]);
 
   const [mode, setMode] = useState<AuthMode>("login");
   const [loading, setLoading] = useState(false);
@@ -123,6 +115,7 @@ export default function AuthPage() {
 
     try {
       await signInWithCpf(loginForm);
+      navigate("/dashboard", { replace: true });
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Erro ao realizar login.";
@@ -460,6 +453,7 @@ export default function AuthPage() {
                         id="comunity"
                         name="comunity"
                         type="text"
+                        required
                         value={registerForm.comunity}
                         onChange={handleRegisterChange}
                         className={`${inputClassName()} pl-11`}
@@ -480,6 +474,7 @@ export default function AuthPage() {
                         id="phone"
                         name="phone"
                         type="text"
+                        required
                         value={registerForm.phone}
                         onChange={handleRegisterChange}
                         className={`${inputClassName()} pl-11`}

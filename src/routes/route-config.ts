@@ -109,7 +109,7 @@ export const appRoutes: AppRouteConfig[] = [
     colorClass: "violet",
     showInSidebar: true,
     showInDashboard: true,
-    canAccess: (permissions) => !!permissions && permissions.canAccessPremium,
+    canAccess: (permissions) => !!permissions,
   },
   {
     path: "/dashboard/admin",
