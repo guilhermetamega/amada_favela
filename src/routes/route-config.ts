@@ -185,6 +185,20 @@ export const appRoutes: AppRouteConfig[] = [
         permissions.isPresident ||
         permissions.isAdmin),
   },
+  {
+    path: "/dashboard/admin/create-warnings",
+    label: "Gerenciar Avisos",
+    description: "Crie, edite e exclua avisos para a comunidade.",
+    icon: HeartHandshake,
+    colorClass: "rose",
+    showInSidebar: true,
+    showInDashboard: true,
+    canAccess: (permissions) =>
+      !!permissions &&
+      (permissions.isEmployee ||
+        permissions.isPresident ||
+        permissions.isAdmin),
+  },
 ];
 
 export function getSidebarRoutes(permissions: Permissions | null) {
