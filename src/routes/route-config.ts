@@ -34,7 +34,7 @@ export type AppRouteConfig = {
 export const appRoutes: AppRouteConfig[] = [
   {
     path: "/dashboard",
-    label: "Dashboard",
+    label: "Página Inicial",
     icon: LayoutDashboard,
     colorClass: "emerald",
     showInSidebar: true,

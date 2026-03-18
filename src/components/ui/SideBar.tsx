@@ -49,7 +49,7 @@ export default function Sidebar() {
       />
 
       <aside
-        className={`no-scrollbar fixed left-0 top-0 z-50 flex h-full w-[18.5rem] transform flex-col overflow-y-auto border-r border-zinc-800 bg-zinc-950/95 p-4 shadow-2xl backdrop-blur-xl transition-transform duration-300 ${
+        className={`no-scrollbar fixed left-0 top-0 z-50 flex h-full w-74 transform flex-col overflow-y-auto border-r border-zinc-800 bg-zinc-950/95 p-4 shadow-2xl backdrop-blur-xl transition-transform duration-300 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -69,13 +69,6 @@ export default function Sidebar() {
           >
             <X size={18} />
           </button>
-        </div>
-
-        <div className="mb-4 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
-          <p className="text-sm font-medium text-white">Acesso rápido</p>
-          <p className="mt-1 text-sm text-zinc-400">
-            Escolha um módulo para continuar.
-          </p>
         </div>
 
         <nav className="flex-1 space-y-2">

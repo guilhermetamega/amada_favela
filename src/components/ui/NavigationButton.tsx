@@ -27,40 +27,46 @@ export default function NavigationButton({
     <button
       type="button"
       onClick={onClick}
-      className={`group relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/95 p-4 text-left shadow-lg transition duration-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 sm:min-h-[148px] sm:p-5 ${color.borderHover} ${color.hoverGlow}`}
+      className={`group relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/95 p-3 text-left shadow-lg transition duration-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 sm:min-h-37 sm:p-5 ${color.borderHover} ${color.hoverGlow}`}
     >
+      {/* Top gradient bar */}
       <div
-        className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${color.topBar}`}
+        className={`absolute inset-x-0 top-0 h-1 bg-linear-to-r ${color.topBar}`}
       />
 
-      <div className="flex h-full flex-col justify-between gap-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-3">
+      <div className="flex h-full flex-col justify-between gap-2 sm:gap-4">
+        {/* Top content */}
+        <div className="flex items-start justify-between gap-2 sm:gap-3">
+          <div className="flex min-w-0 flex-1 items-start gap-2.5 sm:gap-3">
+            {/* Icon */}
             <div
-              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition ${color.iconBox}`}
+              className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition sm:h-11 sm:w-11 ${color.iconBox}`}
             >
-              <Icon size={20} />
+              <Icon size={18} className="sm:h-5 sm:w-5" />
             </div>
 
-            <div className="min-w-0">
-              <h2 className="text-base font-semibold text-white sm:text-lg">
+            {/* Text */}
+            <div className="min-w-0 flex-1">
+              <h2 className="wrap-anywhere text-sm font-semibold leading-5 text-white sm:line-clamp-2 sm:text-lg sm:leading-6">
                 {label}
               </h2>
 
-              <p className="mt-1 line-clamp-2 text-sm leading-5 text-zinc-300/80">
+              <p className="mt-0.5 hidden line-clamp-2 text-sm leading-5 text-zinc-300/80 sm:block">
                 {description || "Abrir funcionalidade."}
               </p>
             </div>
           </div>
 
+          {/* Arrow (hidden on mobile) */}
           <div
-            className={`flex h-8 w-8 shrink-0 items-center justify-center text-zinc-500 transition ${color.arrow}`}
+            className={`mt-0.5 hidden h-8 w-8 shrink-0 items-center justify-center text-base text-zinc-500 transition sm:flex ${color.arrow}`}
           >
             →
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
+        {/* Bottom helper text (desktop only) */}
+        <div className="hidden items-center justify-between sm:flex">
           <span className="text-xs text-zinc-500 transition group-hover:text-zinc-300">
             Toque para abrir
           </span>
