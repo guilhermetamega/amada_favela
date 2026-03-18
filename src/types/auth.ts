@@ -1,7 +1,7 @@
 export type AuthMode = "login" | "register";
 
 export type LoginFormData = {
-  cpf: string;
+  identifier: string;
   password: string;
 };
 
