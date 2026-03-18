@@ -8,6 +8,34 @@ import { getCurrentCommunityWarningBanners } from "@/services/supabase/warning_b
 import type { WarningBanner } from "@/types/warning_banners";
 import warningBg from "@/assets/warning_bg.png";
 import { getDashboardRouteTheme } from "@/lib/route-theme";
+import { useImagePreload } from "@/hooks/useImagePreload";
+import NavigationButton from "@/components/ui/NavigationButton";
+
+function WarningBannerSkeleton() {
+  return (
+    <section className="mb-6 md:mb-8">
+      <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
+        <div className="relative min-h-[180px] sm:min-h-[200px] md:min-h-[280px]">
+          <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-800" />
+
+          <div className="relative flex min-h-[180px] items-center justify-center px-5 py-8 sm:min-h-[200px] sm:px-6 md:min-h-[280px] md:px-8 md:py-10">
+            <div className="w-full max-w-3xl space-y-3">
+              <div className="mx-auto h-4 w-5/6 rounded-full bg-zinc-700/70 sm:h-5" />
+              <div className="mx-auto h-4 w-4/6 rounded-full bg-zinc-700/60 sm:h-5" />
+              <div className="mx-auto h-4 w-3/6 rounded-full bg-zinc-700/50 sm:h-5" />
+            </div>
+          </div>
+
+          <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-2 px-4 py-4">
+            <div className="h-2.5 w-8 rounded-full bg-zinc-700/80" />
+            <div className="h-2.5 w-2.5 rounded-full bg-zinc-700/50" />
+            <div className="h-2.5 w-2.5 rounded-full bg-zinc-700/50" />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -16,6 +44,9 @@ export default function DashboardPage() {
   const [warnings, setWarnings] = useState<WarningBanner[]>([]);
   const [warningsLoading, setWarningsLoading] = useState(true);
   const [currentWarningIndex, setCurrentWarningIndex] = useState(0);
+
+  const { loaded: warningBgLoaded, error: warningBgError } =
+    useImagePreload(warningBg);
 
   const dashboardRoutes = useMemo(
     () => getDashboardRoutes(permissions),
@@ -66,6 +97,8 @@ export default function DashboardPage() {
   }
 
   const currentWarning = warnings[currentWarningIndex];
+  const canRenderWarningBanner =
+    !warningsLoading && !!currentWarning && (warningBgLoaded || warningBgError);
 
   return (
     <DashboardLayout>
@@ -76,15 +109,22 @@ export default function DashboardPage() {
             description="Escolha uma funcionalidade para continuar."
           />
 
-          {!warningsLoading && currentWarning ? (
+          {warningsLoading || (!warningBgLoaded && !warningBgError) ? (
+            <WarningBannerSkeleton />
+          ) : null}
+
+          {canRenderWarningBanner ? (
             <section className="mb-6 md:mb-8">
               <div className="relative overflow-hidden rounded-2xl border border-zinc-800">
                 <article
                   className="relative min-h-[180px] overflow-hidden sm:min-h-[200px] md:min-h-[280px]"
                   style={{
-                    backgroundImage: `url(${warningBg})`,
+                    backgroundImage: warningBgError
+                      ? undefined
+                      : `url(${warningBg})`,
                     backgroundSize: "cover",
                     backgroundPosition: "center",
+                    backgroundColor: "#18181b",
                   }}
                 >
                   <div className="absolute inset-0 bg-black/75" />
@@ -157,54 +197,17 @@ export default function DashboardPage() {
           {!loading && dashboardRoutes.length > 0 ? (
             <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:gap-5">
               {dashboardRoutes.map((route) => {
-                const Icon = route.icon;
                 const color = getDashboardRouteTheme(route.colorClass);
 
                 return (
-                  <button
+                  <NavigationButton
                     key={route.path}
-                    type="button"
+                    label={route.label}
+                    description={route.description}
+                    icon={route.icon}
+                    color={color}
                     onClick={() => navigate(route.path)}
-                    className={`group relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/95 p-4 text-left shadow-lg transition duration-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 sm:min-h-[148px] sm:p-5 ${color.borderHover} ${color.hoverGlow}`}
-                  >
-                    <div
-                      className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${color.topBar}`}
-                    />
-
-                    <div className="flex h-full flex-col justify-between gap-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex min-w-0 items-start gap-3">
-                          <div
-                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition ${color.iconBox}`}
-                          >
-                            <Icon size={20} />
-                          </div>
-
-                          <div className="min-w-0">
-                            <h2 className="text-base font-semibold text-white sm:text-lg">
-                              {route.label}
-                            </h2>
-
-                            <p className="mt-1 line-clamp-2 text-sm leading-5 text-zinc-300/80">
-                              {route.description || "Abrir funcionalidade."}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div
-                          className={`flex h-8 w-8 shrink-0 items-center justify-center text-zinc-500 transition ${color.arrow}`}
-                        >
-                          →
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-zinc-500 transition group-hover:text-zinc-300">
-                          Toque para abrir
-                        </span>
-                      </div>
-                    </div>
-                  </button>
+                  />
                 );
               })}
             </section>
