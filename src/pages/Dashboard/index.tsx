@@ -124,7 +124,7 @@ export default function DashboardPage() {
                         }
                   }
                 >
-                  <div className="absolute inset-0 bg-white/55 dark:bg-black/70" />
+                  <div className="absolute inset-0 bg-black/70" />
 
                   <div className="relative flex min-h-45 items-center justify-center px-5 py-8 text-center sm:min-h-50 sm:px-6 md:min-h-70 md:px-8 md:py-10">
                     <p
