@@ -17,6 +17,7 @@ import CreateWarningsPage from "@/pages/CreateWarnings";
 import SocialProjectsPage from "@/pages/SocialProjects";
 import SocialProjectsDetailsPage from "@/pages/SocialProjectsDetails";
 import AdminSocialProjectsPage from "@/pages/AdminSocialProjects";
+import ProfilePage from "@/pages/Profile";
 
 export function AppRoutes() {
   return (
@@ -29,6 +30,8 @@ export function AppRoutes() {
         <Route element={<ProtectedRoute />}>
           {/* {Rotas padrão} */}
           <Route path="/dashboard" element={<DashboardPage />} />
+
+          <Route path="/dashboard/profile" element={<ProfilePage />} />
 
           <Route
             path="/dashboard/lost-and-found"

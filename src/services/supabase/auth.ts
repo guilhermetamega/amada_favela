@@ -39,6 +39,15 @@ function isEmail(value: string) {
   return value.includes("@");
 }
 
+function sanitizeFileName(fileName: string) {
+  return fileName
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/[^a-zA-Z0-9.\-_]/g, "")
+    .toLowerCase();
+}
+
 function getFileExtension(file: File) {
   const fileNameExtension = file.name.split(".").pop()?.toLowerCase();
 
@@ -73,12 +82,13 @@ async function uploadProfilePicture(userId: string, file: File) {
   validateProfilePicture(file);
 
   const extension = getFileExtension(file);
-  const filePath = `${userId}/avatar.${extension}`;
+  const safeName = sanitizeFileName(file.name.replace(/\.[^/.]+$/, ""));
+  const filePath = `${userId}/${Date.now()}-${safeName}.${extension}`;
 
   const { error: uploadError } = await supabase.storage
     .from("profile_pic")
     .upload(filePath, file, {
-      upsert: true,
+      upsert: false,
       cacheControl: "3600",
       contentType: file.type,
     });
@@ -87,11 +97,7 @@ async function uploadProfilePicture(userId: string, file: File) {
     throw new Error("Erro ao enviar foto de perfil.");
   }
 
-  const { data: publicUrlData } = supabase.storage
-    .from("profile_pic")
-    .getPublicUrl(filePath);
-
-  return publicUrlData.publicUrl;
+  return filePath;
 }
 
 async function getEmailByCpf(cpf: string) {
@@ -221,11 +227,11 @@ export async function signUpWithEmail(
     throw new Error("Não foi possível obter o ID do usuário após o cadastro.");
   }
 
-  let pictureUrl: string | null = null;
+  let picturePath: string | null = null;
 
   try {
     if (profilePictureFile) {
-      pictureUrl = await uploadProfilePicture(userId, profilePictureFile);
+      picturePath = await uploadProfilePicture(userId, profilePictureFile);
     }
 
     const { error: profileError } = await supabase.from("users").insert({
@@ -239,7 +245,7 @@ export async function signUpWithEmail(
       comunity: sanitizedComunity || null,
       email: sanitizedEmail,
       phone: sanitizedPhone || null,
-      picture_url: pictureUrl,
+      picture_path: picturePath,
     });
 
     if (profileError) {
@@ -248,7 +254,7 @@ export async function signUpWithEmail(
 
     return {
       ...authData,
-      picture_url: pictureUrl,
+      picture_path: picturePath,
     };
   } catch (error) {
     await supabase.auth.signOut();

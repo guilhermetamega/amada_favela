@@ -9,6 +9,7 @@ import {
   Mail,
   Shield,
   ShieldCheck,
+  UserCircle2,
 } from "lucide-react";
 import type { Permissions } from "@/lib/permissions";
 
@@ -39,6 +40,16 @@ export const appRoutes: AppRouteConfig[] = [
     colorClass: "emerald",
     showInSidebar: true,
     showInDashboard: false,
+    canAccess: (permissions) => !!permissions,
+  },
+  {
+    path: "/dashboard/profile",
+    label: "Perfil",
+    description: "Gerencie seus dados, parceria e publicações.",
+    icon: UserCircle2,
+    colorClass: "emerald",
+    showInSidebar: true,
+    showInDashboard: true,
     canAccess: (permissions) => !!permissions,
   },
   {
