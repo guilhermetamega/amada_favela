@@ -11,6 +11,7 @@ export type RegisterFormData = {
   birth: string;
   address_1: string;
   address_2: string;
+  zipcode: string;
   comunity: string;
   email: string;
   phone: string;

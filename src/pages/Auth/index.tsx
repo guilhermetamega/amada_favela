@@ -28,6 +28,7 @@ import { formatCpf } from "@/utils/cpf";
 import developedByLogo from "@/assets/developed_by_logo.png";
 import { useAuth } from "@/hooks";
 import { supabase } from "@/services/supabase/client";
+import { COMMUNITIES } from "@/lib/communities";
 
 const initialLoginForm: LoginFormData = {
   identifier: "",
@@ -41,6 +42,7 @@ const initialRegisterForm: RegisterFormData = {
   address_1: "",
   address_2: "",
   comunity: "",
+  zipcode: "",
   email: "",
   phone: "",
   password: "",
@@ -57,6 +59,34 @@ function labelClassName() {
 
 function fieldIconClassName(color: string) {
   return `pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 ${color}`;
+}
+
+function formatPhone(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+
+  if (digits.length <= 2) {
+    return digits ? `(${digits}` : "";
+  }
+
+  if (digits.length <= 7) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  }
+
+  if (digits.length <= 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
+function formatZipcode(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+
+  if (digits.length <= 5) {
+    return digits;
+  }
+
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
 }
 
 export default function AuthPage() {
@@ -77,6 +107,70 @@ export default function AuthPage() {
     null,
   );
   const [profilePicturePreview, setProfilePicturePreview] = useState("");
+
+  const activeCommunities = useMemo(
+    () => COMMUNITIES.filter((community) => community.active),
+    [],
+  );
+
+  const selectedCommunity = useMemo(
+    () =>
+      activeCommunities.find(
+        (community) => community.key === registerForm.comunity,
+      ) ?? null,
+    [activeCommunities, registerForm.comunity],
+  );
+
+  const communityAddressItems = useMemo(
+    () => selectedCommunity?.addressItems ?? [],
+    [selectedCommunity],
+  );
+
+  const communityZipcodes = useMemo(
+    () => selectedCommunity?.zipcodes ?? [],
+    [selectedCommunity],
+  );
+
+  const hasPresetAddressItems = communityAddressItems.length > 0;
+  const hasPresetZipcodes = communityZipcodes.length > 0;
+
+  const address1Label = useMemo(() => {
+    if (!selectedCommunity) {
+      return "Rua / Quadra";
+    }
+
+    const hasStreet = communityAddressItems.some(
+      (item) => item.type === "street",
+    );
+    const hasBlock = communityAddressItems.some(
+      (item) => item.type === "block",
+    );
+
+    if (hasStreet && hasBlock) return "Rua / Quadra";
+    if (hasStreet) return "Rua";
+    if (hasBlock) return "Quadra";
+
+    return "Rua / Quadra";
+  }, [selectedCommunity, communityAddressItems]);
+
+  const address1Placeholder = useMemo(() => {
+    if (!selectedCommunity) {
+      return "Digite sua rua ou quadra";
+    }
+
+    const hasStreet = communityAddressItems.some(
+      (item) => item.type === "street",
+    );
+    const hasBlock = communityAddressItems.some(
+      (item) => item.type === "block",
+    );
+
+    if (hasStreet && hasBlock) return "Selecione ou digite sua rua/quadra";
+    if (hasStreet) return "Digite sua rua";
+    if (hasBlock) return "Digite sua quadra";
+
+    return "Digite sua rua ou quadra";
+  }, [selectedCommunity, communityAddressItems]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -118,7 +212,9 @@ export default function AuthPage() {
     }));
   }
 
-  function handleRegisterChange(event: ChangeEvent<HTMLInputElement>) {
+  function handleRegisterChange(
+    event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) {
     const { name, value } = event.target;
 
     if (name === "cpf") {
@@ -127,6 +223,40 @@ export default function AuthPage() {
       setRegisterForm((prev) => ({
         ...prev,
         cpf: onlyDigits ? formatCpf(onlyDigits) : "",
+      }));
+      return;
+    }
+
+    if (name === "phone") {
+      setRegisterForm((prev) => ({
+        ...prev,
+        phone: formatPhone(value),
+      }));
+      return;
+    }
+
+    if (name === "zipcode") {
+      setRegisterForm((prev) => ({
+        ...prev,
+        zipcode: formatZipcode(value),
+      }));
+      return;
+    }
+
+    if (name === "comunity") {
+      const nextCommunity =
+        COMMUNITIES.find(
+          (community) => community.key === value && community.active,
+        ) ?? null;
+
+      const nextZipcodes = nextCommunity?.zipcodes ?? [];
+      const nextZipcode = nextZipcodes.length === 1 ? nextZipcodes[0] : "";
+
+      setRegisterForm((prev) => ({
+        ...prev,
+        comunity: value,
+        zipcode: nextZipcode,
+        address_1: "",
       }));
       return;
     }
@@ -212,6 +342,21 @@ export default function AuthPage() {
       return;
     }
 
+    if (!registerForm.comunity) {
+      setErrorMessage("Selecione sua comunidade.");
+      return;
+    }
+
+    if (!registerForm.zipcode) {
+      setErrorMessage("Informe o CEP.");
+      return;
+    }
+
+    if (!registerForm.address_1) {
+      setErrorMessage(`Informe ${address1Label.toLowerCase()}.`);
+      return;
+    }
+
     setLoading(true);
     setIsRegisterFlow(true);
 
@@ -247,7 +392,7 @@ export default function AuthPage() {
         <div className="absolute bottom-[10%] right-[10%] h-56 w-56 rounded-full bg-amber-500/8 blur-3xl dark:bg-amber-500/10" />
       </div>
 
-      <div className="relative flex min-h-screen justify-center px-4 py-4 sm:px-6 items-center lg:py-5">
+      <div className="relative flex min-h-screen items-center justify-center px-4 py-4 sm:px-6 lg:py-5">
         <div className="w-full max-w-6xl">
           <div
             className={`grid w-full overflow-hidden rounded-4xl border border-zinc-200/80 bg-white/90 shadow-2xl backdrop-blur-xl dark:border-zinc-800/80 dark:bg-zinc-900/80 ${
@@ -556,31 +701,31 @@ export default function AuthPage() {
                               />
                             </div>
                           </div>
-                        </div>
-                      </div>
-                    </div>
 
-                    <div>
-                      <label className={labelClassName()} htmlFor="birth">
-                        Data de nascimento
-                      </label>
-                      <div className="relative">
-                        <span
-                          className={fieldIconClassName(
-                            "text-violet-600 dark:text-violet-300",
-                          )}
-                        >
-                          <CalendarDays size={16} />
-                        </span>
-                        <input
-                          id="birth"
-                          name="birth"
-                          type="date"
-                          value={registerForm.birth}
-                          onChange={handleRegisterChange}
-                          className={`${inputClassName()} pl-11`}
-                          required
-                        />
+                          <div>
+                            <label className={labelClassName()} htmlFor="birth">
+                              Data de nascimento
+                            </label>
+                            <div className="relative">
+                              <span
+                                className={fieldIconClassName(
+                                  "text-violet-600 dark:text-violet-300",
+                                )}
+                              >
+                                <CalendarDays size={16} />
+                              </span>
+                              <input
+                                id="birth"
+                                name="birth"
+                                type="date"
+                                value={registerForm.birth}
+                                onChange={handleRegisterChange}
+                                className={`${inputClassName()} pl-11`}
+                                required
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -625,6 +770,7 @@ export default function AuthPage() {
                           id="phone"
                           name="phone"
                           type="text"
+                          inputMode="numeric"
                           required
                           value={registerForm.phone}
                           onChange={handleRegisterChange}
@@ -646,22 +792,75 @@ export default function AuthPage() {
                         >
                           <MapPin size={16} />
                         </span>
-                        <input
+                        <select
                           id="comunity"
                           name="comunity"
-                          type="text"
                           required
                           value={registerForm.comunity}
                           onChange={handleRegisterChange}
-                          className={`${inputClassName()} pl-11`}
-                          placeholder="Informe sua comunidade"
-                        />
+                          className={`${inputClassName()} pl-11 pr-10`}
+                        >
+                          <option value="">Selecione sua comunidade</option>
+                          {activeCommunities.map((community) => (
+                            <option key={community.key} value={community.key}>
+                              {community.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={labelClassName()} htmlFor="zipcode">
+                        CEP
+                      </label>
+                      <div className="relative">
+                        <span
+                          className={fieldIconClassName(
+                            "text-amber-600 dark:text-amber-300",
+                          )}
+                        >
+                          <MapPin size={16} />
+                        </span>
+
+                        {hasPresetZipcodes ? (
+                          <select
+                            id="zipcode"
+                            name="zipcode"
+                            required
+                            value={registerForm.zipcode}
+                            onChange={handleRegisterChange}
+                            className={`${inputClassName()} pl-11 pr-10`}
+                            disabled={!registerForm.comunity}
+                          >
+                            <option value="">Selecione o CEP</option>
+                            {communityZipcodes.map((zipcode) => (
+                              <option key={zipcode} value={zipcode}>
+                                {zipcode}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            id="zipcode"
+                            name="zipcode"
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={9}
+                            required
+                            value={registerForm.zipcode}
+                            onChange={handleRegisterChange}
+                            className={`${inputClassName()} pl-11`}
+                            placeholder="00000-000"
+                            disabled={!registerForm.comunity}
+                          />
+                        )}
                       </div>
                     </div>
 
                     <div>
                       <label className={labelClassName()} htmlFor="address_1">
-                        Endereço principal
+                        {address1Label}
                       </label>
                       <div className="relative">
                         <span
@@ -671,22 +870,45 @@ export default function AuthPage() {
                         >
                           <MapPin size={16} />
                         </span>
-                        <input
-                          id="address_1"
-                          name="address_1"
-                          type="text"
-                          value={registerForm.address_1}
-                          onChange={handleRegisterChange}
-                          className={`${inputClassName()} pl-11`}
-                          placeholder="Rua, número"
-                          required
-                        />
+
+                        {hasPresetAddressItems ? (
+                          <select
+                            id="address_1"
+                            name="address_1"
+                            value={registerForm.address_1}
+                            onChange={handleRegisterChange}
+                            className={`${inputClassName()} pl-11 pr-10`}
+                            required
+                            disabled={!registerForm.comunity}
+                          >
+                            <option value="">
+                              Selecione {address1Label.toLowerCase()}
+                            </option>
+                            {communityAddressItems.map((item) => (
+                              <option key={item.value} value={item.label}>
+                                {item.label}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            id="address_1"
+                            name="address_1"
+                            type="text"
+                            value={registerForm.address_1}
+                            onChange={handleRegisterChange}
+                            className={`${inputClassName()} pl-11`}
+                            placeholder={address1Placeholder}
+                            required
+                            disabled={!registerForm.comunity}
+                          />
+                        )}
                       </div>
                     </div>
 
                     <div>
                       <label className={labelClassName()} htmlFor="address_2">
-                        Complemento
+                        Número e complemento
                       </label>
                       <div className="relative">
                         <span
@@ -703,7 +925,8 @@ export default function AuthPage() {
                           value={registerForm.address_2}
                           onChange={handleRegisterChange}
                           className={`${inputClassName()} pl-11`}
-                          placeholder="Bloco, casa, referência"
+                          placeholder="Ex.: 12, casa 2, fundos, bloco B"
+                          required
                         />
                       </div>
                     </div>
@@ -768,7 +991,7 @@ export default function AuthPage() {
                       <button
                         type="submit"
                         disabled={loading}
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-400 via-violet-500 to-emerald-500 px-4 py-3 font-semibold text-white shadow-lg transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-sky-400 via-violet-500 to-emerald-500 px-4 py-3 font-semibold text-white shadow-lg transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {loading ? "Cadastrando..." : "Criar conta"}
                         {!loading ? <ArrowRight size={17} /> : null}
