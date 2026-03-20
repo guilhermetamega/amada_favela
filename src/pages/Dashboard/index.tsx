@@ -9,6 +9,7 @@ import warningBg from "@/assets/warning_bg.png";
 import { getDashboardRouteTheme } from "@/lib/route-theme";
 import { useImagePreload } from "@/hooks/useImagePreload";
 import NavigationButton from "@/components/ui/NavigationButton";
+import CommunityHeroCard from "@/components/layout/CommunityHeroCard";
 
 function WarningBannerSkeleton() {
   return (
@@ -103,6 +104,10 @@ export default function DashboardPage() {
     <DashboardLayout>
       <main className="min-h-full bg-zinc-50 px-4 py-6 text-zinc-900 transition-colors sm:py-8 md:py-10 dark:bg-zinc-950 dark:text-zinc-100">
         <div className="mx-auto max-w-5xl">
+          <div className="mb-8">
+            <CommunityHeroCard />
+          </div>
+
           {warningsLoading || (!warningBgLoaded && !warningBgError) ? (
             <WarningBannerSkeleton />
           ) : null}

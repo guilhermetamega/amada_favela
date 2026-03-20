@@ -30,10 +30,14 @@ export default function DashboardHeader({
         ) : null}
 
         <div>
-          <h1 className="text-3xl font-bold text-white">{title}</h1>
+          <h1 className="text-3xl font-bold text-zinc-800 dark:text-zinc-200">
+            {title}
+          </h1>
 
           {description ? (
-            <p className="mt-2 text-sm text-zinc-400">{description}</p>
+            <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-400">
+              {description}
+            </p>
           ) : null}
         </div>
       </div>

@@ -18,6 +18,7 @@ import SocialProjectsPage from "@/pages/SocialProjects";
 import SocialProjectsDetailsPage from "@/pages/SocialProjectsDetails";
 import AdminSocialProjectsPage from "@/pages/AdminSocialProjects";
 import ProfilePage from "@/pages/Profile";
+import WelcomeBannerPage from "@/pages/WelcomeBanner";
 
 export function AppRoutes() {
   return (
@@ -80,6 +81,11 @@ export function AppRoutes() {
           <Route
             path="/dashboard/admin/social-projects"
             element={<AdminSocialProjectsPage />}
+          />
+
+          <Route
+            path="/dashboard/admin/welcome-banner"
+            element={<WelcomeBannerPage />}
           />
 
           <Route element={<RoleGuard allowedRoles={["admin"]} />}>

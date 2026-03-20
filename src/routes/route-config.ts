@@ -210,6 +210,17 @@ export const appRoutes: AppRouteConfig[] = [
         permissions.isPresident ||
         permissions.isAdmin),
   },
+  {
+    path: "/dashboard/admin/welcome-banner",
+    label: "Banner de Entrada",
+    description: "Edite a logo e a descrição exibidas no topo do dashboard.",
+    showInSidebar: true,
+    showInDashboard: false,
+    canAccess: (permissions) =>
+      !!permissions && (permissions.isAdmin || permissions.isPresident),
+    icon: HeartHandshake,
+    colorClass: "emerald",
+  },
 ];
 
 export function getSidebarRoutes(permissions: Permissions | null) {
