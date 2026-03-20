@@ -112,7 +112,7 @@ export default function CommunityHeroCard() {
         className="absolute -inset-[18%] opacity-80"
         style={{
           background:
-            "radial-gradient(circle at 12% 20%, rgba(59,130,246,0.28), transparent 34%), radial-gradient(circle at 84% 24%, rgba(168,85,247,0.24), transparent 34%), radial-gradient(circle at 52% 88%, rgba(16,185,129,0.18), transparent 28%), linear-gradient(135deg, rgba(24,24,27,0.35), rgba(9,9,11,0.75))",
+            "radial-gradient(circle at 12% 20%, rgba(59,130,246,0.70), transparent 34%), radial-gradient(circle at 84% 24%, rgba(168,85,247,0.7), transparent 34%), radial-gradient(circle at 52% 88%, rgba(16,185,129,0.5), transparent 28%), linear-gradient(135deg, rgba(24,24,27,0.7), rgba(9,9,11,0.75))",
           animation: "communityGradientShift 14s ease-in-out infinite",
         }}
       />
