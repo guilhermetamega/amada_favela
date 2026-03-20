@@ -66,50 +66,88 @@ export default function CommunityHeroCard() {
 
   if (loading) {
     return (
-      <section className="relative overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-        <div className="px-6 py-10 text-center sm:px-8 sm:py-14">
-          <div className="mx-auto h-24 w-24 animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-800" />
-          <div className="mx-auto mt-6 h-8 w-80 max-w-full animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
-          <div className="mx-auto mt-3 h-5 w-56 max-w-full animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
+      <section className="relative overflow-hidden rounded-[1.75rem] border border-zinc-200/80 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="px-4 py-5 text-center sm:px-6 sm:py-6">
+          <div className="mx-auto h-17 w-17 animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-800 sm:h-20 sm:w-20" />
+          <div className="mx-auto mt-4 h-6 w-56 max-w-full animate-pulse rounded bg-zinc-200 dark:bg-zinc-800 sm:h-7 sm:w-80" />
+          <div className="mx-auto mt-2 h-4 w-44 max-w-full animate-pulse rounded bg-zinc-200 dark:bg-zinc-800 sm:h-5 sm:w-56" />
         </div>
       </section>
     );
   }
 
   return (
-    <section className="relative overflow-hidden rounded-3xl border border-zinc-200 bg-black shadow-sm dark:border-zinc-800">
+    <section className="relative overflow-hidden rounded-[1.75rem] border border-zinc-200/80 bg-black shadow-[0_10px_30px_-18px_rgba(0,0,0,0.55)] dark:border-zinc-800">
+      <style>
+        {`
+          @keyframes communityGradientShift {
+            0% {
+              transform: translate3d(-8%, -6%, 0) scale(1);
+            }
+            50% {
+              transform: translate3d(8%, 6%, 0) scale(1.06);
+            }
+            100% {
+              transform: translate3d(-8%, -6%, 0) scale(1);
+            }
+          }
+        `}
+      </style>
+
       <div className="absolute inset-0">
         {imageUrl ? (
           <img
             src={imageUrl}
             alt={`Logo da associação ${communityName}`}
-            className="h-full w-full object-cover opacity-30"
+            className="h-full w-full scale-110 object-cover opacity-[0.14] blur-[2px]"
           />
         ) : (
           <div className="h-full w-full bg-black" />
         )}
       </div>
 
-      <div className="absolute inset-0 bg-black/70" />
+      <div className="absolute inset-0 bg-black/50" />
 
-      <div className="relative flex min-h-65 flex-col items-center justify-center px-6 py-10 text-center sm:min-h-80 sm:px-8 sm:py-14">
-        <div className="mb-5 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-white/80 bg-white/10 shadow-2xl backdrop-blur sm:h-28 sm:w-28">
-          {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt={`Logo da associação ${communityName}`}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="h-full w-full bg-zinc-800" />
-          )}
+      <div
+        className="absolute -inset-[18%] opacity-80"
+        style={{
+          background:
+            "radial-gradient(circle at 12% 20%, rgba(59,130,246,0.28), transparent 34%), radial-gradient(circle at 84% 24%, rgba(168,85,247,0.24), transparent 34%), radial-gradient(circle at 52% 88%, rgba(16,185,129,0.18), transparent 28%), linear-gradient(135deg, rgba(24,24,27,0.35), rgba(9,9,11,0.75))",
+          animation: "communityGradientShift 14s ease-in-out infinite",
+        }}
+      />
+
+      <div className="absolute inset-0 bg-linear-to-r from-black/45 via-black/25 to-black/45" />
+      <div className="absolute inset-0 bg-linear-to-b from-white/5 to-black/20" />
+
+      <div className="relative flex min-h-37 items-center gap-3 px-4 py-4 sm:min-h-42.5 sm:gap-5 sm:px-6 sm:py-5 lg:min-h-45.5 lg:px-7">
+        <div className="flex shrink-0 items-center justify-center">
+          <div className="flex h-17 w-17 items-center justify-center overflow-hidden rounded-full border-2 border-white/80 bg-white/10 shadow-2xl ring-1 ring-white/10 backdrop-blur sm:h-21 sm:w-21 lg:h-23 lg:w-23">
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                alt={`Logo da associação ${communityName}`}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="h-full w-full bg-zinc-800" />
+            )}
+          </div>
         </div>
 
-        <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-4xl">
-          Associação de Moradores {communityName}
-        </h1>
+        <div className="min-w-0 flex-1 text-left">
+          <p className="mb-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-zinc-300 sm:text-[0.72rem]">
+            Associação de Moradores
+          </p>
 
-        <p className="mt-2 text-sm text-zinc-300 sm:text-xl">{description}</p>
+          <h1 className="truncate text-lg font-extrabold tracking-tight text-white sm:text-2xl lg:text-[2rem]">
+            {communityName}
+          </h1>
+
+          <p className="mt-1 line-clamp-2 max-w-3xl text-[0.78rem] leading-5 text-zinc-200 sm:mt-2 sm:text-sm sm:leading-6 lg:text-base">
+            {description}
+          </p>
+        </div>
       </div>
     </section>
   );

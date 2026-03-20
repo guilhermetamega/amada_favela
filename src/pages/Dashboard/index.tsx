@@ -104,7 +104,7 @@ export default function DashboardPage() {
     <DashboardLayout>
       <main className="min-h-full bg-zinc-50 px-4 py-6 text-zinc-900 transition-colors sm:py-8 md:py-10 dark:bg-zinc-950 dark:text-zinc-100">
         <div className="mx-auto max-w-5xl">
-          <div className="mb-8">
+          <div className="pt-3 sm:pt-4 pb-6">
             <CommunityHeroCard />
           </div>
 
