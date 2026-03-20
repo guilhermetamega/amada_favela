@@ -181,6 +181,25 @@ export default function AuthPage() {
   }, [user, authLoading, isRegisterFlow, navigate]);
 
   useEffect(() => {
+    void supabase.auth.getSession().then(async ({ data, error }) => {
+      if (error) return;
+
+      const hasSession = !!data.session;
+
+      if (!hasSession) return;
+
+      const {
+        data: { user: sessionUser },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !sessionUser) {
+        await supabase.auth.signOut();
+      }
+    });
+  }, []);
+
+  useEffect(() => {
     if (!profilePictureFile) {
       setProfilePicturePreview("");
       return;
@@ -294,17 +313,20 @@ export default function AuthPage() {
     setProfilePictureFile(file);
   }
 
-  function switchToLogin() {
-    setMode("login");
+  function resetAuthMessages() {
     setErrorMessage("");
     setSuccessMessage("");
+  }
+
+  function switchToLogin() {
+    setMode("login");
+    resetAuthMessages();
     setIsRegisterFlow(false);
   }
 
   function switchToRegister() {
     setMode("register");
-    setErrorMessage("");
-    setSuccessMessage("");
+    resetAuthMessages();
   }
 
   async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
@@ -312,8 +334,7 @@ export default function AuthPage() {
 
     if (loading) return;
 
-    setErrorMessage("");
-    setSuccessMessage("");
+    resetAuthMessages();
     setIsRegisterFlow(false);
     setLoading(true);
 
@@ -334,8 +355,7 @@ export default function AuthPage() {
 
     if (loading) return;
 
-    setErrorMessage("");
-    setSuccessMessage("");
+    resetAuthMessages();
 
     if (registerForm.password !== registerForm.confirmPassword) {
       setErrorMessage("As senhas não coincidem.");
@@ -362,7 +382,6 @@ export default function AuthPage() {
 
     try {
       await signUpWithEmail(registerForm, profilePictureFile);
-
       await supabase.auth.signOut();
 
       setSuccessMessage(

@@ -1,8 +1,8 @@
 import { supabase } from "@/services/supabase/client";
 import type { LoginFormData, RegisterFormData } from "@/types/auth";
 
-type GetEmailByCpfRow = {
-  email: string;
+type EmailLookupRow = {
+  email: string | null;
 };
 
 function normalizeAuthErrorMessage(message: string) {
@@ -115,8 +115,29 @@ async function getEmailByCpf(cpf: string) {
     throw new Error("Erro ao buscar usuário para login.");
   }
 
-  const result = data as GetEmailByCpfRow[] | null;
+  const result = data as EmailLookupRow[] | null;
   return result?.[0]?.email ?? null;
+}
+
+async function cpfAlreadyExists(cpf: string) {
+  const sanitizedCpf = sanitizeCpf(cpf);
+
+  if (!sanitizedCpf) {
+    return false;
+  }
+
+  const { data, error } = await supabase
+    .from("users")
+    .select("email")
+    .eq("cpf", sanitizedCpf)
+    .limit(1)
+    .maybeSingle<EmailLookupRow>();
+
+  if (error) {
+    throw new Error("Erro ao validar CPF já cadastrado.");
+  }
+
+  return !!data?.email;
 }
 
 export async function signInWithIdentifier({
@@ -129,7 +150,7 @@ export async function signInWithIdentifier({
     throw new Error("Informe seu CPF ou e-mail.");
   }
 
-  let email = rawIdentifier.trim().toLowerCase();
+  let email = rawIdentifier.toLowerCase();
 
   if (!isEmail(rawIdentifier)) {
     const foundEmail = await getEmailByCpf(rawIdentifier);
@@ -190,18 +211,9 @@ export async function signUpWithEmail(
   }
 
   if (sanitizedCpf) {
-    const { data: existingCpfData, error: existingCpfError } =
-      await supabase.rpc("get_email_by_cpf", {
-        input_cpf: sanitizedCpf,
-      });
+    const alreadyExists = await cpfAlreadyExists(sanitizedCpf);
 
-    if (existingCpfError) {
-      throw new Error("Erro ao validar CPF já cadastrado.");
-    }
-
-    const existingCpfResult = existingCpfData as GetEmailByCpfRow[] | null;
-
-    if (existingCpfResult?.[0]?.email) {
+    if (alreadyExists) {
       throw new Error("Este CPF já está cadastrado.");
     }
   }
