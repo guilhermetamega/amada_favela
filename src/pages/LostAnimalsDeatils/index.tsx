@@ -58,7 +58,7 @@ export default function LostAnimalsDetailsPage() {
     const typeLabel = item.type === "lost" ? "perdido" : "achado";
     const message = `Olá! Vi seu animal ${typeLabel}, gostaria de te ajudar a recuperá-lo`;
 
-    return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    return `https://wa.me/+55${phone}?text=${encodeURIComponent(message)}`;
   }, [item]);
 
   function handlePreviousImage() {

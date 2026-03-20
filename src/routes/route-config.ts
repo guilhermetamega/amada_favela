@@ -49,7 +49,7 @@ export const appRoutes: AppRouteConfig[] = [
     icon: UserCircle2,
     colorClass: "emerald",
     showInSidebar: true,
-    showInDashboard: true,
+    showInDashboard: false,
     canAccess: (permissions) => !!permissions,
   },
   {
