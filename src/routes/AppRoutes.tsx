@@ -19,6 +19,7 @@ import SocialProjectsDetailsPage from "@/pages/SocialProjectsDetails";
 import AdminSocialProjectsPage from "@/pages/AdminSocialProjects";
 import ProfilePage from "@/pages/Profile";
 import WelcomeBannerPage from "@/pages/WelcomeBanner";
+import MemberCardPage from "@/pages/MemberCard";
 
 export function AppRoutes() {
   return (
@@ -56,6 +57,8 @@ export function AppRoutes() {
           />
 
           <Route path="/dashboard/mails" element={<MailsPage />} />
+
+          <Route path="/dashboard/member-card" element={<MemberCardPage />} />
 
           <Route
             path="/dashboard/social-projects"

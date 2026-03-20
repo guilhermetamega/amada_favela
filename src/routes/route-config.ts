@@ -123,6 +123,16 @@ export const appRoutes: AppRouteConfig[] = [
     canAccess: (permissions) => !!permissions,
   },
   {
+    path: "/dashboard/member-card",
+    label: "Carteirinha",
+    description: "Visualize e baixe sua carteirinha virtual de sócio.",
+    icon: UserCircle2,
+    colorClass: "violet",
+    showInSidebar: true,
+    showInDashboard: true,
+    canAccess: (permissions) => !!permissions,
+  },
+  {
     path: "/dashboard/admin",
     label: "Administração",
     description:
