@@ -2,24 +2,26 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import AuthPage from "@/pages/Auth";
 import DashboardPage from "@/pages/Dashboard";
 import LostAndFoundPage from "@/pages/LostAndFound";
-import LostAndFoundDetailsPage from "@/pages/LostAndFoundDetails";
-import LostAnimalsDetailsPage from "@/pages/LostAnimalsDeatils";
+import LostAndFoundDetailsPage from "@/pages/LostAndFound/LostAndFoundDetails";
+import LostAnimalsDetailsPage from "@/pages/LostAnimals/LostAnimalsDeatils";
 import LostAnimalsPage from "@/pages/LostAnimals";
-import HomeRentDetailsPage from "@/pages/HomeRentDetails";
+import HomeRentDetailsPage from "@/pages/HomeRent/HomeRentDetails";
 import HomeRentPage from "@/pages/HomeRent";
 import ProtectedRoute from "./ProtectedRoute";
 import RoleGuard from "./RoleGuard";
 import AdminPage from "@/pages/Admin";
 import SuperAdminPage from "@/pages/SuperAdmin";
-import AdminMailPage from "@/pages/AdminMail";
+import AdminMailPage from "@/pages/Admin/AdminMail";
 import MailsPage from "@/pages/Mails";
-import CreateWarningsPage from "@/pages/CreateWarnings";
+import CreateWarningsPage from "@/pages/Admin/CreateWarnings";
 import SocialProjectsPage from "@/pages/SocialProjects";
-import SocialProjectsDetailsPage from "@/pages/SocialProjectsDetails";
-import AdminSocialProjectsPage from "@/pages/AdminSocialProjects";
-import ProfilePage from "@/pages/Profile";
-import WelcomeBannerPage from "@/pages/WelcomeBanner";
+import SocialProjectsDetailsPage from "@/pages/SocialProjects/SocialProjectsDetails";
+import AdminSocialProjectsPage from "@/pages/Admin/AdminSocialProjects";
+import ProfilePage from "@/pages/Dashboard/Profile";
+import WelcomeBannerPage from "@/pages/Dashboard/WelcomeBanner";
 import MemberCardPage from "@/pages/MemberCard";
+import ProofOfResidencePage from "@/pages/ProofOfResidence";
+import ValidateProofPage from "@/pages/ValidateProof";
 
 export function AppRoutes() {
   return (
@@ -59,6 +61,15 @@ export function AppRoutes() {
           <Route path="/dashboard/mails" element={<MailsPage />} />
 
           <Route path="/dashboard/member-card" element={<MemberCardPage />} />
+
+          <Route
+            path="/dashboard/proof-of-residence"
+            element={<ProofOfResidencePage />}
+          />
+          <Route
+            path="/validate-proof/:validationCode"
+            element={<ValidateProofPage />}
+          />
 
           <Route
             path="/dashboard/social-projects"
