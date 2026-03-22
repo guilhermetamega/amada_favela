@@ -1,0 +1,14 @@
+            - name: Web to APK Action
+  # You may pin to the exact commit or the version.
+  # uses: cemcoe/web-to-apk-action@abf57972b924937aad146316b31f048c9c487224
+  uses: cemcoe/web-to-apk-action@v14
+  with:
+    # App name
+    app_name: 
+    # App package id (e.g. com.cemcoe.app)
+    app_id: 
+    # Command to build the web project
+    build_command: 
+    # Web build output directory
+    web_dir: # optional, default is dist
+          
