@@ -2,8 +2,8 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ main, master ] # Roda sempre que você der push nessas branches
-  workflow_dispatch: # Permite rodar manualmente na aba Actions
+    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -26,7 +26,9 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm install
+        run: |
+          npm install
+          npm install @capacitor/cli @capacitor/core @capacitor/android
 
       - name: Build Web Project (Vite)
         run: npm run build
