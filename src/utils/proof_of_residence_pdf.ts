@@ -544,10 +544,10 @@ export async function generateResidenceProofPdf(
   const signatureLineWidth = 210;
   const signatureX = width - marginX - signatureLineWidth;
 
-  if (input.association.signature_path) {
+  if (input.association.signature_url) {
     try {
       const signatureBytes = await fetchAsUint8Array(
-        input.association.signature_path,
+        input.association.signature_url,
       );
       const embeddedSignature = isPng(signatureBytes)
         ? await pdf.embedPng(signatureBytes)

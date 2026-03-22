@@ -155,7 +155,7 @@ export const appRoutes: AppRouteConfig[] = [
   },
 
   {
-    path: "/dashboard/admin",
+    path: "/admin",
     label: "Administração",
     description:
       "Gerencie funções administrativas e recursos da sua comunidade.",
@@ -167,7 +167,7 @@ export const appRoutes: AppRouteConfig[] = [
       !!permissions && (permissions.isPresident || permissions.isAdmin),
   },
   {
-    path: "/dashboard/admin/mail",
+    path: "/admin/mail",
     label: "Criar Notificação de Cartas",
     description: "Gerencie cartas por usuário da comunidade.",
     icon: Bell,
@@ -181,7 +181,18 @@ export const appRoutes: AppRouteConfig[] = [
         permissions.isAdmin),
   },
   {
-    path: "/dashboard/super-admin",
+    path: "/admin/association",
+    label: "Associação",
+    description: "Edite os dados institucionais usados em documentos e telas.",
+    icon: Bell,
+    colorClass: "orange",
+    showInSidebar: false,
+    showInDashboard: false,
+    canAccess: (permissions) =>
+      !!permissions && (permissions.isAdmin || permissions.isPresident),
+  },
+  {
+    path: "/super-admin",
     label: "Super Admin",
     description: "Gerencie funções globais dos usuários.",
     icon: Shield,
@@ -191,7 +202,7 @@ export const appRoutes: AppRouteConfig[] = [
     canAccess: (permissions) => !!permissions && permissions.isAdmin,
   },
   {
-    path: "/dashboard/social-projects",
+    path: "/social-projects",
     label: "Projetos Sociais",
     description: "Conheça e apoie projetos sociais da comunidade.",
     icon: HeartHandshake,
@@ -205,7 +216,7 @@ export const appRoutes: AppRouteConfig[] = [
         permissions.isAdmin),
   },
   {
-    path: "/dashboard/social-projects/:id",
+    path: "/social-projects/:id",
     label: "Detalhe Projeto Social",
     icon: HeartHandshake,
     colorClass: "emerald",
@@ -215,7 +226,7 @@ export const appRoutes: AppRouteConfig[] = [
     canAccess: (permissions) => !!permissions,
   },
   {
-    path: "/dashboard/admin/social-projects",
+    path: "/admin/social-projects",
     label: "Gerenciar Projetos Sociais",
     description: "Crie, edite e exclua projetos sociais.",
     icon: HeartHandshake,
@@ -229,7 +240,7 @@ export const appRoutes: AppRouteConfig[] = [
         permissions.isAdmin),
   },
   {
-    path: "/dashboard/admin/create-warnings",
+    path: "/admin/create-warnings",
     label: "Gerenciar Avisos",
     description: "Crie, edite e exclua avisos para a comunidade.",
     icon: HeartHandshake,
@@ -243,7 +254,7 @@ export const appRoutes: AppRouteConfig[] = [
         permissions.isAdmin),
   },
   {
-    path: "/dashboard/admin/welcome-banner",
+    path: "/admin/welcome-banner",
     label: "Banner de Entrada",
     description: "Edite a logo e a descrição exibidas no topo do dashboard.",
     showInSidebar: true,

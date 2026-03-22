@@ -22,6 +22,7 @@ import WelcomeBannerPage from "@/pages/Dashboard/WelcomeBanner";
 import MemberCardPage from "@/pages/MemberCard";
 import ProofOfResidencePage from "@/pages/ProofOfResidence";
 import ValidateProofPage from "@/pages/ValidateProof";
+import AssociationSettingsPage from "@/pages/Admin/Association";
 
 export function AppRoutes() {
   return (
@@ -82,28 +83,30 @@ export function AppRoutes() {
 
           {/* {Guardião de rotas para segurança extra} */}
           <Route element={<RoleGuard allowedRoles={["admin", "president"]} />}>
-            <Route path="/dashboard/admin" element={<AdminPage />} />
+            <Route path="/admin" element={<AdminPage />} />
           </Route>
 
-          <Route path="/dashboard/admin/mail" element={<AdminMailPage />} />
+          <Route path="/admin/mail" element={<AdminMailPage />} />
 
           <Route
-            path="/dashboard/admin/create-warnings"
+            path="/admin/association"
+            element={<AssociationSettingsPage />}
+          />
+
+          <Route
+            path="/admin/create-warnings"
             element={<CreateWarningsPage />}
           />
 
           <Route
-            path="/dashboard/admin/social-projects"
+            path="/admin/social-projects"
             element={<AdminSocialProjectsPage />}
           />
 
-          <Route
-            path="/dashboard/admin/welcome-banner"
-            element={<WelcomeBannerPage />}
-          />
+          <Route path="/admin/welcome-banner" element={<WelcomeBannerPage />} />
 
           <Route element={<RoleGuard allowedRoles={["admin"]} />}>
-            <Route path="/dashboard/super-admin" element={<SuperAdminPage />} />
+            <Route path="/super-admin" element={<SuperAdminPage />} />
           </Route>
 
           <Route

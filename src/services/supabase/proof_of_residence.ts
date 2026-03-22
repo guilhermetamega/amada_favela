@@ -14,6 +14,7 @@ import { buildUserAddress } from "@/utils/proof_of_residence";
 import { getMyProfile } from "./user_profile";
 
 const COMMUNITY_IMAGE_BUCKET = "community_image";
+const ASSOCIATION_SIGNATURES_BUCKET = "association_signatures";
 
 async function getAuthenticatedUserId() {
   const {
@@ -59,7 +60,7 @@ export async function getCurrentProofUserProfile(): Promise<ProofUserProfile> {
   };
 }
 
-export async function isCurrentUserPartnerActive() {
+export async function isCurrentUserPartnerActive(): Promise<boolean> {
   const profile = await getMyProfile();
 
   const { data: partner, error: partnerError } = await supabase
@@ -74,7 +75,11 @@ export async function isCurrentUserPartnerActive() {
     throw new Error(partnerError.message);
   }
 
-  return !!partner && new Date(partner.expires_at) >= new Date();
+  if (!partner) {
+    return false;
+  }
+
+  return new Date(partner.expires_at).getTime() >= Date.now();
 }
 
 async function getCommunityImageSignedUrl(path: string | null) {
@@ -82,13 +87,54 @@ async function getCommunityImageSignedUrl(path: string | null) {
 
   const { data, error } = await supabase.storage
     .from(COMMUNITY_IMAGE_BUCKET)
-    .createSignedUrl(path, 60 * 60);
+    .createSignedUrl(path, 60 * 30);
 
   if (error) {
     throw new Error(error.message);
   }
 
   return data.signedUrl;
+}
+
+async function getAssociationSignatureSignedUrl(path: string | null) {
+  if (!path) return null;
+
+  const { data, error } = await supabase.storage
+    .from(ASSOCIATION_SIGNATURES_BUCKET)
+    .createSignedUrl(path, 60 * 30);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data.signedUrl;
+}
+
+function mapAssociationRowToAssociation(
+  row: AssociationRow,
+  logoUrl: string | null,
+  signatureUrl: string | null,
+): Association {
+  return {
+    id: row.id,
+    name: row.name,
+    cnpj: row.cnpj,
+    community: row.community,
+    headquarters_address: row.headquarters_address,
+    headquarters_number: row.headquarters_number,
+    headquarters_complement: row.headquarters_complement,
+    headquarters_neighborhood: row.headquarters_neighborhood,
+    headquarters_city: row.headquarters_city,
+    headquarters_state: row.headquarters_state,
+    headquarters_zipcode: row.headquarters_zipcode,
+    logo_path: row.logo_path,
+    signature_path: row.signature_path,
+    logo_url: logoUrl,
+    signature_url: signatureUrl,
+    president_name: row.president_name,
+    president_role: row.president_role,
+    is_active: row.is_active,
+  };
 }
 
 export async function getAssociationByCommunity(
@@ -128,29 +174,10 @@ export async function getAssociationByCommunity(
 
   const [logoUrl, signatureUrl] = await Promise.all([
     getCommunityImageSignedUrl(row.logo_path),
-    getCommunityImageSignedUrl(row.signature_path),
+    getAssociationSignatureSignedUrl(row.signature_path),
   ]);
 
-  return {
-    id: row.id,
-    name: row.name,
-    cnpj: row.cnpj,
-    community: row.community,
-    headquarters_address: row.headquarters_address,
-    headquarters_number: row.headquarters_number,
-    headquarters_complement: row.headquarters_complement,
-    headquarters_neighborhood: row.headquarters_neighborhood,
-    headquarters_city: row.headquarters_city,
-    headquarters_state: row.headquarters_state,
-    headquarters_zipcode: row.headquarters_zipcode,
-    logo_path: row.logo_path,
-    signature_path: row.signature_path,
-    logo_url: logoUrl,
-    signature_url: signatureUrl,
-    president_name: row.president_name,
-    president_role: row.president_role,
-    is_active: row.is_active,
-  };
+  return mapAssociationRowToAssociation(row, logoUrl, signatureUrl);
 }
 
 export async function getProofEligibility(): Promise<ProofEligibility> {
