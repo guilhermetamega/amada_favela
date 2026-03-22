@@ -13,16 +13,16 @@ jobs:
       - name: Checkout Source
         uses: actions/checkout@v4
 
-      - name: Setup Java
+      - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '17'
+          java-version: '21' # Atualizado de 17 para 21 para evitar o erro de compilação
 
-      - name: Setup Node.js
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '22' # Atualizado para a versão 22
+          node-version: '22'
           cache: 'npm'
 
       - name: Install Dependencies
