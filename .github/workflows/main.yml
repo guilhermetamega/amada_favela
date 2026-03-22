@@ -2,7 +2,7 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   workflow_dispatch:
 
 jobs:
@@ -16,27 +16,25 @@ jobs:
       - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
-          java-version: '21' # Atualizado de 17 para 21 para evitar o erro de compilação
+          distribution: zulu
+          java-version: "21"
 
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: "22"
+          cache: npm
 
       - name: Install Dependencies
-        run: |
-          npm install
-          npm install @capacitor/cli @capacitor/core @capacitor/android
+        run: npm ci
 
-      - name: Build Web Project (Vite)
+      - name: Build Web Project
         run: npm run build
 
       - name: Capacitor Sync
         run: npx cap sync android
 
-      - name: Build Android APK (Gradle)
+      - name: Build Android APK
         run: |
           cd android
           chmod +x gradlew
