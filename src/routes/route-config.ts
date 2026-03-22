@@ -79,7 +79,7 @@ export const appRoutes: AppRouteConfig[] = [
     description: "Visualize se sua declaração ainda está em dia.",
     icon: IdCard,
     colorClass: "violet",
-    showInSidebar: false,
+    showInSidebar: true,
     showInDashboard: false,
     canAccess: (permissions) => !!permissions,
   },
