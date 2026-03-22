@@ -1,4 +1,4 @@
-import { HashRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import AuthPage from "@/pages/Auth";
 import DashboardPage from "@/pages/Dashboard";
 import LostAndFoundPage from "@/pages/LostAndFound";
@@ -26,7 +26,7 @@ import AssociationSettingsPage from "@/pages/Admin/Association";
 
 export function AppRoutes() {
   return (
-    <HashRouter>
+    <BrowserRouter>
       <Routes>
         <Route path="/" element={<AuthPage />} />
         <Route path="/auth" element={<AuthPage />} />
@@ -119,6 +119,6 @@ export function AppRoutes() {
           ></Route>
         </Route>
       </Routes>
-    </HashRouter>
+    </BrowserRouter>
   );
 }
