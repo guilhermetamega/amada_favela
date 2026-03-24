@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardLayout from "@/components/layout/Layout";
 import CreateHomeRentModal from "@/components/ui/CreateHomeRentModal";
 import { getHomeRentItems } from "@/services/supabase/home_rent";
 import type { HomeRentItem } from "@/types/home_rent";

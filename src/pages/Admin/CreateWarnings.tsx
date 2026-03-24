@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardLayout from "@/components/layout/Layout";
 import DashboardHeader from "@/components/layout/DashboardHeader";
 import { createWarningBanner } from "@/services/supabase/warning_banners";
 import warningBg from "@/assets/warning_bg.png";

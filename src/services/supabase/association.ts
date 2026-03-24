@@ -7,6 +7,14 @@ import type {
   CurrentProfileAssociationRow,
 } from "@/types/association";
 
+export type AssociationPublicData = {
+  name: string;
+  community: string;
+  description?: string | null;
+  logo_url: string | null;
+  banner_url: string | null;
+};
+
 const COMMUNITY_IMAGE_BUCKET = "community_image";
 const ASSOCIATION_SIGNATURES_BUCKET = "association_signatures";
 
@@ -325,4 +333,43 @@ export async function updateAssociation(
   }
 
   return buildAssociationFormDataFromRow(data as AssociationRow);
+}
+
+export async function getAssociationPublicData(): Promise<AssociationPublicData> {
+  const profile = await getCurrentProfileRow();
+
+  if (!profile.comunity) {
+    throw new Error("Comunidade do usuário não encontrada.");
+  }
+
+  const { data, error } = await supabase
+    .from("association")
+    .select(
+      `
+      name,
+      community,
+      logo_path
+    `,
+    )
+    .eq("community", profile.comunity)
+    .eq("is_active", true)
+    .single();
+
+  if (error || !data) {
+    throw new Error(
+      "Não foi possível carregar os dados públicos da associação.",
+    );
+  }
+
+  const { data: logoData } = supabase.storage
+    .from(COMMUNITY_IMAGE_BUCKET)
+    .getPublicUrl(data.logo_path);
+
+  return {
+    name: data.name,
+    community: data.community,
+    description: null,
+    logo_url: logoData.publicUrl,
+    banner_url: logoData.publicUrl, // temporário (explico abaixo)
+  };
 }

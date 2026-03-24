@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardLayout from "@/components/layout/Layout";
 import DashboardHeader from "@/components/layout/DashboardHeader";
 import type { ProofEligibility } from "@/types/proof_of_residence";
 import {

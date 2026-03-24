@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getLostAnimalsItemById } from "@/services/supabase/lost_animals";
 import type { LostAnimalsItem } from "@/types/lost_animals";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardLayout from "@/components/layout/Layout";
 import DashboardHeader from "@/components/layout/DashboardHeader";
 import { useParams } from "react-router-dom";
 

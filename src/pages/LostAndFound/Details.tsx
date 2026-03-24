@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getLostAndFoundItemById } from "@/services/supabase/lost_and_found";
 import type { LostAndFoundItem } from "@/types/lost_and_found";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardLayout from "@/components/layout/Layout";
 import DashboardHeader from "@/components/layout/DashboardHeader";
 
 function normalizePhoneToWhatsapp(phone: string) {

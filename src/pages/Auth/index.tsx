@@ -29,6 +29,7 @@ import developedByLogo from "@/assets/developed_by_logo.png";
 import { useAuth } from "@/hooks";
 import { supabase } from "@/services/supabase/client";
 import { COMMUNITIES } from "@/lib/communities";
+import { prefetchDashboard } from "@/lib/prefetch/prefetch-dashboard";
 
 const initialLoginForm: LoginFormData = {
   identifier: "",
@@ -340,6 +341,9 @@ export default function AuthPage() {
 
     try {
       await signInWithIdentifier(loginForm);
+
+      void prefetchDashboard();
+
       navigate("/dashboard", { replace: true });
     } catch (error) {
       const message =
@@ -382,11 +386,8 @@ export default function AuthPage() {
 
     try {
       await signUpWithEmail(registerForm, profilePictureFile);
-      await supabase.auth.signOut();
+      void prefetchDashboard();
 
-      setSuccessMessage(
-        "Cadastro realizado com sucesso. Faça seu login para continuar.",
-      );
       setRegisterForm(initialRegisterForm);
       setLoginForm(initialLoginForm);
       setProfilePictureFile(null);

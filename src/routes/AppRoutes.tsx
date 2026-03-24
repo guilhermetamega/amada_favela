@@ -1,124 +1,125 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import AuthPage from "@/pages/Auth";
-import DashboardPage from "@/pages/Dashboard";
-import LostAndFoundPage from "@/pages/LostAndFound";
-import LostAndFoundDetailsPage from "@/pages/LostAndFound/LostAndFoundDetails";
-import LostAnimalsDetailsPage from "@/pages/LostAnimals/LostAnimalsDeatils";
-import LostAnimalsPage from "@/pages/LostAnimals";
-import HomeRentDetailsPage from "@/pages/HomeRent/HomeRentDetails";
-import HomeRentPage from "@/pages/HomeRent";
 import ProtectedRoute from "./ProtectedRoute";
 import RoleGuard from "./RoleGuard";
-import AdminPage from "@/pages/Admin";
-import SuperAdminPage from "@/pages/SuperAdmin";
-import AdminMailPage from "@/pages/Admin/AdminMail";
-import MailsPage from "@/pages/Mails";
-import CreateWarningsPage from "@/pages/Admin/CreateWarnings";
-import SocialProjectsPage from "@/pages/SocialProjects";
-import SocialProjectsDetailsPage from "@/pages/SocialProjects/SocialProjectsDetails";
-import AdminSocialProjectsPage from "@/pages/Admin/AdminSocialProjects";
-import ProfilePage from "@/pages/Dashboard/Profile";
-import WelcomeBannerPage from "@/pages/Dashboard/WelcomeBanner";
-import MemberCardPage from "@/pages/MemberCard";
-import ProofOfResidencePage from "@/pages/ProofOfResidence";
-import ValidateProofPage from "@/pages/ValidateProof";
-import AssociationSettingsPage from "@/pages/Admin/Association";
+import RouteSkeleton from "@/components/ui/RouteSkeleton";
+
+const AuthPage = lazy(() => import("@/pages/Auth"));
+const DashboardPage = lazy(() => import("@/pages/Dashboard"));
+
+const LostAndFoundPage = lazy(() => import("@/pages/LostAndFound"));
+const LostAndFoundDetailsPage = lazy(
+  () => import("@/pages/LostAndFound/Details"),
+);
+
+const LostAnimalsPage = lazy(() => import("@/pages/LostAnimals"));
+const LostAnimalsDetailsPage = lazy(
+  () => import("@/pages/LostAnimals/Details"),
+);
+
+const HomeRentPage = lazy(() => import("@/pages/HomeRent"));
+const HomeRentDetailsPage = lazy(() => import("@/pages/HomeRent/Details"));
+
+const MailsPage = lazy(() => import("@/pages/Mails"));
+
+const SocialProjectsPage = lazy(() => import("@/pages/SocialProjects"));
+const SocialProjectsDetailsPage = lazy(
+  () => import("@/pages/SocialProjects/Details"),
+);
+
+const ProfilePage = lazy(() => import("@/pages/Dashboard/Profile"));
+const MemberCardPage = lazy(() => import("@/pages/MemberCard"));
+const ProofOfResidencePage = lazy(() => import("@/pages/ProofOfResidence"));
+const ValidateProofPage = lazy(() => import("@/pages/ValidateProof"));
+
+const AdminPage = lazy(() => import("@/pages/Admin"));
+const SuperAdminPage = lazy(() => import("@/pages/SuperAdmin"));
+const AdminMailPage = lazy(() => import("@/pages/Admin/Mail"));
+const CreateWarningsPage = lazy(() => import("@/pages/Admin/CreateWarnings"));
+const AdminSocialProjectsPage = lazy(
+  () => import("@/pages/Admin/SocialProjects"),
+);
+const WelcomeBannerPage = lazy(() => import("@/pages/Dashboard/WelcomeBanner"));
+const AssociationSettingsPage = lazy(() => import("@/pages/Admin/Association"));
+
+const NotFoundPage = lazy(() => import("@/pages/NotFound"));
 
 export function AppRoutes() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<AuthPage />} />
-        <Route path="/auth" element={<AuthPage />} />
+      <Suspense fallback={<RouteSkeleton />}>
+        <Routes>
+          <Route path="/" element={<AuthPage />} />
+          <Route path="/auth" element={<AuthPage />} />
 
-        {/* {Rotas necessárias ter feito autenticação para acessar} */}
-        <Route element={<ProtectedRoute />}>
-          {/* {Rotas padrão} */}
-          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
 
-          <Route path="/dashboard/profile" element={<ProfilePage />} />
+            <Route path="/lost-and-found" element={<LostAndFoundPage />} />
+            <Route
+              path="/lost-and-found/:id"
+              element={<LostAndFoundDetailsPage />}
+            />
 
-          <Route
-            path="/dashboard/lost-and-found"
-            element={<LostAndFoundPage />}
-          />
-          <Route
-            path="/dashboard/lost-and-found/:id"
-            element={<LostAndFoundDetailsPage />}
-          />
+            <Route path="/lost-animals" element={<LostAnimalsPage />} />
+            <Route
+              path="/lost-animals/:id"
+              element={<LostAnimalsDetailsPage />}
+            />
 
-          <Route path="/dashboard/lost-animals" element={<LostAnimalsPage />} />
-          <Route
-            path="/dashboard/lost-animals/:id"
-            element={<LostAnimalsDetailsPage />}
-          />
+            <Route path="/home-rent" element={<HomeRentPage />} />
+            <Route path="/home-rent/:id" element={<HomeRentDetailsPage />} />
 
-          <Route path="/dashboard/home-rent" element={<HomeRentPage />} />
-          <Route
-            path="/dashboard/home-rent/:id"
-            element={<HomeRentDetailsPage />}
-          />
+            <Route path="/mails" element={<MailsPage />} />
+            <Route path="/member-card" element={<MemberCardPage />} />
+            <Route
+              path="/proof-of-residence"
+              element={<ProofOfResidencePage />}
+            />
 
-          <Route path="/dashboard/mails" element={<MailsPage />} />
+            <Route path="/social-projects" element={<SocialProjectsPage />} />
+            <Route
+              path="/social-projects/:id"
+              element={<SocialProjectsDetailsPage />}
+            />
 
-          <Route path="/dashboard/member-card" element={<MemberCardPage />} />
+            <Route
+              element={<RoleGuard allowedRoles={["admin", "president"]} />}
+            >
+              <Route path="/admin" element={<AdminPage />} />
+              <Route path="/admin/mail" element={<AdminMailPage />} />
+              <Route
+                path="/admin/association"
+                element={<AssociationSettingsPage />}
+              />
+              <Route
+                path="/admin/create-warnings"
+                element={<CreateWarningsPage />}
+              />
+              <Route
+                path="/admin/social-projects"
+                element={<AdminSocialProjectsPage />}
+              />
+              <Route
+                path="/admin/welcome-banner"
+                element={<WelcomeBannerPage />}
+              />
+            </Route>
 
-          <Route
-            path="/dashboard/proof-of-residence"
-            element={<ProofOfResidencePage />}
-          />
+            <Route element={<RoleGuard allowedRoles={["admin"]} />}>
+              <Route path="/super-admin" element={<SuperAdminPage />} />
+            </Route>
+          </Route>
+
           <Route
             path="/validate-proof/:validationCode"
             element={<ValidateProofPage />}
           />
 
-          <Route
-            path="/dashboard/social-projects"
-            element={<SocialProjectsPage />}
-          />
-          <Route
-            path="/dashboard/social-projects/:id"
-            element={<SocialProjectsDetailsPage />}
-          />
-
-          {/* {Guardião de rotas para segurança extra} */}
-          <Route element={<RoleGuard allowedRoles={["admin", "president"]} />}>
-            <Route path="/admin" element={<AdminPage />} />
-          </Route>
-
-          <Route path="/admin/mail" element={<AdminMailPage />} />
-
-          <Route
-            path="/admin/association"
-            element={<AssociationSettingsPage />}
-          />
-
-          <Route
-            path="/admin/create-warnings"
-            element={<CreateWarningsPage />}
-          />
-
-          <Route
-            path="/admin/social-projects"
-            element={<AdminSocialProjectsPage />}
-          />
-
-          <Route path="/admin/welcome-banner" element={<WelcomeBannerPage />} />
-
-          <Route element={<RoleGuard allowedRoles={["admin"]} />}>
-            <Route path="/super-admin" element={<SuperAdminPage />} />
-          </Route>
-
-          <Route
-            element={
-              <RoleGuard
-                allowedRoles={["admin", "president", "employee", "user"]}
-                requirePartner
-              />
-            }
-          ></Route>
-        </Route>
-      </Routes>
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

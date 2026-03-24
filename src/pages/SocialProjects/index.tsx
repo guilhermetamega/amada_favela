@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardLayout from "@/components/layout/Layout";
 import DashboardHeader from "@/components/layout/DashboardHeader";
 import { getSocialProjectsItems } from "@/services/supabase/social_projects";
 import type { SocialProjectItem } from "@/types/social_projects";

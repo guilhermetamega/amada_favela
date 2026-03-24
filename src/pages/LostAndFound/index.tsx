@@ -3,7 +3,7 @@ import { getLostAndFoundItems } from "@/services/supabase/lost_and_found";
 import type { LostAndFoundItem } from "@/types/lost_and_found";
 import CreateLostAndFoundModal from "@/components/ui/CreateLostAndFoundModal";
 import { useNavigate } from "react-router-dom";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardLayout from "@/components/layout/Layout";
 import DashboardHeader from "@/components/layout/DashboardHeader";
 
 export default function LostAndFoundPage() {

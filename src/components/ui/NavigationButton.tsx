@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 
-type NavigationButtonTheme = {
+export type NavigationButtonTheme = {
   borderHover: string;
   hoverGlow: string;
   topBar: string;
@@ -30,7 +30,7 @@ export default function NavigationButton({
       className={`group relative overflow-hidden rounded-2xl border border-zinc-200 bg-white/95 p-3 text-left shadow-lg transition duration-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 sm:min-h-37 sm:p-5 dark:border-zinc-800 dark:bg-zinc-900/95 ${color.borderHover} ${color.hoverGlow}`}
     >
       <div
-        className={`absolute inset-x-0 top-0 h-1.5 md:h-3 bg-linear-to-r ${color.topBar}`}
+        className={`absolute inset-x-0 top-0 h-1.5 bg-linear-to-r md:h-3 ${color.topBar}`}
       />
 
       <div className="flex h-full flex-col justify-between gap-2 sm:gap-4">

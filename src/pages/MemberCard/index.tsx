@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, IdCard, MapPin, CalendarDays, Cake } from "lucide-react";
 import { toPng } from "html-to-image";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardLayout from "@/components/layout/Layout";
 import DashboardHeader from "@/components/layout/DashboardHeader";
 import { getMyMemberCardData } from "@/services/supabase/member_card";
 import { MemberCardData } from "@/types/member_card";

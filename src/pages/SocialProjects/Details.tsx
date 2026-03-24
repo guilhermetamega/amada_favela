@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getHomeRentItemById } from "@/services/supabase/home_rent";
-import type { HomeRentItem } from "@/types/home_rent";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardLayout from "@/components/layout/Layout";
 import DashboardHeader from "@/components/layout/DashboardHeader";
+import { getSocialProjectItemById } from "@/services/supabase/social_projects";
+import type { SocialProjectItem } from "@/types/social_projects";
 
 function normalizePhoneToWhatsapp(phone: string) {
   return phone.replace(/\D/g, "");
 }
 
-export default function HomeRentDetailsPage() {
+export default function SocialProjectsDetailsPage() {
   const { id } = useParams<{ id: string }>();
 
-  const [item, setItem] = useState<HomeRentItem | null>(null);
+  const [item, setItem] = useState<SocialProjectItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -20,7 +20,7 @@ export default function HomeRentDetailsPage() {
   useEffect(() => {
     async function loadItem() {
       if (!id) {
-        setErrorMessage("Item não encontrado.");
+        setErrorMessage("Projeto não encontrado.");
         setLoading(false);
         return;
       }
@@ -29,11 +29,11 @@ export default function HomeRentDetailsPage() {
         setLoading(true);
         setErrorMessage("");
 
-        const data = await getHomeRentItemById(id);
+        const data = await getSocialProjectItemById(id);
         setItem(data);
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : "Erro ao carregar o item.";
+          error instanceof Error ? error.message : "Erro ao carregar projeto.";
         setErrorMessage(message);
       } finally {
         setLoading(false);
@@ -54,9 +54,8 @@ export default function HomeRentDetailsPage() {
   const whatsappLink = useMemo(() => {
     if (!item) return "#";
 
-    const phone = normalizePhoneToWhatsapp(item.phone);
-    const typeLabel = item.type === "sell" ? "venda" : "aluguel";
-    const message = `Olá! Vi seu item ${typeLabel}, gostaria de te ajudar a recuperá-lo`;
+    const phone = normalizePhoneToWhatsapp(item.contact_phone);
+    const message = `Olá! Vi o projeto social "${item.title}" e gostaria de saber como posso ajudar.`;
 
     return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
   }, [item]);
@@ -73,7 +72,7 @@ export default function HomeRentDetailsPage() {
     return (
       <main className="min-h-screen bg-zinc-950 px-4 py-10">
         <div className="mx-auto max-w-5xl rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-zinc-300">
-          Carregando item...
+          Carregando projeto...
         </div>
       </main>
     );
@@ -84,13 +83,13 @@ export default function HomeRentDetailsPage() {
       <main className="min-h-screen bg-zinc-950 px-4 py-10">
         <div className="mx-auto max-w-5xl space-y-4">
           <DashboardHeader
-            title="Erro ao encontrar item"
+            title="Erro ao encontrar projeto"
             description="Volte e tente novamente."
             showBackButton
           />
 
           <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-6 text-red-300">
-            {errorMessage || "Item não encontrado."}
+            {errorMessage || "Projeto não encontrado."}
           </div>
         </div>
       </main>
@@ -102,7 +101,7 @@ export default function HomeRentDetailsPage() {
       <main className="min-h-screen bg-zinc-950 px-4 py-10">
         <div className="mx-auto max-w-6xl">
           <DashboardHeader
-            title="Detalhes da publicação"
+            title="Detalhes do projeto social"
             description=""
             showBackButton
           />
@@ -189,12 +188,12 @@ export default function HomeRentDetailsPage() {
 
                 <span
                   className={`rounded-full px-3 py-1 text-sm font-semibold ${
-                    item.type === "sell"
+                    item.status === "active"
                       ? "bg-emerald-500/15 text-emerald-300"
-                      : "bg-amber-500/15 text-amber-300"
+                      : "bg-zinc-700 text-zinc-300"
                   }`}
                 >
-                  {item.type === "sell" ? "Compra" : "Aluguel"}
+                  {item.status === "active" ? "Ativo" : "Inativo"}
                 </span>
               </div>
 
@@ -204,17 +203,23 @@ export default function HomeRentDetailsPage() {
                   {item.community}
                 </p>
                 <p>
-                  <span className="font-semibold text-white">Endereço:</span>{" "}
-                  {item.address}
+                  <span className="font-semibold text-white">Contato:</span>{" "}
+                  {item.contact_phone}
                 </p>
-                <p>
-                  <span className="font-semibold text-white">Status:</span>{" "}
-                  {item.status === "open" ? "Em aberto" : "Resolvido"}
-                </p>
-                <p>
-                  <span className="font-semibold text-white">Telefone:</span>{" "}
-                  {item.phone}
-                </p>
+
+                {item.address ? (
+                  <p>
+                    <span className="font-semibold text-white">Endereço:</span>{" "}
+                    {item.address}
+                  </p>
+                ) : null}
+
+                {item.pix_key ? (
+                  <p>
+                    <span className="font-semibold text-white">PIX:</span>{" "}
+                    {item.pix_key}
+                  </p>
+                ) : null}
               </div>
 
               <div className="mt-6">
@@ -225,6 +230,17 @@ export default function HomeRentDetailsPage() {
                   {item.description}
                 </p>
               </div>
+
+              {item.volunteer_info ? (
+                <div className="mt-6">
+                  <h2 className="mb-2 text-lg font-semibold text-white">
+                    Como ajudar
+                  </h2>
+                  <p className="whitespace-pre-line text-zinc-300">
+                    {item.volunteer_info}
+                  </p>
+                </div>
+              ) : null}
 
               <div className="mt-8">
                 <a

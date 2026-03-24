@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardLayout from "@/components/layout/Layout";
 import { validateResidenceProof } from "@/services/supabase/proof_of_residence";
 import type { ValidateResidenceProofResult } from "@/types/proof_of_residence";
 import { formatDateTime, maskCpf } from "@/utils/proof_of_residence";

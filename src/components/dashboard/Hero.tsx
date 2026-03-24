@@ -7,28 +7,39 @@ import { getAssociationDisplayName } from "@/utils/communities";
 
 const DEFAULT_DESCRIPTION = "Tecnologia para conectar a favela ao futuro";
 
+type HeroCache = {
+  communityName: string;
+  description: string;
+  imageUrl: string;
+};
+
+let heroCache: HeroCache | null = null;
+
 export default function CommunityHeroCard() {
-  const [loading, setLoading] = useState(true);
-  const [communityName, setCommunityName] = useState("Comunidade");
-  const [description, setDescription] = useState(DEFAULT_DESCRIPTION);
-  const [imageUrl, setImageUrl] = useState("");
+  const [loading, setLoading] = useState(() => !heroCache);
+  const [communityName, setCommunityName] = useState(
+    heroCache?.communityName ?? "Comunidade",
+  );
+  const [description, setDescription] = useState(
+    heroCache?.description ?? DEFAULT_DESCRIPTION,
+  );
+  const [imageUrl, setImageUrl] = useState(heroCache?.imageUrl ?? "");
 
   useEffect(() => {
     let active = true;
 
     async function loadData() {
       try {
-        setLoading(true);
-
         const { profile, communityData } =
           await getCurrentCommunityBannerData();
 
         if (!active) return;
 
-        setCommunityName(getAssociationDisplayName(profile.comunity));
-        setDescription(
-          communityData?.description?.trim() || DEFAULT_DESCRIPTION,
-        );
+        const nextCommunityName = getAssociationDisplayName(profile.comunity);
+        const nextDescription =
+          communityData?.description?.trim() || DEFAULT_DESCRIPTION;
+
+        let nextImageUrl = heroCache?.imageUrl ?? imageUrl;
 
         if (communityData?.picture_path) {
           try {
@@ -37,19 +48,23 @@ export default function CommunityHeroCard() {
             );
 
             if (!active) return;
-            setImageUrl(signedUrl);
+            nextImageUrl = signedUrl || nextImageUrl;
           } catch {
             if (!active) return;
-            setImageUrl("");
           }
-        } else {
-          setImageUrl("");
         }
+
+        setCommunityName(nextCommunityName);
+        setDescription(nextDescription);
+        setImageUrl(nextImageUrl);
+
+        heroCache = {
+          communityName: nextCommunityName,
+          description: nextDescription,
+          imageUrl: nextImageUrl,
+        };
       } catch {
         if (!active) return;
-        setCommunityName("Comunidade");
-        setDescription(DEFAULT_DESCRIPTION);
-        setImageUrl("");
       } finally {
         if (active) {
           setLoading(false);
@@ -62,9 +77,10 @@ export default function CommunityHeroCard() {
     return () => {
       active = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (loading) {
+  if (loading && !heroCache) {
     return (
       <section className="relative overflow-hidden rounded-[1.75rem] border border-zinc-200/80 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
         <div className="px-4 py-5 text-center sm:px-6 sm:py-6">
@@ -100,6 +116,8 @@ export default function CommunityHeroCard() {
             src={imageUrl}
             alt={`Logo da associação ${communityName}`}
             className="h-full w-full scale-110 object-cover opacity-[0.14] blur-[2px]"
+            loading="eager"
+            decoding="async"
           />
         ) : (
           <div className="h-full w-full bg-black" />
@@ -128,6 +146,8 @@ export default function CommunityHeroCard() {
                 src={imageUrl}
                 alt={`Logo da associação ${communityName}`}
                 className="h-full w-full object-cover"
+                loading="eager"
+                decoding="async"
               />
             ) : (
               <div className="h-full w-full bg-zinc-800" />

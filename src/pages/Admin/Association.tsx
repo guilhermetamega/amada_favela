@@ -5,7 +5,7 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardLayout from "@/components/layout/Layout";
 import DashboardHeader from "@/components/layout/DashboardHeader";
 import type { AssociationFormData } from "@/types/association";
 import {
