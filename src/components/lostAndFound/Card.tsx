@@ -49,10 +49,6 @@ export default function LostAndFoundCard({ item, onOpen }: Props) {
             </span>
           </div>
 
-          <div className="space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
-            <p>{item.phone}</p>
-          </div>
-
           <p className="line-clamp-3 text-sm text-zinc-700 dark:text-zinc-300">
             {item.description}
           </p>

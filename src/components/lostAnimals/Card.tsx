@@ -15,11 +15,11 @@ function getStatusLabel(status: LostAnimalsItem["status"]) {
 
 export default function LostAnimalsCard({ item, onOpen }: Props) {
   return (
-    <article className="group overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
+    <article className="group h-full overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
       <button
         type="button"
         onClick={() => onOpen(item)}
-        className="block w-full text-left"
+        className="flex h-full w-full flex-col text-left"
       >
         <div className="relative aspect-4/3 w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
           <img
@@ -32,7 +32,7 @@ export default function LostAnimalsCard({ item, onOpen }: Props) {
           <div className="absolute inset-x-0 top-0 h-20 bg-linear-to-b from-black/30 to-transparent" />
         </div>
 
-        <div className="space-y-4 p-4">
+        <div className="flex h-full flex-col p-4">
           <div className="flex items-start justify-between gap-3">
             <h3 className="line-clamp-2 text-base font-semibold text-zinc-900 dark:text-white sm:text-lg">
               {item.name}
@@ -49,15 +49,11 @@ export default function LostAnimalsCard({ item, onOpen }: Props) {
             </span>
           </div>
 
-          <div className="space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
-            <p>{item.phone}</p>
-          </div>
-
-          <p className="line-clamp-3 text-sm text-zinc-700 dark:text-zinc-300">
+          <p className="mt-4 line-clamp-3 text-sm text-zinc-700 dark:text-zinc-300">
             {item.description}
           </p>
 
-          <div className="flex items-center justify-between">
+          <div className="mt-auto flex items-center justify-between pt-4">
             <span
               className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                 item.status === "open"
