@@ -1,9 +1,23 @@
 import { supabase } from "@/services/supabase/client";
+import type { UserRole } from "@/lib/permissions";
 
-export async function getCurrentUserProfile(userId: string) {
-  const { data: profile, error } = await supabase
+type CurrentUserProfileRow = {
+  id: string;
+  role: UserRole;
+  comunity: string | null;
+};
+
+type PartnerStatusRow = {
+  expires_at: string;
+  status: string | null;
+};
+
+export async function getCurrentUserProfile(
+  userId: string,
+): Promise<CurrentUserProfileRow> {
+  const { data, error } = await supabase
     .from("users")
-    .select("id, role")
+    .select("id, role, comunity")
     .eq("id", userId)
     .single();
 
@@ -11,15 +25,15 @@ export async function getCurrentUserProfile(userId: string) {
     throw new Error(error.message);
   }
 
-  return profile;
+  return data as CurrentUserProfileRow;
 }
 
-export async function getPartnerStatus(userId: string) {
+export async function getPartnerStatus(userId: string): Promise<boolean> {
   const { data, error } = await supabase
     .from("partners")
-    .select("expires_at")
+    .select("expires_at, status")
     .eq("user_id", userId)
-    .order("expires_at", { ascending: false })
+    .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
@@ -29,5 +43,11 @@ export async function getPartnerStatus(userId: string) {
 
   if (!data) return false;
 
-  return new Date(data.expires_at) >= new Date();
+  const partner = data as PartnerStatusRow;
+
+  if (partner.status) {
+    return partner.status === "active";
+  }
+
+  return new Date(partner.expires_at).getTime() >= Date.now();
 }

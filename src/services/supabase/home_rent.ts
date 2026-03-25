@@ -33,10 +33,13 @@ async function uploadImage(file: File, userId: string) {
   return data.publicUrl;
 }
 
-export async function getHomeRentItems() {
+export async function getHomeRentItemsByCommunity(community: string) {
+  const normalizedCommunity = community.trim();
+
   const { data, error } = await supabase
     .from("home_rent")
     .select("*")
+    .eq("community", normalizedCommunity)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -97,7 +100,7 @@ export async function createHomeRentItem(input: CreateHomeRentInput) {
       community: community.trim(),
       description: description.trim(),
       type,
-      address,
+      address: address.trim(),
       status: "open",
       pic_1_url: pic1Url,
       pic_2_url: pic2Url,
