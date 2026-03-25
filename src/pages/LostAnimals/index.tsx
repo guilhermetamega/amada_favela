@@ -1,158 +1,192 @@
-import { useEffect, useState } from "react";
-import { getLostAnimalsItems } from "@/services/supabase/lost_animals";
-import type { LostAnimalsItem } from "@/types/lost_animals";
-import CreateLostAnimalsModal from "@/components/ui/CreateLostAnimalsModal";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/layout/Layout";
-import DashboardHeader from "@/components/layout/DashboardHeader";
+import LostAnimalsCreateEditModal from "@/components/lostAnimals/CreateEditModal";
+import LostAnimalsDetailsModal from "@/components/lostAnimals/DetailsModal";
+import LostAnimalsEmptyState from "@/components/lostAnimals/EmptyState";
+import LostAnimalsFilters from "@/components/lostAnimals/Filters";
+import LostAnimalsHeader from "@/components/lostAnimals/Header";
+import LostAnimalsHero from "@/components/lostAnimals/Hero";
+import LostAnimalsList from "@/components/lostAnimals/List";
+import LostAnimalsPageSkeleton from "@/components/lostAnimals/PageSkeleton";
+import {
+  getLostAnimalsCached,
+  hydrateLostAnimalsCache,
+  preloadLostAnimalsImages,
+  revalidateLostAnimalsCache,
+} from "@/lib/cache/lostAnimals";
+import type {
+  LostAnimalsFiltersState,
+  LostAnimalsItem,
+} from "@/types/lost_animals";
+import { usePermissions } from "@/hooks/usePermissions";
+
+const initialFilters: LostAnimalsFiltersState = {
+  search: "",
+  type: "all",
+  status: "all",
+};
 
 export default function LostAnimalsPage() {
+  const { community, loading: profileLoading } = usePermissions();
+  const communityName = community?.trim() ?? "";
+
   const [items, setItems] = useState<LostAnimalsItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [filters, setFilters] =
+    useState<LostAnimalsFiltersState>(initialFilters);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const navigate = useNavigate();
+  const [selectedItem, setSelectedItem] = useState<LostAnimalsItem | null>(
+    null,
+  );
 
   useEffect(() => {
-    async function loadItems() {
+    let active = true;
+
+    async function load() {
+      if (profileLoading) return;
+
+      if (!communityName) {
+        setItems([]);
+        setErrorMessage(
+          "Não foi possível identificar a comunidade do usuário.",
+        );
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
       try {
-        setLoading(true);
         setErrorMessage("");
 
-        const data = await getLostAnimalsItems();
-        setItems(data);
+        const cached = await getLostAnimalsCached(communityName);
+
+        if (!active) return;
+
+        setItems(cached.items);
+        setLoading(false);
+        preloadLostAnimalsImages(cached.items);
+
+        setRefreshing(true);
+
+        const fresh = await revalidateLostAnimalsCache(communityName);
+
+        if (!active) return;
+
+        setItems(fresh);
       } catch (error) {
-        const message =
+        if (!active) return;
+
+        setErrorMessage(
           error instanceof Error
             ? error.message
-            : "Erro ao carregar itens de achados e perdidos.";
-
-        setErrorMessage(message);
+            : "Erro ao carregar itens de achados e perdidos.",
+        );
       } finally {
+        // eslint-disable-next-line no-unsafe-finally
+        if (!active) return;
+
         setLoading(false);
+        setRefreshing(false);
       }
     }
 
-    void loadItems();
-  }, []);
+    void load();
 
-  function handleCreatedItem(item: LostAnimalsItem) {
-    setItems((prev) => [item, ...prev]);
+    return () => {
+      active = false;
+    };
+  }, [communityName, profileLoading]);
+
+  const filteredItems = useMemo(() => {
+    const search = filters.search.trim().toLowerCase();
+
+    return items.filter((item) => {
+      const matchesSearch =
+        !search ||
+        item.name.toLowerCase().includes(search) ||
+        item.description.toLowerCase().includes(search);
+
+      const matchesType = filters.type === "all" || item.type === filters.type;
+      const matchesStatus =
+        filters.status === "all" || item.status === filters.status;
+
+      return matchesSearch && matchesType && matchesStatus;
+    });
+  }, [filters, items]);
+
+  function handleCreateButtonClick() {
+    setIsCreateModalOpen(true);
   }
+
+  function handleSavedItem(item: LostAnimalsItem) {
+    const nextItems = [item, ...items];
+    setItems(nextItems);
+
+    if (communityName) {
+      hydrateLostAnimalsCache(communityName, nextItems);
+    }
+  }
+
+  function handleOpenDetails(item: LostAnimalsItem) {
+    setSelectedItem(item);
+  }
+
+  const isPageLoading = loading || profileLoading;
 
   return (
     <DashboardLayout>
-      <main className="min-h-screen bg-zinc-950 px-4 py-10">
-        <div className="mx-auto max-w-7xl">
-          <DashboardHeader
-            title="Animais Perdidos"
-            description="Confira os animais perdidos pela comunidade."
-            showBackButton
-          />
+      <main className="px-4 py-4 sm:px-5 sm:py-5 md:px-8 md:py-8">
+        <div className="mx-auto max-w-6xl space-y-4">
+          <LostAnimalsHeader onCreate={handleCreateButtonClick} />
 
-          {loading ? (
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-zinc-300">
-              Carregando lista...
-            </div>
-          ) : null}
+          {isPageLoading ? <LostAnimalsPageSkeleton /> : null}
 
-          {!loading && errorMessage ? (
-            <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-6 text-red-300">
-              {errorMessage}
-            </div>
-          ) : null}
+          {!isPageLoading ? (
+            <>
+              <LostAnimalsHero total={items.length} />
 
-          {!loading && !errorMessage && items.length === 0 ? (
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-zinc-300">
-              Nenhum item encontrado.
-            </div>
-          ) : null}
+              <LostAnimalsFilters value={filters} onChange={setFilters} />
 
-          {!loading && !errorMessage && items.length > 0 ? (
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {items.map((item) => (
-                <article
-                  key={item.id}
-                  className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 shadow-lg"
-                >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      navigate(`/dashboard/lost-animals/${item.id}`)
-                    }
-                    className="block w-full text-left"
-                  >
-                    <div className="aspect-square w-full overflow-hidden bg-zinc-800">
-                      <img
-                        src={item.pic_1_url}
-                        alt={item.name}
-                        className="h-full w-full object-cover transition hover:scale-[1.02]"
-                      />
-                    </div>
+              {refreshing ? (
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  Atualizando dados...
+                </p>
+              ) : null}
 
-                    <div className="space-y-3 p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <h2 className="line-clamp-2 text-lg font-semibold text-white">
-                          {item.name}
-                        </h2>
+              {errorMessage ? (
+                <div className="rounded-3xl border border-red-500/20 bg-red-500/10 px-5 py-4 text-sm text-red-600 dark:text-red-300">
+                  {errorMessage}
+                </div>
+              ) : null}
 
-                        <span
-                          className={`shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${
-                            item.type === "lost"
-                              ? "bg-amber-500/15 text-amber-300"
-                              : "bg-emerald-500/15 text-emerald-300"
-                          }`}
-                        >
-                          {item.type === "lost" ? "Perdido" : "Achado"}
-                        </span>
-                      </div>
+              {!errorMessage && filteredItems.length === 0 ? (
+                <LostAnimalsEmptyState onCreate={handleCreateButtonClick} />
+              ) : null}
 
-                      <div className="space-y-1 text-sm text-zinc-400">
-                        <p>
-                          <span className="font-medium text-zinc-300">
-                            Comunidade:
-                          </span>{" "}
-                          {item.community}
-                        </p>
-                        <p>
-                          <span className="font-medium text-zinc-300">
-                            Status:
-                          </span>{" "}
-                          {item.status === "open" ? "Em aberto" : "Resolvido"}
-                        </p>
-                        <p>
-                          <span className="font-medium text-zinc-300">
-                            Telefone:
-                          </span>{" "}
-                          {item.phone}
-                        </p>
-                      </div>
-
-                      <p className="line-clamp-3 text-sm text-zinc-300">
-                        {item.description}
-                      </p>
-                    </div>
-                  </button>
-                </article>
-              ))}
-            </section>
+              {!errorMessage && filteredItems.length > 0 ? (
+                <LostAnimalsList
+                  items={filteredItems}
+                  onOpen={handleOpenDetails}
+                />
+              ) : null}
+            </>
           ) : null}
         </div>
       </main>
 
-      <button
-        type="button"
-        onClick={() => setIsCreateModalOpen(true)}
-        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-3xl font-light text-white shadow-2xl transition hover:scale-105"
-        aria-label="Criar novo item"
-      >
-        +
-      </button>
-
-      <CreateLostAnimalsModal
-        isOpen={isCreateModalOpen}
+      <LostAnimalsCreateEditModal
+        open={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        onCreated={handleCreatedItem}
+        onSaved={handleSavedItem}
+        communityName={communityName}
+      />
+
+      <LostAnimalsDetailsModal
+        open={!!selectedItem}
+        item={selectedItem}
+        onClose={() => setSelectedItem(null)}
       />
     </DashboardLayout>
   );
