@@ -32,14 +32,16 @@ async function uploadImage(file: File, userId: string) {
   }
 
   const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
-
   return data.publicUrl;
 }
 
-export async function getLostAndFoundItems() {
+export async function getLostAndFoundItemsByCommunity(community: string) {
+  const normalizedCommunity = community.trim();
+
   const { data, error } = await supabase
     .from("lost_and_found")
     .select("*")
+    .eq("community", normalizedCommunity)
     .order("created_at", { ascending: false });
 
   if (error) {

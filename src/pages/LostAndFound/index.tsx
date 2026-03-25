@@ -1,158 +1,192 @@
-import { useEffect, useState } from "react";
-import { getLostAndFoundItems } from "@/services/supabase/lost_and_found";
-import type { LostAndFoundItem } from "@/types/lost_and_found";
-import CreateLostAndFoundModal from "@/components/ui/CreateLostAndFoundModal";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/layout/Layout";
-import DashboardHeader from "@/components/layout/DashboardHeader";
+import LostAndFoundCreateEditModal from "@/components/lostAndFound/CreateEditModal";
+import LostAndFoundDetailsModal from "@/components/lostAndFound/DetailsModal";
+import LostAndFoundEmptyState from "@/components/lostAndFound/EmptyState";
+import LostAndFoundFilters from "@/components/lostAndFound/Filters";
+import LostAndFoundHeader from "@/components/lostAndFound/Header";
+import LostAndFoundHero from "@/components/lostAndFound/Hero";
+import LostAndFoundList from "@/components/lostAndFound/List";
+import LostAndFoundPageSkeleton from "@/components/lostAndFound/PageSkeleton";
+import {
+  getLostAndFoundCached,
+  hydrateLostAndFoundCache,
+  preloadLostAndFoundImages,
+  revalidateLostAndFoundCache,
+} from "@/lib/cache/lostAndFound";
+import type {
+  LostAndFoundFiltersState,
+  LostAndFoundItem,
+} from "@/types/lost_and_found";
+import { usePermissions } from "@/hooks/usePermissions";
+
+const initialFilters: LostAndFoundFiltersState = {
+  search: "",
+  type: "all",
+  status: "all",
+};
 
 export default function LostAndFoundPage() {
+  const { community, loading: profileLoading } = usePermissions();
+  const communityName = community?.trim() ?? "";
+
   const [items, setItems] = useState<LostAndFoundItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [filters, setFilters] =
+    useState<LostAndFoundFiltersState>(initialFilters);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const navigate = useNavigate();
+  const [selectedItem, setSelectedItem] = useState<LostAndFoundItem | null>(
+    null,
+  );
 
   useEffect(() => {
-    async function loadItems() {
+    let active = true;
+
+    async function load() {
+      if (profileLoading) return;
+
+      if (!communityName) {
+        setItems([]);
+        setErrorMessage(
+          "Não foi possível identificar a comunidade do usuário.",
+        );
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
       try {
-        setLoading(true);
         setErrorMessage("");
 
-        const data = await getLostAndFoundItems();
-        setItems(data);
+        const cached = await getLostAndFoundCached(communityName);
+
+        if (!active) return;
+
+        setItems(cached.items);
+        setLoading(false);
+        preloadLostAndFoundImages(cached.items);
+
+        setRefreshing(true);
+
+        const fresh = await revalidateLostAndFoundCache(communityName);
+
+        if (!active) return;
+
+        setItems(fresh);
       } catch (error) {
-        const message =
+        if (!active) return;
+
+        setErrorMessage(
           error instanceof Error
             ? error.message
-            : "Erro ao carregar itens de achados e perdidos.";
-
-        setErrorMessage(message);
+            : "Erro ao carregar itens de achados e perdidos.",
+        );
       } finally {
+        // eslint-disable-next-line no-unsafe-finally
+        if (!active) return;
+
         setLoading(false);
+        setRefreshing(false);
       }
     }
 
-    void loadItems();
-  }, []);
+    void load();
 
-  function handleCreatedItem(item: LostAndFoundItem) {
-    setItems((prev) => [item, ...prev]);
+    return () => {
+      active = false;
+    };
+  }, [communityName, profileLoading]);
+
+  const filteredItems = useMemo(() => {
+    const search = filters.search.trim().toLowerCase();
+
+    return items.filter((item) => {
+      const matchesSearch =
+        !search ||
+        item.title.toLowerCase().includes(search) ||
+        item.description.toLowerCase().includes(search);
+
+      const matchesType = filters.type === "all" || item.type === filters.type;
+      const matchesStatus =
+        filters.status === "all" || item.status === filters.status;
+
+      return matchesSearch && matchesType && matchesStatus;
+    });
+  }, [filters, items]);
+
+  function handleCreateButtonClick() {
+    setIsCreateModalOpen(true);
   }
+
+  function handleSavedItem(item: LostAndFoundItem) {
+    const nextItems = [item, ...items];
+    setItems(nextItems);
+
+    if (communityName) {
+      hydrateLostAndFoundCache(communityName, nextItems);
+    }
+  }
+
+  function handleOpenDetails(item: LostAndFoundItem) {
+    setSelectedItem(item);
+  }
+
+  const isPageLoading = loading || profileLoading;
 
   return (
     <DashboardLayout>
-      <main className="min-h-screen bg-zinc-950 px-4 py-10">
-        <div className="mx-auto max-w-7xl">
-          <DashboardHeader
-            title="Achados e Perdidos"
-            description="Confira os itens cadastrados pela comunidade."
-            showBackButton
-          />
+      <main className="px-4 py-4 sm:px-5 sm:py-5 md:px-8 md:py-8">
+        <div className="mx-auto max-w-6xl space-y-4">
+          <LostAndFoundHeader onCreate={handleCreateButtonClick} />
 
-          {loading ? (
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-zinc-300">
-              Carregando itens...
-            </div>
-          ) : null}
+          {isPageLoading ? <LostAndFoundPageSkeleton /> : null}
 
-          {!loading && errorMessage ? (
-            <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-6 text-red-300">
-              {errorMessage}
-            </div>
-          ) : null}
+          {!isPageLoading ? (
+            <>
+              <LostAndFoundHero total={items.length} />
 
-          {!loading && !errorMessage && items.length === 0 ? (
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-zinc-300">
-              Nenhum item encontrado.
-            </div>
-          ) : null}
+              <LostAndFoundFilters value={filters} onChange={setFilters} />
 
-          {!loading && !errorMessage && items.length > 0 ? (
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {items.map((item) => (
-                <article
-                  key={item.id}
-                  className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 shadow-lg"
-                >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      navigate(`/dashboard/lost-and-found/${item.id}`)
-                    }
-                    className="block w-full text-left"
-                  >
-                    <div className="aspect-square w-full overflow-hidden bg-zinc-800">
-                      <img
-                        src={item.pic_1_url}
-                        alt={item.title}
-                        className="h-full w-full object-cover transition hover:scale-[1.02]"
-                      />
-                    </div>
+              {refreshing ? (
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  Atualizando dados...
+                </p>
+              ) : null}
 
-                    <div className="space-y-3 p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <h2 className="line-clamp-2 text-lg font-semibold text-white">
-                          {item.title}
-                        </h2>
+              {errorMessage ? (
+                <div className="rounded-3xl border border-red-500/20 bg-red-500/10 px-5 py-4 text-sm text-red-600 dark:text-red-300">
+                  {errorMessage}
+                </div>
+              ) : null}
 
-                        <span
-                          className={`shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${
-                            item.type === "lost"
-                              ? "bg-amber-500/15 text-amber-300"
-                              : "bg-emerald-500/15 text-emerald-300"
-                          }`}
-                        >
-                          {item.type === "lost" ? "Perdido" : "Achado"}
-                        </span>
-                      </div>
+              {!errorMessage && filteredItems.length === 0 ? (
+                <LostAndFoundEmptyState onCreate={handleCreateButtonClick} />
+              ) : null}
 
-                      <div className="space-y-1 text-sm text-zinc-400">
-                        <p>
-                          <span className="font-medium text-zinc-300">
-                            Comunidade:
-                          </span>{" "}
-                          {item.community}
-                        </p>
-                        <p>
-                          <span className="font-medium text-zinc-300">
-                            Status:
-                          </span>{" "}
-                          {item.status === "open" ? "Em aberto" : "Resolvido"}
-                        </p>
-                        <p>
-                          <span className="font-medium text-zinc-300">
-                            Telefone:
-                          </span>{" "}
-                          {item.phone}
-                        </p>
-                      </div>
-
-                      <p className="line-clamp-3 text-sm text-zinc-300">
-                        {item.description}
-                      </p>
-                    </div>
-                  </button>
-                </article>
-              ))}
-            </section>
+              {!errorMessage && filteredItems.length > 0 ? (
+                <LostAndFoundList
+                  items={filteredItems}
+                  onOpen={handleOpenDetails}
+                />
+              ) : null}
+            </>
           ) : null}
         </div>
       </main>
 
-      <button
-        type="button"
-        onClick={() => setIsCreateModalOpen(true)}
-        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-3xl font-light text-white shadow-2xl transition hover:scale-105"
-        aria-label="Criar novo item"
-      >
-        +
-      </button>
-
-      <CreateLostAndFoundModal
-        isOpen={isCreateModalOpen}
+      <LostAndFoundCreateEditModal
+        open={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        onCreated={handleCreatedItem}
+        onSaved={handleSavedItem}
+        communityName={communityName}
+      />
+
+      <LostAndFoundDetailsModal
+        open={!!selectedItem}
+        item={selectedItem}
+        onClose={() => setSelectedItem(null)}
       />
     </DashboardLayout>
   );
