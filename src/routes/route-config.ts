@@ -138,6 +138,16 @@ export const appRoutes: AppRouteConfig[] = [
     canAccess: (permissions) => !!permissions,
   },
   {
+    path: "/social-projects",
+    label: "Projetos Sociais",
+    description: "Conheça e apoie projetos sociais da comunidade.",
+    icon: HeartHandshake,
+    colorClass: "emerald",
+    showInSidebar: true,
+    showInDashboard: true,
+    canAccess: (permissions) => !!permissions,
+  },
+  {
     path: "/admin",
     label: "Admin",
     description:
@@ -184,16 +194,6 @@ export const appRoutes: AppRouteConfig[] = [
     showInSidebar: true,
     showInDashboard: true,
     canAccess: (permissions) => !!permissions && permissions.isAdmin,
-  },
-  {
-    path: "/dashboard/social-projects",
-    label: "Projetos Sociais",
-    description: "Conheça e apoie projetos sociais da comunidade.",
-    icon: HeartHandshake,
-    colorClass: "emerald",
-    showInSidebar: true,
-    showInDashboard: true,
-    canAccess: (permissions) => !!permissions,
   },
   {
     path: "/social-projects/:id",
