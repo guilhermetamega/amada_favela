@@ -8,9 +8,11 @@ import {
   IdCard,
   LayoutDashboard,
   Mail,
+  Megaphone,
   Shield,
   ShieldCheck,
   UserCircle2,
+  Building2,
 } from "lucide-react";
 import type { Permissions } from "@/lib/permissions";
 
@@ -30,6 +32,7 @@ export type AppRouteConfig = {
   showInSidebar?: boolean;
   showInDashboard?: boolean;
   showInMobileNav?: boolean;
+  showInAdmin?: boolean;
   isDetailRoute?: boolean;
   canAccess: (permissions: Permissions | null) => boolean;
 };
@@ -150,24 +153,27 @@ export const appRoutes: AppRouteConfig[] = [
   {
     path: "/admin",
     label: "Admin",
-    description:
-      "Gerencie funções administrativas e recursos da sua comunidade.",
+    description: "Gerencie funções administrativas e recursos da comunidade.",
     icon: ShieldCheck,
     colorClass: "cyan",
     showInSidebar: true,
     showInDashboard: true,
     showInMobileNav: true,
     canAccess: (permissions) =>
-      !!permissions && (permissions.isPresident || permissions.isAdmin),
+      !!permissions &&
+      (permissions.isEmployee ||
+        permissions.isPresident ||
+        permissions.isAdmin),
   },
   {
     path: "/admin/mail",
-    label: "Criar Notificação de Cartas",
+    label: "Notificações de Cartas",
     description: "Gerencie cartas por usuário da comunidade.",
     icon: Bell,
     colorClass: "orange",
-    showInSidebar: true,
+    showInSidebar: false,
     showInDashboard: false,
+    showInAdmin: true,
     canAccess: (permissions) =>
       !!permissions &&
       (permissions.isEmployee ||
@@ -178,10 +184,11 @@ export const appRoutes: AppRouteConfig[] = [
     path: "/admin/association",
     label: "Associação",
     description: "Edite os dados institucionais usados em documentos e telas.",
-    icon: Bell,
+    icon: Building2,
     colorClass: "orange",
-    showInSidebar: true,
+    showInSidebar: false,
     showInDashboard: false,
+    showInAdmin: true,
     canAccess: (permissions) =>
       !!permissions && (permissions.isAdmin || permissions.isPresident),
   },
@@ -191,7 +198,7 @@ export const appRoutes: AppRouteConfig[] = [
     description: "Gerencie funções globais dos usuários.",
     icon: Shield,
     colorClass: "emerald",
-    showInSidebar: true,
+    showInSidebar: false,
     showInDashboard: true,
     canAccess: (permissions) => !!permissions && permissions.isAdmin,
   },
@@ -207,12 +214,13 @@ export const appRoutes: AppRouteConfig[] = [
   },
   {
     path: "/admin/social-projects",
-    label: "Gerenciar Projetos Sociais",
+    label: "Projetos Sociais",
     description: "Crie, edite e exclua projetos sociais.",
     icon: HeartHandshake,
     colorClass: "emerald",
-    showInSidebar: true,
-    showInDashboard: true,
+    showInSidebar: false,
+    showInDashboard: false,
+    showInAdmin: true,
     canAccess: (permissions) =>
       !!permissions &&
       (permissions.isEmployee ||
@@ -221,12 +229,13 @@ export const appRoutes: AppRouteConfig[] = [
   },
   {
     path: "/admin/create-warnings",
-    label: "Gerenciar Avisos",
+    label: "Avisos",
     description: "Crie, edite e exclua avisos para a comunidade.",
-    icon: HeartHandshake,
+    icon: Megaphone,
     colorClass: "rose",
-    showInSidebar: true,
-    showInDashboard: true,
+    showInSidebar: false,
+    showInDashboard: false,
+    showInAdmin: true,
     canAccess: (permissions) =>
       !!permissions &&
       (permissions.isEmployee ||
@@ -237,12 +246,13 @@ export const appRoutes: AppRouteConfig[] = [
     path: "/admin/welcome-banner",
     label: "Banner de Entrada",
     description: "Edite a logo e a descrição exibidas no topo do dashboard.",
-    showInSidebar: true,
-    showInDashboard: false,
-    canAccess: (permissions) =>
-      !!permissions && (permissions.isAdmin || permissions.isPresident),
     icon: HeartHandshake,
     colorClass: "emerald",
+    showInSidebar: false,
+    showInDashboard: false,
+    showInAdmin: true,
+    canAccess: (permissions) =>
+      !!permissions && (permissions.isAdmin || permissions.isPresident),
   },
 ];
 
@@ -255,5 +265,11 @@ export function getSidebarRoutes(permissions: Permissions | null) {
 export function getDashboardRoutes(permissions: Permissions | null) {
   return appRoutes.filter(
     (route) => route.showInDashboard && route.canAccess(permissions),
+  );
+}
+
+export function getAdminRoutes(permissions: Permissions | null) {
+  return appRoutes.filter(
+    (route) => route.showInAdmin && route.canAccess(permissions),
   );
 }

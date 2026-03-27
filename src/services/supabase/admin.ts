@@ -82,6 +82,10 @@ export async function updateUserRoleAsPresident(
   targetUserId: string,
   newRole: Extract<UserRole, "user" | "employee">,
 ) {
+  if (newRole !== "user" && newRole !== "employee") {
+    throw new Error("Role inválida para esta operação.");
+  }
+
   const profile = await getCurrentProfile();
 
   if (profile.role !== "president" && profile.role !== "admin") {
@@ -98,7 +102,11 @@ export async function updateUserRoleAsPresident(
     throw new Error(targetError.message);
   }
 
-  if (!["user", "employee"].includes(targetUser.role)) {
+  if (!targetUser) {
+    throw new Error("Usuário alvo não encontrado.");
+  }
+
+  if (targetUser.role !== "user" && targetUser.role !== "employee") {
     throw new Error("Este usuário não pode ser alterado por esta tela.");
   }
 
@@ -112,7 +120,8 @@ export async function updateUserRoleAsPresident(
   const { error } = await supabase
     .from("users")
     .update({ role: newRole })
-    .eq("id", targetUserId);
+    .eq("id", targetUserId)
+    .in("role", ["user", "employee"]);
 
   if (error) {
     throw new Error(error.message);

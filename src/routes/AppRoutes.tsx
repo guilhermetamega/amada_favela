@@ -69,7 +69,9 @@ export function AppRoutes() {
             />
 
             <Route
-              element={<RoleGuard allowedRoles={["admin", "president"]} />}
+              element={
+                <RoleGuard allowedRoles={["employee", "admin", "president"]} />
+              }
             >
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/admin/mail" element={<AdminMailPage />} />
