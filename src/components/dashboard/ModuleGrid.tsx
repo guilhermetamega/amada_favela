@@ -4,6 +4,7 @@ import type { AppRouteConfig } from "@/routes/route-config";
 import NavigationButton from "@/components/ui/NavigationButton";
 import { getNavigationButtonTheme } from "@/lib/navigation-button-theme";
 import AssociationWhatsAppButton from "@/components/dashboard/AssociationWhatsappButton";
+import LojasDasComunidadesButton from "@/components/dashboard/LojasDasComunidadesButton";
 
 type Props = {
   routes: AppRouteConfig[];
@@ -25,6 +26,7 @@ function DashboardModuleGridComponent({ routes }: Props) {
         />
       ))}
       <AssociationWhatsAppButton />
+      <LojasDasComunidadesButton />
     </section>
   );
 }
