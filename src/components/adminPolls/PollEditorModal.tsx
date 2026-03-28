@@ -113,8 +113,8 @@ export default function PollEditorModal({
   return (
     <div className="fixed inset-0 z-70 bg-black/60 backdrop-blur-[2px]">
       <div className="flex min-h-dvh items-center justify-center p-4">
-        <div className="w-full max-w-3xl rounded-3xl border border-zinc-200 bg-white p-5 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="mb-5 flex items-center justify-between gap-3">
+        <div className="flex max-h-[calc(100dvh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
               {poll ? "Editar enquete" : "Nova enquete"}
             </h2>
@@ -128,25 +128,27 @@ export default function PollEditorModal({
             </button>
           </div>
 
-          <PollForm
-            title={title}
-            description={description}
-            votingEndsAt={votingEndsAt}
-            visibleUntil={visibleUntil}
-            status={poll ? status : undefined}
-            options={options}
-            loading={loading}
-            onTitleChange={setTitle}
-            onDescriptionChange={setDescription}
-            onVotingEndsAtChange={setVotingEndsAt}
-            onVisibleUntilChange={setVisibleUntil}
-            onStatusChange={poll ? setStatus : undefined}
-            onOptionChange={updateOption}
-            onAddOption={addOption}
-            onRemoveOption={removeOption}
-            onSubmit={handleSubmit}
-            submitLabel={poll ? "Salvar alterações" : "Criar enquete"}
-          />
+          <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto">
+            <PollForm
+              title={title}
+              description={description}
+              votingEndsAt={votingEndsAt}
+              visibleUntil={visibleUntil}
+              status={poll ? status : undefined}
+              options={options}
+              loading={loading}
+              onTitleChange={setTitle}
+              onDescriptionChange={setDescription}
+              onVotingEndsAtChange={setVotingEndsAt}
+              onVisibleUntilChange={setVisibleUntil}
+              onStatusChange={poll ? setStatus : undefined}
+              onOptionChange={updateOption}
+              onAddOption={addOption}
+              onRemoveOption={removeOption}
+              onSubmit={handleSubmit}
+              submitLabel={poll ? "Salvar alterações" : "Criar enquete"}
+            />
+          </div>
         </div>
       </div>
     </div>

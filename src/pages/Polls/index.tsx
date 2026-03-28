@@ -71,10 +71,7 @@ export default function PollsPage() {
     <DashboardLayout>
       <main className="px-4 py-4 sm:px-5 sm:py-5 md:px-8 md:py-8">
         <div className="mx-auto max-w-6xl space-y-4">
-          <PollsHero
-            title="Enquetes"
-            description="Vote nas enquetes da sua comunidade e acompanhe os resultados em tempo real."
-          />
+          <PollsHero title="Enquetes" />
 
           <PollsFeedback
             errorMessage={errorMessage}

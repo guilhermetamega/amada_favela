@@ -93,10 +93,7 @@ export default function AdminPollsPage() {
     <DashboardLayout>
       <main className="px-4 py-4 sm:px-5 sm:py-5 md:px-8 md:py-8">
         <div className="mx-auto max-w-6xl space-y-4">
-          <PollsHero
-            title="Gerenciar Enquetes"
-            description="Crie, edite e acompanhe as enquetes da sua comunidade."
-          />
+          <PollsHero title="Gerenciar Enquetes" />
 
           <div className="flex justify-center">
             <button

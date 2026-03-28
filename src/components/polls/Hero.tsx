@@ -1,6 +1,6 @@
 type Props = {
   title: string;
-  description: string;
+  description?: string;
 };
 
 export default function PollsHero({ title, description }: Props) {
