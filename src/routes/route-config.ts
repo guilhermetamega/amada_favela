@@ -71,6 +71,16 @@ export const appRoutes: AppRouteConfig[] = [
     canAccess: (permissions) => !!permissions,
   },
   {
+    path: "/polls",
+    label: "Enquetes",
+    description: "Vote e acompanhe resultados da sua comunidade.",
+    icon: BarChart3,
+    colorClass: "violet",
+    showInSidebar: true,
+    showInDashboard: true,
+    canAccess: (permissions) => !!permissions,
+  },
+  {
     path: "/mails",
     label: "Cartas",
     description: "Visualize e confirme o recebimento das suas cartas.",
@@ -153,22 +163,12 @@ export const appRoutes: AppRouteConfig[] = [
     canAccess: (permissions) => !!permissions,
   },
   {
-    path: "/polls",
-    label: "Enquetes",
-    description: "Vote e acompanhe resultados da sua comunidade.",
-    icon: BarChart3,
-    colorClass: "violet",
-    showInSidebar: true,
-    showInDashboard: true,
-    canAccess: (permissions) => !!permissions,
-  },
-  {
     path: "/admin/polls",
     label: "Gerenciar Enquetes",
     description: "Crie e edite enquetes da comunidade.",
     icon: ClipboardPenLine,
     colorClass: "violet",
-    showInSidebar: true,
+    showInSidebar: false,
     showInAdmin: true,
     canAccess: (permissions) =>
       !!permissions &&
