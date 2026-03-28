@@ -3,6 +3,8 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
 import RoleGuard from "./RoleGuard";
 import RouteSkeleton from "@/components/ui/RouteSkeleton";
+import PollsPage from "@/pages/Polls";
+import AdminPollsPage from "@/pages/Admin/Polls";
 
 const AuthPage = lazy(() => import("@/pages/Auth"));
 const DashboardPage = lazy(() => import("@/pages/Dashboard"));
@@ -55,6 +57,8 @@ export function AppRoutes() {
 
             <Route path="/home-rent" element={<HomeRentPage />} />
 
+            <Route path="/polls" element={<PollsPage />} />
+
             <Route path="/mails" element={<MailsPage />} />
             <Route path="/member-card" element={<MemberCardPage />} />
             <Route
@@ -74,6 +78,8 @@ export function AppRoutes() {
               }
             >
               <Route path="/admin" element={<AdminPage />} />
+
+              <Route path="/admin/polls" element={<AdminPollsPage />} />
               <Route path="/admin/mail" element={<AdminMailPage />} />
               <Route
                 path="/admin/association"

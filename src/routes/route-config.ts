@@ -1,6 +1,8 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  BarChart3,
   Bell,
+  ClipboardPenLine,
   Dog,
   FolderSearch,
   HeartHandshake,
@@ -150,6 +152,31 @@ export const appRoutes: AppRouteConfig[] = [
     showInDashboard: true,
     canAccess: (permissions) => !!permissions,
   },
+  {
+    path: "/polls",
+    label: "Enquetes",
+    description: "Vote e acompanhe resultados da sua comunidade.",
+    icon: BarChart3,
+    colorClass: "violet",
+    showInSidebar: true,
+    showInDashboard: true,
+    canAccess: (permissions) => !!permissions,
+  },
+  {
+    path: "/admin/polls",
+    label: "Gerenciar Enquetes",
+    description: "Crie e edite enquetes da comunidade.",
+    icon: ClipboardPenLine,
+    colorClass: "violet",
+    showInSidebar: true,
+    showInAdmin: true,
+    canAccess: (permissions) =>
+      !!permissions &&
+      (permissions.isEmployee ||
+        permissions.isPresident ||
+        permissions.isAdmin),
+  },
+
   {
     path: "/admin",
     label: "Admin",
