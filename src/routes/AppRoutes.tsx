@@ -5,6 +5,8 @@ import RoleGuard from "./RoleGuard";
 import RouteSkeleton from "@/components/ui/RouteSkeleton";
 import PollsPage from "@/pages/Polls";
 import AdminPollsPage from "@/pages/Admin/Polls";
+import ServiceOrdersPage from "@/pages/ServiceOrders";
+import AdminServiceOrdersPage from "@/pages/Admin/ServiceOrders";
 
 const AuthPage = lazy(() => import("@/pages/Auth"));
 const DashboardPage = lazy(() => import("@/pages/Dashboard"));
@@ -59,6 +61,8 @@ export function AppRoutes() {
 
             <Route path="/polls" element={<PollsPage />} />
 
+            <Route path="/service-orders" element={<ServiceOrdersPage />} />
+
             <Route path="/mails" element={<MailsPage />} />
             <Route path="/member-card" element={<MemberCardPage />} />
             <Route
@@ -79,6 +83,10 @@ export function AppRoutes() {
             >
               <Route path="/admin" element={<AdminPage />} />
 
+              <Route
+                path="/admin/service-orders"
+                element={<AdminServiceOrdersPage />}
+              />
               <Route path="/admin/polls" element={<AdminPollsPage />} />
               <Route path="/admin/mail" element={<AdminMailPage />} />
               <Route

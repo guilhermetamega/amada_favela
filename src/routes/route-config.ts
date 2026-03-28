@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   BarChart3,
   Bell,
+  ClipboardList,
   ClipboardPenLine,
   Dog,
   FolderSearch,
@@ -15,6 +16,7 @@ import {
   ShieldCheck,
   UserCircle2,
   Building2,
+  Wrench,
 } from "lucide-react";
 import type { Permissions } from "@/lib/permissions";
 
@@ -76,6 +78,16 @@ export const appRoutes: AppRouteConfig[] = [
     description: "Vote e acompanhe resultados da sua comunidade.",
     icon: BarChart3,
     colorClass: "violet",
+    showInSidebar: true,
+    showInDashboard: true,
+    canAccess: (permissions) => !!permissions,
+  },
+  {
+    path: "/service-orders",
+    label: "Ordens de Serviço",
+    description: "Registre ocorrências de onde você mora.",
+    icon: Wrench,
+    colorClass: "orange",
     showInSidebar: true,
     showInDashboard: true,
     canAccess: (permissions) => !!permissions,
@@ -176,7 +188,20 @@ export const appRoutes: AppRouteConfig[] = [
         permissions.isPresident ||
         permissions.isAdmin),
   },
-
+  {
+    path: "/admin/service-orders",
+    label: "Ocorrências",
+    description: "Gerencie ocorrências abertas da comunidade.",
+    icon: ClipboardList,
+    colorClass: "orange",
+    showInSidebar: false,
+    showInAdmin: true,
+    canAccess: (permissions) =>
+      !!permissions &&
+      (permissions.isEmployee ||
+        permissions.isPresident ||
+        permissions.isAdmin),
+  },
   {
     path: "/admin",
     label: "Admin",
