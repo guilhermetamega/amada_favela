@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { WarningBanner } from "@/types/warning_banners";
+import warningBg from "@/assets/warning_bg.png";
 
 type Props = {
   items: WarningBanner[];
@@ -8,46 +9,63 @@ type Props = {
 export default function DashboardWarningCarousel({ items }: Props) {
   const [index, setIndex] = useState(0);
 
+  const safeItems = useMemo(
+    () => items.filter((item) => item?.message?.trim()),
+    [items],
+  );
+
   useEffect(() => {
-    if (items.length <= 1) return;
+    if (safeItems.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIndex(0);
+      return;
+    }
+
+    if (index > safeItems.length - 1) {
+      setIndex(0);
+    }
+  }, [safeItems.length, index]);
+
+  useEffect(() => {
+    if (safeItems.length <= 1) return;
 
     const timer = window.setInterval(() => {
-      setIndex((prev) => (prev + 1) % items.length);
+      setIndex((prev) => (prev + 1) % safeItems.length);
     }, 5000);
 
     return () => window.clearInterval(timer);
-  }, [items.length]);
+  }, [safeItems.length]);
 
-  if (!items.length) return null;
+  if (!safeItems.length) return null;
 
-  const current = items[index];
+  const current = safeItems[index];
 
   return (
-    <section className="mb-5 overflow-hidden rounded-3xl border border-zinc-200 shadow-sm dark:border-zinc-800">
+    <section className="mb-5 overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <article
-        className="relative min-h-45 sm:min-h-55"
+        className="relative min-h-35 overflow-hidden"
         style={{
-          backgroundImage: `url(${current.background_image_url})`,
+          backgroundImage: `url(${warningBg})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
       >
-        <div className="absolute inset-0 bg-black/45" />
+        <div className="absolute inset-0 bg-black/85" />
 
-        <div className="relative flex min-h-45 items-end p-5 sm:min-h-55 sm:p-6">
-          <div className="max-w-3xl">
+        <div className="relative flex min-h-35 items-center justify-center px-5 py-8 text-center sm:px-8 sm:py-10">
+          <div className="mx-auto max-w-3xl">
             <p
-              className="text-lg font-semibold leading-snug sm:text-2xl"
-              style={{ color: current.text_color }}
+              className="text-lg font-semibold leading-relaxed sm:text-2xl"
+              style={{ color: current.text_color || "#ffffff" }}
             >
               {current.message}
             </p>
           </div>
         </div>
 
-        {items.length > 1 ? (
-          <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2">
-            {items.map((item, itemIndex) => (
+        {safeItems.length > 1 ? (
+          <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2 px-4">
+            {safeItems.map((item, itemIndex) => (
               <button
                 key={item.id}
                 type="button"
