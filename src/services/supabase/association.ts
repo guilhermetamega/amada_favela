@@ -86,14 +86,21 @@ export async function getCurrentAssociationAccess(): Promise<CurrentAssociationA
   };
 }
 
-async function getPublicLogoUrl(path: string | null) {
+async function getSignedLogoUrl(path: string | null) {
   if (!path) return null;
 
-  const { data } = supabase.storage
-    .from(COMMUNITY_IMAGE_BUCKET)
-    .getPublicUrl(path);
+  const cleanPath = path.trim();
+  if (!cleanPath) return null;
 
-  return data.publicUrl;
+  const { data, error } = await supabase.storage
+    .from(COMMUNITY_IMAGE_BUCKET)
+    .createSignedUrl(cleanPath, 60 * 30);
+
+  if (error) {
+    throw new Error("Não foi possível gerar a URL assinada da logo.");
+  }
+
+  return data.signedUrl;
 }
 
 async function getPrivateSignatureUrl(path: string | null) {
@@ -119,6 +126,7 @@ function mapAssociationRowToFormData(
     id: row.id,
     name: row.name,
     cnpj: row.cnpj,
+    phone: normalizeNullableText(row.phone),
     community: row.community,
     headquarters_address: row.headquarters_address,
     headquarters_number: normalizeNullableText(row.headquarters_number),
@@ -149,6 +157,7 @@ async function getAssociationRowByCommunity(
         id,
         name,
         cnpj,
+        phone,
         community,
         headquarters_address,
         headquarters_number,
@@ -177,7 +186,7 @@ async function getAssociationRowByCommunity(
 
 async function buildAssociationFormDataFromRow(row: AssociationRow) {
   const [logoUrl, signatureUrl] = await Promise.all([
-    getPublicLogoUrl(row.logo_path),
+    getSignedLogoUrl(row.logo_path),
     getPrivateSignatureUrl(row.signature_path),
   ]);
 
@@ -218,13 +227,11 @@ export async function uploadAssociationLogo(file: File, community: string) {
     throw new Error("Não foi possível enviar a logo da associação.");
   }
 
-  const { data } = supabase.storage
-    .from(COMMUNITY_IMAGE_BUCKET)
-    .getPublicUrl(filePath);
+  const logoUrl = await getSignedLogoUrl(filePath);
 
   return {
     logoPath: filePath,
-    logoUrl: data.publicUrl,
+    logoUrl,
   };
 }
 
@@ -288,6 +295,7 @@ export async function updateAssociation(
   const payload = {
     name: input.name.trim(),
     cnpj: input.cnpj.trim(),
+    phone: input.phone.trim() || null,
     headquarters_address: input.headquarters_address.trim(),
     headquarters_number: input.headquarters_number.trim() || null,
     headquarters_complement: input.headquarters_complement.trim() || null,
@@ -311,6 +319,7 @@ export async function updateAssociation(
         id,
         name,
         cnpj,
+        phone,
         community,
         headquarters_address,
         headquarters_number,
@@ -361,15 +370,13 @@ export async function getAssociationPublicData(): Promise<AssociationPublicData>
     );
   }
 
-  const { data: logoData } = supabase.storage
-    .from(COMMUNITY_IMAGE_BUCKET)
-    .getPublicUrl(data.logo_path);
+  const logoUrl = await getSignedLogoUrl(data.logo_path);
 
   return {
     name: data.name,
     community: data.community,
     description: null,
-    logo_url: logoData.publicUrl,
-    banner_url: logoData.publicUrl, // temporário (explico abaixo)
+    logo_url: logoUrl,
+    banner_url: logoUrl,
   };
 }

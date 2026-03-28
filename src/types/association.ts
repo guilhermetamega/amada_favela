@@ -10,6 +10,7 @@ export type AssociationFormData = {
   headquarters_city: string;
   headquarters_state: string;
   headquarters_zipcode: string;
+  phone: string;
   logo_path: string;
   logo_url: string | null;
   signature_path: string;
@@ -31,6 +32,7 @@ export type AssociationRow = {
   headquarters_city: string;
   headquarters_state: string;
   headquarters_zipcode: string;
+  phone: string | null;
   logo_path: string | null;
   signature_path: string | null;
   president_name: string;
@@ -49,13 +51,13 @@ export type AssociationUpdateInput = {
   headquarters_city: string;
   headquarters_state: string;
   headquarters_zipcode: string;
+  phone: string;
   logo_path: string;
   signature_path: string;
   president_name: string;
   president_role: string;
   is_active: boolean;
 };
-
 export type CurrentAssociationAccess = {
   allowed: boolean;
   reason: string | null;

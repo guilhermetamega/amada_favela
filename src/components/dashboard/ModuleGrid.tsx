@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { AppRouteConfig } from "@/routes/route-config";
 import NavigationButton from "@/components/ui/NavigationButton";
 import { getNavigationButtonTheme } from "@/lib/navigation-button-theme";
+import AssociationWhatsAppButton from "@/components/dashboard/AssociationWhatsappButton";
 
 type Props = {
   routes: AppRouteConfig[];
@@ -23,6 +24,7 @@ function DashboardModuleGridComponent({ routes }: Props) {
           color={getNavigationButtonTheme(route.colorClass)}
         />
       ))}
+      <AssociationWhatsAppButton />
     </section>
   );
 }
