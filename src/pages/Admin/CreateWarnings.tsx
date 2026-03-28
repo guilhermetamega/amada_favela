@@ -1,10 +1,17 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { Pencil } from "lucide-react";
 import DashboardLayout from "@/components/layout/Layout";
 import CreateWarningHero from "@/components/createWarning/Hero";
 import CreateWarningFeedback from "@/components/createWarning/Feedback";
 import WarningForm from "@/components/createWarning/WarningForm";
 import BannerPreview from "@/components/createWarning/BannerPreview";
-import { createWarningBanner } from "@/services/supabase/warning_banners";
+import EditWarningsModal from "@/components/createWarning/EditWarningsModal";
+import {
+  createWarningBanner,
+  getEditableCurrentCommunityWarningBanners,
+  updateWarningBanner,
+} from "@/services/supabase/warning_banners";
+import type { WarningBanner } from "@/types/warning_banners";
 
 export default function CreateWarningsPage() {
   const [message, setMessage] = useState("");
@@ -13,6 +20,34 @@ export default function CreateWarningsPage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingItems, setEditingItems] = useState<WarningBanner[]>([]);
+  const [loadingEditingItems, setLoadingEditingItems] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editErrorMessage, setEditErrorMessage] = useState("");
+
+  async function loadEditableBanners() {
+    try {
+      setLoadingEditingItems(true);
+      setEditErrorMessage("");
+      const data = await getEditableCurrentCommunityWarningBanners();
+      setEditingItems(data);
+    } catch (error) {
+      const nextMessage =
+        error instanceof Error
+          ? error.message
+          : "Erro ao carregar banners editáveis.";
+      setEditErrorMessage(nextMessage);
+    } finally {
+      setLoadingEditingItems(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!editModalOpen) return;
+    void loadEditableBanners();
+  }, [editModalOpen]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,11 +89,52 @@ export default function CreateWarningsPage() {
     }
   }
 
+  async function handleSaveEdit(
+    bannerId: string,
+    input: {
+      message: string;
+      text_color: string;
+      expires_at: string;
+    },
+  ) {
+    try {
+      setSavingEdit(true);
+      setEditErrorMessage("");
+
+      const updated = await updateWarningBanner(bannerId, input);
+
+      setEditingItems((prev) =>
+        prev.map((item) => (item.id === bannerId ? updated : item)),
+      );
+
+      setSuccessMessage("Comunicado atualizado com sucesso.");
+    } catch (error) {
+      const nextMessage =
+        error instanceof Error
+          ? error.message
+          : "Erro ao atualizar comunicado.";
+      setEditErrorMessage(nextMessage);
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
   return (
     <DashboardLayout>
       <main className="px-4 py-4 sm:px-5 sm:py-5 md:px-8 md:py-8">
         <div className="mx-auto max-w-6xl space-y-4">
           <CreateWarningHero />
+
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => setEditModalOpen(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+            >
+              <Pencil size={16} />
+              Editar banners ativos
+            </button>
+          </div>
 
           <CreateWarningFeedback
             errorMessage={errorMessage}
@@ -85,6 +161,17 @@ export default function CreateWarningsPage() {
           </div>
         </div>
       </main>
+
+      <EditWarningsModal
+        open={editModalOpen}
+        items={editingItems}
+        loadingList={loadingEditingItems}
+        saving={savingEdit}
+        errorMessage={editErrorMessage}
+        onClose={() => setEditModalOpen(false)}
+        onRefresh={loadEditableBanners}
+        onSave={handleSaveEdit}
+      />
     </DashboardLayout>
   );
 }
