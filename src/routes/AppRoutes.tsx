@@ -36,6 +36,10 @@ const CreateWarningsPage = lazy(() => import("@/pages/Admin/CreateWarnings"));
 const AdminSocialProjectsPage = lazy(
   () => import("@/pages/Admin/SocialProjects"),
 );
+
+const PrivacyPolicyPage = lazy(() => import("@/pages/Legal/Privacy"));
+const TermsOfUsePage = lazy(() => import("@/pages/Legal/Terms"));
+
 const WelcomeBannerPage = lazy(() => import("@/pages/Dashboard/WelcomeBanner"));
 const AssociationSettingsPage = lazy(() => import("@/pages/Admin/Association"));
 
@@ -48,6 +52,9 @@ export function AppRoutes() {
         <Routes>
           <Route path="/" element={<AuthPage />} />
           <Route path="/auth" element={<AuthPage />} />
+
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsOfUsePage />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<DashboardPage />} />

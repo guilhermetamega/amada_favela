@@ -5,11 +5,14 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/Layout";
+import LegalModal from "@/components/legal/LegalModal";
 import {
   closeMyHomeRent,
   closeMyLostAndFound,
   closeMyLostAnimal,
+  deleteMyAccount,
   deleteMyAvatar,
   deleteMyHomeRent,
   deleteMyLostAndFound,
@@ -25,6 +28,7 @@ import {
   updateMyProfile,
   uploadMyAvatar,
 } from "@/services/supabase/user_profile";
+import { supabase } from "@/services/supabase/client";
 import type {
   MyListingsData,
   PartnerHistoryItem,
@@ -46,6 +50,8 @@ import ProfilePageSkeleton from "@/components/profile/PageSkeleton";
 import ProfilePartnerSection from "@/components/profile/PartnerSection";
 import ProfilePersonalSection from "@/components/profile/PersonalSection";
 import ProfileSecuritySection from "@/components/profile/SecuritySection";
+import ProfileLegalSection from "@/components/profile/LegalSection";
+import ProfileDeleteAccountSection from "@/components/profile/DeleteAccountSection";
 
 type ProfileFormState = UpdateProfileInput;
 
@@ -146,6 +152,14 @@ function saveProfileCache(payload: Omit<ProfileCachePayload, "timestamp">) {
   }
 }
 
+function clearProfileCache() {
+  try {
+    window.sessionStorage.removeItem(PROFILE_CACHE_KEY);
+  } catch {
+    // noop
+  }
+}
+
 function formatPhone(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 11);
 
@@ -190,6 +204,8 @@ function getPartnerBadge(history: PartnerHistoryItem[]) {
 }
 
 export default function ProfilePage() {
+  const navigate = useNavigate();
+
   const [profile, setProfile] = useState<ProfileUser | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [partnerHistory, setPartnerHistory] = useState<PartnerHistoryItem[]>(
@@ -223,6 +239,11 @@ export default function ProfilePage() {
   const [listingActionId, setListingActionId] = useState<string | null>(null);
   const [isPartnerHistoryModalOpen, setIsPartnerHistoryModalOpen] =
     useState(false);
+
+  const [legalModalType, setLegalModalType] = useState<
+    "privacy" | "terms" | null
+  >(null);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const partnerBadge = useMemo(
     () => getPartnerBadge(partnerHistory),
@@ -384,13 +405,15 @@ export default function ProfilePage() {
   useEffect(() => {
     if (typeof document === "undefined") return;
 
-    const shouldLockScroll = isPartnerHistoryModalOpen || !!listingEditState;
+    const shouldLockScroll =
+      isPartnerHistoryModalOpen || !!listingEditState || !!legalModalType;
+
     document.body.style.overflow = shouldLockScroll ? "hidden" : "";
 
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isPartnerHistoryModalOpen, listingEditState]);
+  }, [isPartnerHistoryModalOpen, listingEditState, legalModalType]);
 
   function setFeedbackSuccess(message: string) {
     setSuccessMessage(message);
@@ -721,6 +744,29 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleDeleteAccount() {
+    try {
+      setDeletingAccount(true);
+      clearMessages();
+
+      await deleteMyAccount();
+
+      clearProfileCache();
+      await supabase.auth.signOut();
+
+      navigate("/auth", { replace: true });
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível excluir sua conta.",
+      );
+      setSuccessMessage("");
+    } finally {
+      setDeletingAccount(false);
+    }
+  }
+
   return (
     <DashboardLayout>
       <main className="min-h-screen bg-zinc-50 px-4 py-6 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 sm:py-8 md:py-10">
@@ -778,6 +824,7 @@ export default function ProfilePage() {
                   onChange={setProfileForm}
                   onSubmit={handleProfileSubmit}
                 />
+
                 <ProfilePartnerSection
                   partnerHistory={partnerHistory}
                   hasActivePartner={hasActivePartner}
@@ -808,6 +855,16 @@ export default function ProfilePage() {
                   }
                   listingActionId={listingActionId}
                 />
+
+                <ProfileLegalSection
+                  onOpenTerms={() => setLegalModalType("terms")}
+                  onOpenPrivacy={() => setLegalModalType("privacy")}
+                />
+
+                <ProfileDeleteAccountSection
+                  loading={deletingAccount}
+                  onDelete={handleDeleteAccount}
+                />
               </div>
             </div>
           </div>
@@ -827,6 +884,12 @@ export default function ProfilePage() {
         onChange={setListingEditState}
         onClose={() => setListingEditState(null)}
         onSubmit={handleSubmitListingEdit}
+      />
+
+      <LegalModal
+        open={legalModalType !== null}
+        type={legalModalType ?? "terms"}
+        onClose={() => setLegalModalType(null)}
       />
     </DashboardLayout>
   );

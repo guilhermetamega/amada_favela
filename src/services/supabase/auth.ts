@@ -1,5 +1,6 @@
 import { supabase } from "@/services/supabase/client";
 import type { LoginFormData, RegisterFormData } from "@/types/auth";
+import { LEGAL_POLICY_VERSION, LEGAL_TERMS_VERSION } from "@/lib/legal";
 
 type EmailLookupRow = {
   email: string | null;
@@ -218,6 +219,8 @@ export async function signUpWithEmail(
     }
   }
 
+  const nowIso = new Date().toISOString();
+
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email: sanitizedEmail,
     password,
@@ -225,6 +228,12 @@ export async function signUpWithEmail(
       data: {
         fullname: sanitizedFullname,
         cpf: sanitizedCpf || null,
+
+        accepted_terms: true,
+        accepted_privacy_policy: true,
+        accepted_terms_version: LEGAL_TERMS_VERSION,
+        accepted_privacy_version: LEGAL_POLICY_VERSION,
+        accepted_legal_at: nowIso,
       },
     },
   });

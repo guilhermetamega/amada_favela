@@ -5,7 +5,7 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   BadgeCheck,
@@ -30,6 +30,7 @@ import { useAuth } from "@/hooks";
 import { supabase } from "@/services/supabase/client";
 import { COMMUNITIES } from "@/lib/communities";
 import { prefetchDashboard } from "@/lib/prefetch/prefetch-dashboard";
+import LegalModal from "@/components/legal/LegalModal";
 
 const initialLoginForm: LoginFormData = {
   identifier: "",
@@ -51,7 +52,7 @@ const initialRegisterForm: RegisterFormData = {
 };
 
 function inputClassName() {
-  return "w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-emerald-500/60 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700/80 dark:bg-zinc-900/80 dark:text-white dark:placeholder:text-zinc-500 dark:focus:bg-zinc-900";
+  return "w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-emerald-500/60 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-70 dark:border-zinc-700/80 dark:bg-zinc-900/80 dark:text-white dark:placeholder:text-zinc-500 dark:focus:bg-zinc-900";
 }
 
 function labelClassName() {
@@ -108,6 +109,22 @@ export default function AuthPage() {
     null,
   );
   const [profilePicturePreview, setProfilePicturePreview] = useState("");
+
+  const [legalModalType, setLegalModalType] = useState<
+    "privacy" | "terms" | null
+  >(null);
+
+  function openPrivacyModal() {
+    setLegalModalType("privacy");
+  }
+
+  function openTermsModal() {
+    setLegalModalType("terms");
+  }
+
+  function closeLegalModal() {
+    setLegalModalType(null);
+  }
 
   const activeCommunities = useMemo(
     () => COMMUNITIES.filter((community) => community.active),
@@ -172,6 +189,13 @@ export default function AuthPage() {
 
     return "Digite sua rua ou quadra";
   }, [selectedCommunity, communityAddressItems]);
+
+  const cardGridClassName =
+    mode === "register"
+      ? "lg:grid-cols-[0.82fr_1.38fr]"
+      : "lg:grid-cols-[0.95fr_1.05fr]";
+
+  const formWrapperClassName = mode === "register" ? "max-w-4xl" : "max-w-md";
 
   useEffect(() => {
     if (authLoading) return;
@@ -393,6 +417,9 @@ export default function AuthPage() {
       setProfilePictureFile(null);
       setProfilePicturePreview("");
       setMode("login");
+      setSuccessMessage(
+        "Cadastro realizado com sucesso. Agora entre com sua conta.",
+      );
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Erro ao realizar cadastro.";
@@ -415,11 +442,7 @@ export default function AuthPage() {
       <div className="relative flex min-h-screen items-center justify-center px-4 py-4 sm:px-6 lg:py-5">
         <div className="w-full max-w-6xl">
           <div
-            className={`grid w-full overflow-hidden rounded-4xl border border-zinc-200/80 bg-white/90 shadow-2xl backdrop-blur-xl dark:border-zinc-800/80 dark:bg-zinc-900/80 ${
-              mode === "register"
-                ? "lg:grid-cols-[0.82fr_1.38fr]"
-                : "lg:grid-cols-[0.95fr_1.05fr]"
-            }`}
+            className={`grid w-full overflow-hidden rounded-4xl border border-zinc-200/80 bg-white/90 shadow-2xl backdrop-blur-xl dark:border-zinc-800/80 dark:bg-zinc-900/80 ${cardGridClassName}`}
           >
             <section className="hidden border-r border-zinc-200/80 bg-linear-to-br from-emerald-500/10 via-white to-sky-500/8 p-5 dark:border-zinc-800/80 dark:from-emerald-500/16 dark:via-zinc-950 dark:to-sky-500/10 lg:flex lg:flex-col lg:justify-between">
               <div>
@@ -456,15 +479,21 @@ export default function AuthPage() {
                     Entre com sua conta ou cadastre-se rapidamente.
                   </p>
                 </div>
+
+                <div className="rounded-2xl border border-zinc-200/80 bg-white/70 p-3.5 dark:border-zinc-800/80 dark:bg-zinc-950/60">
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-white">
+                    Transparência jurídica
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+                    Termos e política acessíveis antes do login, com navegação
+                    pública e leitura em modal.
+                  </p>
+                </div>
               </div>
             </section>
 
             <section className="p-4 sm:p-5 lg:p-5">
-              <div
-                className={`mx-auto w-full ${
-                  mode === "register" ? "max-w-4xl" : "max-w-md"
-                }`}
-              >
+              <div className={`mx-auto w-full ${formWrapperClassName}`}>
                 <div className="mb-4 lg:mb-3">
                   <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 lg:hidden">
                     <BadgeCheck size={13} />
@@ -1021,16 +1050,61 @@ export default function AuthPage() {
                 )}
 
                 <footer className="mt-4 border-t border-zinc-200/80 pt-4 text-center dark:border-zinc-800/80 lg:mt-3 lg:pt-3">
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    Desenvolvido Pela Equipe das:
-                  </p>
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-zinc-500 dark:text-zinc-400">
+                      <button
+                        type="button"
+                        onClick={openTermsModal}
+                        className="font-medium underline underline-offset-4 transition hover:text-zinc-900 dark:hover:text-zinc-100"
+                      >
+                        Termos de Uso
+                      </button>
 
-                  <div className="mt-2 flex justify-center">
-                    <img
-                      src={developedByLogo}
-                      alt="Equipe de Desenvolvimento"
-                      className="h-10 object-contain opacity-85 transition hover:opacity-100"
-                    />
+                      <span className="hidden text-zinc-300 dark:text-zinc-700 sm:inline">
+                        •
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={openPrivacyModal}
+                        className="font-medium underline underline-offset-4 transition hover:text-zinc-900 dark:hover:text-zinc-100"
+                      >
+                        Política de Privacidade
+                      </button>
+
+                      <span className="hidden text-zinc-300 dark:text-zinc-700 sm:inline">
+                        •
+                      </span>
+
+                      <Link
+                        to="/terms"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-medium underline underline-offset-4 transition hover:text-zinc-900 dark:hover:text-zinc-100"
+                      >
+                        Abrir página pública
+                      </Link>
+                    </div>
+
+                    <p className="text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+                      Ao prosseguir com login ou cadastro, o usuário manifesta
+                      ciência dos instrumentos jurídicos da plataforma e das
+                      regras de tratamento de dados aplicáveis.
+                    </p>
+
+                    <div>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                        Desenvolvido Pela Equipe das:
+                      </p>
+
+                      <div className="mt-2 flex justify-center">
+                        <img
+                          src={developedByLogo}
+                          alt="Equipe de Desenvolvimento"
+                          className="h-10 object-contain opacity-85 transition hover:opacity-100"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </footer>
               </div>
@@ -1038,6 +1112,12 @@ export default function AuthPage() {
           </div>
         </div>
       </div>
+
+      <LegalModal
+        open={legalModalType !== null}
+        type={legalModalType ?? "terms"}
+        onClose={closeLegalModal}
+      />
     </main>
   );
 }

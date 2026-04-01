@@ -69,6 +69,41 @@ function validateProfilePicture(file: File) {
   }
 }
 
+export async function deleteMyAccount() {
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError) {
+    throw new Error("Erro ao verificar sessão atual.");
+  }
+
+  if (!session?.access_token) {
+    throw new Error("Sessão expirada ou usuário não autenticado.");
+  }
+
+  const { data, error } = await supabase.functions.invoke("delete-my-account", {
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: {},
+  });
+
+  if (error) {
+    throw new Error(
+      error.message || "Não foi possível excluir sua conta no momento.",
+    );
+  }
+
+  if (!data?.success) {
+    throw new Error(
+      data?.message || "Não foi possível concluir a exclusão da conta.",
+    );
+  }
+
+  return data as { success: true; message: string };
+}
 function getPublicFilePathFromUrl(
   url: string | null | undefined,
   bucket: string,
