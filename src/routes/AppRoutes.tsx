@@ -7,6 +7,7 @@ import PollsPage from "@/pages/Polls";
 import AdminPollsPage from "@/pages/Admin/Polls";
 import ServiceOrdersPage from "@/pages/ServiceOrders";
 import AdminServiceOrdersPage from "@/pages/Admin/ServiceOrders";
+import DeleteAccountPage from "@/pages/DeleteAccount";
 
 const AuthPage = lazy(() => import("@/pages/Auth"));
 const DashboardPage = lazy(() => import("@/pages/Dashboard"));
@@ -55,6 +56,7 @@ export function AppRoutes() {
 
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfUsePage />} />
+          <Route path="/delete-account" element={<DeleteAccountPage />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<DashboardPage />} />
