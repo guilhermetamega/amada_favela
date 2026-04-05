@@ -17,7 +17,17 @@ function formatDate(value: string | null) {
 
 function isPartnerHistoryItemActive(item: PartnerHistoryItem) {
   const expiresAt = new Date(item.expires_at);
-  return item.status ? item.status === "active" : expiresAt >= new Date();
+  const notExpired = expiresAt.getTime() >= Date.now();
+
+  if (!notExpired) {
+    return false;
+  }
+
+  if (item.status === "expired" || item.status === "cancelled") {
+    return false;
+  }
+
+  return true;
 }
 
 export default function PartnerHistoryModal({ open, items, onClose }: Props) {

@@ -19,7 +19,7 @@ export const PRIVACY_POLICY_CONTENT: LegalDocumentContent = {
   title: "Política de Privacidade",
   shortTitle: "Política de Privacidade",
   version: LEGAL_POLICY_VERSION,
-  updatedAtLabel: "Última atualização: 01 de abril de 2026",
+  updatedAtLabel: "Última atualização: 05 de abril de 2026",
   intro: [
     "A AMA da Favela respeita a privacidade, a proteção de dados pessoais e a autodeterminação informativa de seus usuários. Esta Política de Privacidade descreve, de forma clara e formal, como coletamos, utilizamos, armazenamos, protegemos e compartilhamos informações no contexto da utilização de nossa plataforma digital, incluindo website, aplicativo móvel, funcionalidades administrativas, documentos emitidos e serviços correlatos.",
     "Ao acessar, navegar, cadastrar-se ou utilizar quaisquer funcionalidades da plataforma, o usuário declara ciência desta Política e concorda com o tratamento de dados pessoais nela descrito, nos limites permitidos pela legislação aplicável, em especial a Lei nº 13.709/2018 (Lei Geral de Proteção de Dados Pessoais – LGPD), o Marco Civil da Internet e demais normas brasileiras aplicáveis.",
@@ -113,6 +113,18 @@ export const PRIVACY_POLICY_CONTENT: LegalDocumentContent = {
       title: "13. Contato",
       body: [
         "Dúvidas, solicitações ou comunicações relacionadas a esta Política poderão ser encaminhadas ao canal oficial de atendimento informado pela plataforma em seus ambientes públicos ou internos.",
+      ],
+    },
+    {
+      title: "14. Segurança Infantil e Prevenção de Abuso (CSAE)",
+      body: [
+        "A plataforma AMA da Favela e o aplicativo Lojas das Comunidades adotam política de tolerância zero em relação a qualquer forma de abuso, exploração ou conteúdo sexual envolvendo crianças e adolescentes (CSAE – Child Sexual Abuse and Exploitation).",
+        "É expressamente proibida a utilização da plataforma para publicação, compartilhamento, armazenamento ou disseminação de qualquer conteúdo que viole a integridade de menores.",
+        "A plataforma se compromete a remover imediatamente qualquer conteúdo que viole estas diretrizes, bloquear ou suspender usuários envolvidos em condutas ilícitas, cooperar com autoridades competentes quando necessário e monitorar e agir preventivamente contra abusos.",
+        "Os usuários podem denunciar conteúdos ou comportamentos suspeitos através do canal oficial:",
+        "Email: guitamega06@gmail.com",
+        "As denúncias serão analisadas com prioridade e poderão resultar em medidas imediatas para proteção dos usuários e da plataforma.",
+        "A AMA da Favela atua em conformidade com as políticas do Google Play e legislações aplicáveis, visando garantir um ambiente seguro para todos.",
       ],
     },
   ],

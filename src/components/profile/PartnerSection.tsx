@@ -1,10 +1,11 @@
-import { CreditCard } from "lucide-react";
+import { CreditCard, LoaderCircle } from "lucide-react";
 import type { PartnerHistoryItem } from "@/types/profile";
 
 type Props = {
   partnerHistory: PartnerHistoryItem[];
   hasActivePartner: boolean;
   partnerBadge: { label: string; className: string };
+  payingMonthlyFee: boolean;
   onPayMonthlyFeeClick: () => void;
   onOpenHistory: () => void;
 };
@@ -21,10 +22,12 @@ export default function ProfilePartnerSection({
   partnerHistory,
   hasActivePartner,
   partnerBadge,
+  payingMonthlyFee,
   onPayMonthlyFeeClick,
   onOpenHistory,
 }: Props) {
   const preview = partnerHistory.slice(0, 3);
+  const payDisabled = hasActivePartner || payingMonthlyFee;
 
   return (
     <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
@@ -73,15 +76,23 @@ export default function ProfilePartnerSection({
         <button
           type="button"
           onClick={onPayMonthlyFeeClick}
-          disabled={hasActivePartner}
+          disabled={payDisabled}
           className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition sm:min-w-55 ${
-            hasActivePartner
+            payDisabled
               ? "cursor-not-allowed border border-zinc-200 bg-zinc-100 text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-500"
               : "bg-emerald-600 text-white hover:bg-emerald-700"
           }`}
         >
-          <CreditCard size={16} />
-          {hasActivePartner ? "Mensalidade ativa" : "Pagar mensalidade"}
+          {payingMonthlyFee ? (
+            <LoaderCircle size={16} className="animate-spin" />
+          ) : (
+            <CreditCard size={16} />
+          )}
+          {payingMonthlyFee
+            ? "Abrindo checkout..."
+            : hasActivePartner
+              ? "Mensalidade ativa"
+              : "Pagar mensalidade"}
         </button>
 
         {partnerHistory.length > 3 ? (

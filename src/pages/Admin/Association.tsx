@@ -5,6 +5,7 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react";
+import { useSearchParams } from "react-router-dom";
 import DashboardLayout from "@/components/layout/Layout";
 import AssociationHero from "@/components/associationSettings/Hero";
 import AssociationFeedback from "@/components/associationSettings/Feedback";
@@ -13,8 +14,10 @@ import SettingsForm from "@/components/associationSettings/SettingsForm";
 import InstitutionalPreview from "@/components/associationSettings/InstitutionalPreview";
 import type { AssociationFormData } from "@/types/association";
 import {
+  createAssociationStripeOnboarding,
   getCurrentAssociationAccess,
   getMyAssociation,
+  syncAssociationStripeOnboardingStatus,
   updateAssociation,
   uploadAssociationLogo,
   uploadAssociationSignature,
@@ -41,6 +44,9 @@ const initialForm: AssociationFormData = {
   president_name: "",
   president_role: "Presidente",
   is_active: true,
+  monthly_fee: "",
+  stripe_connected_account_id: "",
+  stripe_onboarding_completed: false,
 };
 
 function onlyDigits(value: string) {
@@ -86,11 +92,14 @@ function formatPhone(value: string) {
 }
 
 export default function AssociationSettingsPage() {
+  const [searchParams] = useSearchParams();
   const [form, setForm] = useState<AssociationFormData>(initialForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingSignature, setUploadingSignature] = useState(false);
+  const [stripeOnboardingLoading, setStripeOnboardingLoading] = useState(false);
+  const [stripeStatusSyncing, setStripeStatusSyncing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [accessDenied, setAccessDenied] = useState(false);
@@ -123,6 +132,29 @@ export default function AssociationSettingsPage() {
 
         setAccessDenied(false);
         setForm(association);
+
+        if (association.stripe_connected_account_id) {
+          setStripeStatusSyncing(true);
+
+          try {
+            const stripeStatus = await syncAssociationStripeOnboardingStatus();
+
+            if (!active) return;
+
+            setForm((current) => ({
+              ...current,
+              stripe_connected_account_id:
+                stripeStatus.stripe_connected_account_id ??
+                current.stripe_connected_account_id,
+              stripe_onboarding_completed:
+                stripeStatus.stripe_onboarding_completed,
+            }));
+          } finally {
+            if (active) {
+              setStripeStatusSyncing(false);
+            }
+          }
+        }
       } catch (error) {
         if (!active) return;
 
@@ -144,6 +176,59 @@ export default function AssociationSettingsPage() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    const stripeFlowState = searchParams.get("stripe");
+
+    if (!stripeFlowState || !form.stripe_connected_account_id) {
+      return;
+    }
+
+    let active = true;
+
+    async function syncAfterReturn() {
+      setStripeStatusSyncing(true);
+
+      try {
+        const stripeStatus = await syncAssociationStripeOnboardingStatus();
+
+        if (!active) return;
+
+        setForm((current) => ({
+          ...current,
+          stripe_connected_account_id:
+            stripeStatus.stripe_connected_account_id ??
+            current.stripe_connected_account_id,
+          stripe_onboarding_completed: stripeStatus.stripe_onboarding_completed,
+        }));
+
+        setSuccessMessage(
+          stripeStatus.stripe_onboarding_completed
+            ? "Onboarding da Stripe concluído com sucesso."
+            : "Conta Stripe criada. Continue o onboarding para habilitar os pagamentos.",
+        );
+      } catch (error) {
+        if (!active) return;
+
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Não foi possível sincronizar o status da Stripe.",
+        );
+      } finally {
+        if (active) {
+          setStripeStatusSyncing(false);
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      }
+    }
+
+    void syncAfterReturn();
+
+    return () => {
+      active = false;
+    };
+  }, [form.stripe_connected_account_id, searchParams]);
 
   const institutionalAddressPreview = useMemo(() => {
     return [
@@ -240,6 +325,29 @@ export default function AssociationSettingsPage() {
     }
   }
 
+  async function handleStripeOnboardingClick() {
+    if (stripeOnboardingLoading || accessDenied) {
+      return;
+    }
+
+    setStripeOnboardingLoading(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      const result = await createAssociationStripeOnboarding();
+      window.location.assign(result.url);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível abrir o onboarding da Stripe.",
+      );
+    } finally {
+      setStripeOnboardingLoading(false);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -267,12 +375,19 @@ export default function AssociationSettingsPage() {
         president_name: form.president_name,
         president_role: form.president_role,
         is_active: form.is_active,
+        monthly_fee: form.monthly_fee,
       });
 
-      setForm(updated);
+      setForm((current) => ({
+        ...updated,
+        stripe_connected_account_id: current.stripe_connected_account_id,
+        stripe_onboarding_completed: current.stripe_onboarding_completed,
+      }));
+
       if (updated.community) {
         invalidateAssociationContactCache(updated.community);
       }
+
       setSuccessMessage("Dados da associação atualizados com sucesso.");
     } catch (error) {
       setErrorMessage(
@@ -311,10 +426,15 @@ export default function AssociationSettingsPage() {
                 saving={saving}
                 uploadingLogo={uploadingLogo}
                 uploadingSignature={uploadingSignature}
+                stripeOnboardingLoading={stripeOnboardingLoading}
+                stripeStatusSyncing={stripeStatusSyncing}
                 onFieldChange={updateField}
                 onLogoChange={(event) => void handleLogoChange(event)}
                 onSignatureChange={(event) => void handleSignatureChange(event)}
                 onSubmit={handleSubmit}
+                onStripeOnboardingClick={() => {
+                  void handleStripeOnboardingClick();
+                }}
                 formatCnpj={formatCnpj}
                 formatZipcode={formatZipcode}
                 formatPhone={formatPhone}

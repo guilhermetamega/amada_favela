@@ -4,6 +4,7 @@ import { toPng } from "html-to-image";
 import DashboardLayout from "@/components/layout/Layout";
 import DashboardHeader from "@/components/layout/DashboardHeader";
 import { getMyMemberCardData } from "@/services/supabase/member_card";
+import MembershipPayButton from "@/components/membership/MembershipPayButton";
 import { MemberCardData } from "@/types/member_card";
 
 function formatDate(date: string | null | undefined) {
@@ -313,15 +314,19 @@ export default function MemberCardPage() {
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => void handleDownloadCard()}
-                  disabled={downloading}
-                  className="mt-6 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-zinc-900 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <Download className="h-4 w-4" />
-                  {downloading ? "Gerando imagem..." : "Baixar carteirinha"}
-                </button>
+                <div className="mt-6 flex flex-col gap-3">
+                  <button
+                    type="button"
+                    onClick={() => void handleDownloadCard()}
+                    disabled={downloading}
+                    className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-zinc-900 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Download className="h-4 w-4" />
+                    {downloading ? "Gerando imagem..." : "Baixar carteirinha"}
+                  </button>
+
+                  <MembershipPayButton className="text-left" />
+                </div>
               </section>
             </div>
           ) : null}

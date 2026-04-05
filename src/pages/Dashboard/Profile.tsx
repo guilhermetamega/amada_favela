@@ -29,6 +29,8 @@ import {
   uploadMyAvatar,
 } from "@/services/supabase/user_profile";
 import { supabase } from "@/services/supabase/client";
+import { createMembershipCheckout } from "@/services/supabase/membership";
+import { openExternalUrl } from "@/lib/open-external-url";
 import type {
   MyListingsData,
   PartnerHistoryItem,
@@ -174,7 +176,17 @@ function formatPhone(value: string) {
 
 function isPartnerHistoryItemActive(item: PartnerHistoryItem) {
   const expiresAt = new Date(item.expires_at);
-  return item.status ? item.status === "active" : expiresAt >= new Date();
+  const notExpired = expiresAt.getTime() >= Date.now();
+
+  if (!notExpired) {
+    return false;
+  }
+
+  if (item.status === "expired" || item.status === "cancelled") {
+    return false;
+  }
+
+  return true;
 }
 
 function getPartnerBadge(history: PartnerHistoryItem[]) {
@@ -220,6 +232,7 @@ export default function ProfilePage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [partnerActionMessage, setPartnerActionMessage] = useState("");
+  const [payingMonthlyFee, setPayingMonthlyFee] = useState(false);
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileForm, setProfileForm] =
@@ -426,12 +439,31 @@ export default function ProfilePage() {
     setPartnerActionMessage("");
   }
 
-  function handlePayMonthlyFeeClick() {
-    setPartnerActionMessage(
-      "A função de pagamento da mensalidade será liberada após a configuração completa da Stripe.",
-    );
-    setSuccessMessage("");
-    setErrorMessage("");
+  async function handlePayMonthlyFeeClick() {
+    if (payingMonthlyFee || hasActivePartner) {
+      return;
+    }
+
+    try {
+      setPayingMonthlyFee(true);
+      clearMessages();
+
+      const { url } = await createMembershipCheckout(true);
+      setPartnerActionMessage(
+        "Checkout aberto no navegador. A confirmação final da mensalidade acontece via webhook da Stripe.",
+      );
+      openExternalUrl(url);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível iniciar o pagamento da mensalidade.",
+      );
+      setSuccessMessage("");
+      setPartnerActionMessage("");
+    } finally {
+      setPayingMonthlyFee(false);
+    }
   }
 
   async function handleProfileSubmit(event: FormEvent<HTMLFormElement>) {
@@ -829,7 +861,10 @@ export default function ProfilePage() {
                   partnerHistory={partnerHistory}
                   hasActivePartner={hasActivePartner}
                   partnerBadge={partnerBadge}
-                  onPayMonthlyFeeClick={handlePayMonthlyFeeClick}
+                  payingMonthlyFee={payingMonthlyFee}
+                  onPayMonthlyFeeClick={() => {
+                    void handlePayMonthlyFeeClick();
+                  }}
                   onOpenHistory={() => setIsPartnerHistoryModalOpen(true)}
                 />
               </div>

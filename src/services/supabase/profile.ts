@@ -45,9 +45,15 @@ export async function getPartnerStatus(userId: string): Promise<boolean> {
 
   const partner = data as PartnerStatusRow;
 
-  if (partner.status) {
-    return partner.status === "active";
+  const notExpired = new Date(partner.expires_at).getTime() >= Date.now();
+
+  if (!notExpired) {
+    return false;
   }
 
-  return new Date(partner.expires_at).getTime() >= Date.now();
+  if (partner.status === "expired" || partner.status === "cancelled") {
+    return false;
+  }
+
+  return true;
 }

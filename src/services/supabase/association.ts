@@ -2,6 +2,8 @@ import { supabase } from "@/services/supabase/client";
 import type {
   AssociationFormData,
   AssociationRow,
+  AssociationStripeOnboardingResponse,
+  AssociationStripeStatusResponse,
   AssociationUpdateInput,
   CurrentAssociationAccess,
   CurrentProfileAssociationRow,
@@ -22,10 +24,35 @@ function normalizeNullableText(value: string | null | undefined) {
   return value?.trim() ?? "";
 }
 
+function formatMonthlyFeeValue(value: number | string | null | undefined) {
+  if (value === null || value === undefined || value === "") return "";
+
+  const numericValue =
+    typeof value === "number"
+      ? value
+      : Number(String(value).replace(",", ".").trim());
+
+  if (!Number.isFinite(numericValue) || numericValue < 0) {
+    return "";
+  }
+
+  return numericValue.toFixed(2).replace(".", ",");
+}
+
+function parseMonthlyFeeValue(value: string) {
+  const normalized = Number(value.replace(/\s+/g, "").replace(",", "."));
+
+  if (!Number.isFinite(normalized) || normalized < 0) {
+    throw new Error("Informe uma mensalidade válida.");
+  }
+
+  return Number(normalized.toFixed(2));
+}
+
 function sanitizeFileName(fileName: string) {
   return fileName
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .replace(/\s+/g, "-")
     .replace(/[^a-zA-Z0-9._-]/g, "")
     .toLowerCase();
@@ -106,9 +133,12 @@ async function getSignedLogoUrl(path: string | null) {
 async function getPrivateSignatureUrl(path: string | null) {
   if (!path) return null;
 
+  const cleanPath = path.trim();
+  if (!cleanPath) return null;
+
   const { data, error } = await supabase.storage
     .from(ASSOCIATION_SIGNATURES_BUCKET)
-    .createSignedUrl(path, 60 * 30);
+    .createSignedUrl(cleanPath, 60 * 30);
 
   if (error) {
     throw new Error("Não foi possível gerar a URL assinada da assinatura.");
@@ -144,6 +174,11 @@ function mapAssociationRowToFormData(
     president_name: row.president_name,
     president_role: normalizeNullableText(row.president_role) || "Presidente",
     is_active: row.is_active,
+    monthly_fee: formatMonthlyFeeValue(row.monthly_fee),
+    stripe_connected_account_id: normalizeNullableText(
+      row.stripe_connected_account_id,
+    ),
+    stripe_onboarding_completed: Boolean(row.stripe_onboarding_completed),
   };
 }
 
@@ -170,7 +205,10 @@ async function getAssociationRowByCommunity(
         signature_path,
         president_name,
         president_role,
-        is_active
+        is_active,
+        monthly_fee,
+        stripe_connected_account_id,
+        stripe_onboarding_completed
       `,
     )
     .eq("community", community)
@@ -212,8 +250,6 @@ export async function uploadAssociationLogo(file: File, community: string) {
   const ext = getFileExtension(file.name);
   const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
   const safeName = sanitizeFileName(nameWithoutExt);
-
-  // path salvo no banco: mandela2/arquivo.ext
   const filePath = `${community}/${user.id}-${Date.now()}-${safeName}.${ext}`;
 
   const { error } = await supabase.storage
@@ -244,8 +280,6 @@ export async function uploadAssociationSignature(
   const ext = getFileExtension(file.name);
   const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
   const safeName = sanitizeFileName(nameWithoutExt);
-
-  // path salvo no banco: mandela2/arquivo.ext
   const filePath = `${community}/${user.id}-${Date.now()}-${safeName}.${ext}`;
 
   const { error } = await supabase.storage
@@ -308,6 +342,7 @@ export async function updateAssociation(
     president_name: input.president_name.trim(),
     president_role: input.president_role.trim() || "Presidente",
     is_active: input.is_active,
+    monthly_fee: parseMonthlyFeeValue(input.monthly_fee),
   };
 
   const { data, error } = await supabase
@@ -332,16 +367,60 @@ export async function updateAssociation(
         signature_path,
         president_name,
         president_role,
-        is_active
+        is_active,
+        monthly_fee,
+        stripe_connected_account_id,
+        stripe_onboarding_completed
       `,
     )
     .single();
 
   if (error || !data) {
-    throw new Error("Não foi possível atualizar os dados da associação.");
+    throw new Error("Não foi possível salvar os dados da associação.");
   }
 
   return buildAssociationFormDataFromRow(data as AssociationRow);
+}
+
+export async function createAssociationStripeOnboarding(): Promise<AssociationStripeOnboardingResponse> {
+  const { data, error } = await supabase.functions.invoke(
+    "create-association-stripe-onboarding",
+    {
+      body: {},
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      error.message || "Não foi possível iniciar o onboarding da Stripe.",
+    );
+  }
+
+  if (!data?.url || !data?.mode) {
+    throw new Error("A Stripe não retornou um link de onboarding válido.");
+  }
+
+  return data as AssociationStripeOnboardingResponse;
+}
+
+export async function syncAssociationStripeOnboardingStatus(): Promise<AssociationStripeStatusResponse> {
+  const { data, error } = await supabase.functions.invoke(
+    "sync-association-stripe-onboarding-status",
+    {
+      body: {},
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      error.message || "Não foi possível sincronizar o status da Stripe.",
+    );
+  }
+
+  return {
+    stripe_connected_account_id: data?.stripe_connected_account_id ?? null,
+    stripe_onboarding_completed: Boolean(data?.stripe_onboarding_completed),
+  };
 }
 
 export async function getAssociationPublicData(): Promise<AssociationPublicData> {
@@ -355,10 +434,10 @@ export async function getAssociationPublicData(): Promise<AssociationPublicData>
     .from("association")
     .select(
       `
-      name,
-      community,
-      logo_path
-    `,
+        name,
+        community,
+        logo_path
+      `,
     )
     .eq("community", profile.comunity)
     .eq("is_active", true)

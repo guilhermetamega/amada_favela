@@ -18,6 +18,9 @@ export type AssociationFormData = {
   president_name: string;
   president_role: string;
   is_active: boolean;
+  monthly_fee: string;
+  stripe_connected_account_id: string;
+  stripe_onboarding_completed: boolean;
 };
 
 export type AssociationRow = {
@@ -38,6 +41,9 @@ export type AssociationRow = {
   president_name: string;
   president_role: string | null;
   is_active: boolean;
+  monthly_fee: number | string | null;
+  stripe_connected_account_id: string | null;
+  stripe_onboarding_completed: boolean | null;
 };
 
 export type AssociationUpdateInput = {
@@ -57,7 +63,9 @@ export type AssociationUpdateInput = {
   president_name: string;
   president_role: string;
   is_active: boolean;
+  monthly_fee: string;
 };
+
 export type CurrentAssociationAccess = {
   allowed: boolean;
   reason: string | null;
@@ -69,4 +77,14 @@ export type CurrentProfileAssociationRow = {
   id: string;
   role: string | null;
   comunity: string | null;
+};
+
+export type AssociationStripeOnboardingResponse = {
+  url: string;
+  mode: "onboarding" | "login";
+};
+
+export type AssociationStripeStatusResponse = {
+  stripe_connected_account_id: string | null;
+  stripe_onboarding_completed: boolean;
 };
