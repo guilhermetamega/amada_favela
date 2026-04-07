@@ -1077,12 +1077,12 @@ export default function AuthPage() {
                       </span>
 
                       <Link
-                        to="/terms"
+                        to="/child-policy"
                         target="_blank"
                         rel="noreferrer"
                         className="font-medium underline underline-offset-4 transition hover:text-zinc-900 dark:hover:text-zinc-100"
                       >
-                        Abrir página pública
+                        Política de Segurança Infantil
                       </Link>
                     </div>
 

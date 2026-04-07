@@ -40,6 +40,7 @@ const AdminSocialProjectsPage = lazy(
 
 const PrivacyPolicyPage = lazy(() => import("@/pages/Legal/Privacy"));
 const TermsOfUsePage = lazy(() => import("@/pages/Legal/Terms"));
+const ChildPolicyPage = lazy(() => import("@/pages/Legal/ChildPolicy"));
 const PaymentResultPage = lazy(() => import("@/pages/PaymentResult"));
 
 const WelcomeBannerPage = lazy(() => import("@/pages/Dashboard/WelcomeBanner"));
@@ -57,6 +58,7 @@ export function AppRoutes() {
 
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfUsePage />} />
+          <Route path="/child-policy" element={<ChildPolicyPage />} />
           <Route path="/delete-account" element={<DeleteAccountPage />} />
           <Route path="/payment/result" element={<PaymentResultPage />} />
 

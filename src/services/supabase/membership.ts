@@ -1,5 +1,8 @@
 import { supabase } from "@/services/supabase/client";
-import type { MembershipCheckoutResponse } from "@/types/membership";
+import type {
+  MembershipCheckoutResponse,
+  MembershipCheckoutStatusResponse,
+} from "@/types/membership";
 
 export async function createMembershipCheckout(
   recurring = true,
@@ -33,4 +36,34 @@ export async function createMembershipCheckout(
   }
 
   return data as MembershipCheckoutResponse;
+}
+
+export async function getMembershipCheckoutStatus(
+  sessionId: string,
+): Promise<MembershipCheckoutStatusResponse> {
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError) {
+    throw new Error("Erro ao validar sessão.");
+  }
+
+  if (!session?.access_token) {
+    throw new Error("Sessão expirada. Faça login novamente.");
+  }
+
+  const { data, error } = await supabase.functions.invoke(
+    "get-membership-checkout-status",
+    {
+      body: { sessionId },
+    },
+  );
+
+  if (error) {
+    throw new Error(error.message || "Erro ao consultar pagamento.");
+  }
+
+  return data as MembershipCheckoutStatusResponse;
 }

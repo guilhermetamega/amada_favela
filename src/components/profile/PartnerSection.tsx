@@ -92,7 +92,7 @@ export default function ProfilePartnerSection({
             ? "Abrindo checkout..."
             : hasActivePartner
               ? "Mensalidade ativa"
-              : "Pagar mensalidade"}
+              : "Apoiar Associação"}
         </button>
 
         {partnerHistory.length > 3 ? (

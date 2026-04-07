@@ -1,6 +1,16 @@
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { getMembershipCheckoutStatus } from "@/services/supabase/membership";
+import type { MembershipCheckoutStatusResponse } from "@/types/membership";
+import { usePermissions } from "@/hooks/usePermissions";
 
-function getCopy(status: string | null) {
+type StatusCard = {
+  title: string;
+  description: string;
+  badgeClassName: string;
+};
+
+function getBaseCopy(status: string | null): StatusCard {
   if (status === "cancel") {
     return {
       title: "Pagamento cancelado",
@@ -14,18 +24,133 @@ function getCopy(status: string | null) {
   return {
     title: "Pagamento iniciado",
     description:
-      "No Pix, a confirmação real depende do webhook da Stripe. Depois da autenticação no banco, o sistema concluirá o split e atualizará o status da mensalidade.",
+      "Estamos aguardando a confirmação final da Stripe e a sincronização do vínculo de sócio no banco de dados.",
     badgeClassName:
-      "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+      "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300",
   };
+}
+
+function getResolvedCopy(
+  baseStatus: string | null,
+  checkoutStatus: MembershipCheckoutStatusResponse | null,
+): StatusCard {
+  if (baseStatus === "cancel") {
+    return getBaseCopy(baseStatus);
+  }
+
+  if (!checkoutStatus) {
+    return getBaseCopy(baseStatus);
+  }
+
+  if (checkoutStatus.partnerActive) {
+    return {
+      title: "Mensalidade confirmada",
+      description:
+        "O pagamento foi conciliado e o status de sócio já foi liberado para a sua conta.",
+      badgeClassName:
+        "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    };
+  }
+
+  if (
+    ["failed", "cancelled", "past_due"].includes(checkoutStatus.paymentStatus)
+  ) {
+    return {
+      title: "Pagamento não concluído",
+      description:
+        "A cobrança retornou com falha ou pendência financeira. Revise o método de pagamento e tente novamente.",
+      badgeClassName:
+        "border-red-500/20 bg-red-500/10 text-red-700 dark:text-red-300",
+    };
+  }
+
+  return {
+    title: "Pagamento em processamento",
+    description:
+      "A cobrança foi criada, mas ainda estamos aguardando a confirmação final e a atualização do vínculo em partners.",
+    badgeClassName:
+      "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  };
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) return "Não informado";
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
 }
 
 export default function PaymentResultPage() {
   const [searchParams] = useSearchParams();
+  const { refreshPermissions } = usePermissions();
+
   const status = searchParams.get("status");
   const sessionId = searchParams.get("session_id");
 
-  const content = getCopy(status);
+  const [checkoutStatus, setCheckoutStatus] =
+    useState<MembershipCheckoutStatusResponse | null>(null);
+  const [loading, setLoading] = useState(status === "success" && !!sessionId);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    if (status !== "success" || !sessionId) {
+      return;
+    }
+
+    let cancelled = false;
+    let intervalId: number | null = null;
+    const currentSessionId = sessionId;
+
+    async function loadStatus() {
+      try {
+        setErrorMessage("");
+        const data = await getMembershipCheckoutStatus(currentSessionId);
+
+        if (cancelled) return;
+
+        setCheckoutStatus(data);
+        setLoading(false);
+
+        if (data.partnerActive) {
+          await refreshPermissions();
+        }
+
+        if (data.terminal) {
+          if (intervalId !== null) {
+            window.clearInterval(intervalId);
+          }
+        }
+      } catch (error) {
+        if (cancelled) return;
+
+        setLoading(false);
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Não foi possível consultar a cobrança.",
+        );
+      }
+    }
+
+    void loadStatus();
+    intervalId = window.setInterval(() => {
+      void loadStatus();
+    }, 4000);
+
+    return () => {
+      cancelled = true;
+      if (intervalId !== null) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [refreshPermissions, sessionId, status]);
+
+  const content = useMemo(
+    () => getResolvedCopy(status, checkoutStatus),
+    [checkoutStatus, status],
+  );
 
   return (
     <main className="min-h-screen bg-zinc-50 px-4 py-8 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
@@ -54,6 +179,31 @@ export default function PaymentResultPage() {
             </div>
           ) : null}
 
+          {status === "success" && sessionId ? (
+            <div className="mt-5 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
+              <p className="font-medium text-zinc-900 dark:text-zinc-100">
+                Situação atual
+              </p>
+              <p className="mt-2">
+                {loading
+                  ? "Consultando Stripe e banco de dados..."
+                  : `Pagamento: ${checkoutStatus?.paymentStatus ?? "não identificado"}`}
+              </p>
+              <p className="mt-1">
+                Sócio ativo: {checkoutStatus?.partnerActive ? "sim" : "não"}
+              </p>
+              <p className="mt-1">
+                Vigência: {formatDateTime(checkoutStatus?.expiresAt ?? null)}
+              </p>
+            </div>
+          ) : null}
+
+          {errorMessage ? (
+            <div className="mt-5 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-700 dark:text-red-300">
+              {errorMessage}
+            </div>
+          ) : null}
+
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               to="/member-card"
@@ -71,9 +221,9 @@ export default function PaymentResultPage() {
           </div>
 
           <p className="mt-6 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-            Observação: em pagamentos Pix pelo Checkout, a Stripe pode manter o
-            usuário na página de instruções do pagamento. O retorno visual não é
-            a fonte da verdade do processo financeiro.
+            A página agora consulta periodicamente a cobrança e tenta refletir o
+            vínculo real do associado assim que o webhook concluir a
+            sincronização.
           </p>
         </section>
       </div>

@@ -36,6 +36,10 @@ type MembershipPaymentRow = {
   checkout_mode: string | null;
   notes: string | null;
   status: string;
+  paid_at: string | null;
+  period_start: string | null;
+  period_end: string | null;
+  created_at: string;
 };
 
 function json(status: number, body: unknown) {
@@ -188,6 +192,73 @@ async function getOrCreatePaymentForInvoice(
   return data as MembershipPaymentRow;
 }
 
+function addMonthIso(baseIso: string) {
+  const date = new Date(baseIso);
+
+  if (Number.isNaN(date.getTime())) {
+    return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  }
+
+  date.setMonth(date.getMonth() + 1);
+  return date.toISOString();
+}
+
+async function syncPartnerEntitlement(params: {
+  payment: MembershipPaymentRow;
+  paidAt?: string | null;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+}) {
+  const effectivePaidAt =
+    params.paidAt ?? params.payment.paid_at ?? new Date().toISOString();
+  const effectivePeriodStart =
+    params.periodStart ?? params.payment.period_start ?? effectivePaidAt;
+  const effectivePeriodEnd =
+    params.periodEnd ??
+    params.payment.period_end ??
+    addMonthIso(effectivePeriodStart);
+
+  const partnerPayload = {
+    user_id: params.payment.user_id,
+    association_id: params.payment.association_id,
+    membership_payment_id: params.payment.id,
+    created_at: effectivePaidAt,
+    expires_at: effectivePeriodEnd,
+    status: "active",
+  };
+
+  const { data: existingPartner, error: existingPartnerError } = await admin
+    .from("partners")
+    .select("id")
+    .eq("membership_payment_id", params.payment.id)
+    .maybeSingle();
+
+  if (existingPartnerError) {
+    throw new Error(existingPartnerError.message);
+  }
+
+  if (existingPartner?.id) {
+    const { error: updatePartnerError } = await admin
+      .from("partners")
+      .update(partnerPayload)
+      .eq("id", existingPartner.id);
+
+    if (updatePartnerError) {
+      throw new Error(updatePartnerError.message);
+    }
+
+    return;
+  }
+
+  const { error: insertPartnerError } = await admin
+    .from("partners")
+    .insert(partnerPayload);
+
+  if (insertPartnerError) {
+    throw new Error(insertPartnerError.message);
+  }
+}
+
 async function ensureTransfers(params: {
   membershipPaymentId: string;
   associationId: string;
@@ -321,10 +392,6 @@ async function ensureTransfers(params: {
       status: params.subscriptionId ? "active" : "paid",
     })
     .eq("id", params.membershipPaymentId);
-
-  // TODO opcional:
-  // atualizar/upsert da tabela partners com expires_at = params.periodEnd
-  // para sincronizar o pagamento confirmado com o status de sócio.
 }
 
 serve(async (req) => {
@@ -362,6 +429,53 @@ serve(async (req) => {
           stripe_event_id: event.id,
         })
         .eq("stripe_checkout_session_id", session.id);
+
+      if (session.mode === "payment" && session.payment_status === "paid") {
+        const payment = await getPaymentByCheckoutSession(session.id);
+
+        if (!payment) {
+          return json(200, { received: true, skipped: true });
+        }
+
+        const paymentIntentId =
+          typeof session.payment_intent === "string"
+            ? session.payment_intent
+            : null;
+
+        if (!paymentIntentId) {
+          return json(200, { received: true, skipped: true });
+        }
+
+        const paymentIntent = await stripe.paymentIntents.retrieve(
+          paymentIntentId,
+          {
+            expand: ["latest_charge.balance_transaction"],
+          },
+        );
+
+        const latestCharge = paymentIntent.latest_charge as Stripe.Charge;
+        const paidAt = new Date().toISOString();
+        const periodEnd = addMonthIso(paidAt);
+
+        await ensureTransfers({
+          membershipPaymentId: payment.id,
+          associationId: payment.association_id,
+          transferGroup: payment.transfer_group,
+          chargeId: latestCharge.id,
+          paymentIntentId,
+          paidAt,
+          periodStart: paidAt,
+          periodEnd,
+          eventId: event.id,
+        });
+
+        await syncPartnerEntitlement({
+          payment,
+          paidAt,
+          periodStart: paidAt,
+          periodEnd,
+        });
+      }
     }
 
     if (event.type === "checkout.session.async_payment_succeeded") {
@@ -390,14 +504,26 @@ serve(async (req) => {
 
       const latestCharge = paymentIntent.latest_charge as Stripe.Charge;
 
+      const paidAt = new Date().toISOString();
+      const periodEnd = addMonthIso(paidAt);
+
       await ensureTransfers({
         membershipPaymentId: payment.id,
         associationId: payment.association_id,
         transferGroup: payment.transfer_group,
         chargeId: latestCharge.id,
         paymentIntentId,
-        paidAt: new Date().toISOString(),
+        paidAt,
+        periodStart: paidAt,
+        periodEnd,
         eventId: event.id,
+      });
+
+      await syncPartnerEntitlement({
+        payment,
+        paidAt,
+        periodStart: paidAt,
+        periodEnd,
       });
     }
 
@@ -449,6 +575,14 @@ serve(async (req) => {
 
       const latestCharge = paymentIntent.latest_charge as Stripe.Charge;
 
+      const paidAt = new Date().toISOString();
+      const periodStart = invoice.period_start
+        ? new Date(invoice.period_start * 1000).toISOString()
+        : paidAt;
+      const periodEnd = invoice.period_end
+        ? new Date(invoice.period_end * 1000).toISOString()
+        : addMonthIso(periodStart);
+
       await ensureTransfers({
         membershipPaymentId: payment.id,
         associationId: payment.association_id,
@@ -457,14 +591,17 @@ serve(async (req) => {
         paymentIntentId,
         invoiceId: invoice.id,
         subscriptionId,
-        paidAt: new Date().toISOString(),
-        periodStart: invoice.period_start
-          ? new Date(invoice.period_start * 1000).toISOString()
-          : null,
-        periodEnd: invoice.period_end
-          ? new Date(invoice.period_end * 1000).toISOString()
-          : null,
+        paidAt,
+        periodStart,
+        periodEnd,
         eventId: event.id,
+      });
+
+      await syncPartnerEntitlement({
+        payment,
+        paidAt,
+        periodStart,
+        periodEnd,
       });
     }
 

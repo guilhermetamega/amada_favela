@@ -27,10 +27,10 @@ function ActionButton({
         </div>
 
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+          <h3 className="text-sm text-left font-semibold text-zinc-900 dark:text-zinc-100">
             {title}
           </h3>
-          <p className="mt-1 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+          <p className="mt-1 text-sm text-left leading-6 text-zinc-600 dark:text-zinc-400">
             {description}
           </p>
         </div>
@@ -94,6 +94,13 @@ export default function ProfileLegalSection({
           title="Política de Privacidade"
           description="Consulte como tratamos dados cadastrais, telemetria, logs de acesso e dados de uso."
           onClick={onOpenPrivacy}
+        />
+
+        <ActionButton
+          icon={<Shield size={18} />}
+          title="Segurança Infantil (CSAE)"
+          description="Política de prevenção contra abuso, exploração e conteúdo envolvendo menores."
+          href="/child-policy"
         />
       </div>
     </section>

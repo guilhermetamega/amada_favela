@@ -28,6 +28,7 @@ type AssociationRow = {
   community: string;
   monthly_fee: number | string | null;
   stripe_connected_account_id: string | null;
+  stripe_third_party_account_id: string | null;
   stripe_onboarding_completed: boolean;
   is_active: boolean;
 };
@@ -89,6 +90,7 @@ serve(async (req) => {
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+    const kayoAccountId = Deno.env.get("STRIPE_KAYO_ACCOUNT_ID");
     const appBaseUrl = Deno.env.get("APP_BASE_URL");
     const configuredSuccessUrl = Deno.env.get("STRIPE_SUCCESS_URL");
     const configuredCancelUrl = Deno.env.get("STRIPE_CANCEL_URL");
@@ -97,7 +99,8 @@ serve(async (req) => {
       !supabaseUrl ||
       !supabaseAnonKey ||
       !supabaseServiceRoleKey ||
-      !stripeSecretKey
+      !stripeSecretKey ||
+      !kayoAccountId
     ) {
       return json(500, {
         error: "Variáveis obrigatórias do servidor não configuradas.",
@@ -170,7 +173,7 @@ serve(async (req) => {
     const { data: associationData, error: associationError } = await admin
       .from("association")
       .select(
-        "id, name, community, monthly_fee, stripe_connected_account_id, stripe_onboarding_completed, is_active",
+        "id, name, community, monthly_fee, stripe_connected_account_id, stripe_third_party_account_id, stripe_onboarding_completed, is_active",
       )
       .eq("community", user.comunity)
       .eq("is_active", true)
@@ -185,6 +188,13 @@ serve(async (req) => {
     if (!association.stripe_connected_account_id) {
       return json(400, {
         error: "Conta conectada Stripe da associação não configurada.",
+      });
+    }
+
+    if (!association.stripe_third_party_account_id) {
+      return json(400, {
+        error:
+          "Conta third-party da associação não configurada para o split financeiro.",
       });
     }
 
