@@ -1082,7 +1082,7 @@ export default function AuthPage() {
                         rel="noreferrer"
                         className="font-medium underline underline-offset-4 transition hover:text-zinc-900 dark:hover:text-zinc-100"
                       >
-                        Política de Segurança Infantil
+                        Política de Segurança Infantil (CSAE)
                       </Link>
                     </div>
 
