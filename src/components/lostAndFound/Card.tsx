@@ -1,8 +1,11 @@
 import type { LostAndFoundItem } from "@/types/lost_and_found";
+import ReportContentButton from "@/components/moderation/ReportContentButton";
 
 type Props = {
   item: LostAndFoundItem;
   onOpen: (item: LostAndFoundItem) => void;
+  onReport: (item: LostAndFoundItem) => void;
+  isReported?: boolean;
 };
 
 function getTypeLabel(type: LostAndFoundItem["type"]) {
@@ -13,25 +16,35 @@ function getStatusLabel(status: LostAndFoundItem["status"]) {
   return status === "open" ? "Em aberto" : "Resolvido";
 }
 
-export default function LostAndFoundCard({ item, onOpen }: Props) {
+export default function LostAndFoundCard({
+  item,
+  onOpen,
+  onReport,
+  isReported = false,
+}: Props) {
   return (
-    <article className="group overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
+    <article className="group relative h-full overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="relative aspect-4/3 w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+        <img
+          src={item.pic_1_url}
+          alt={item.title}
+          loading="lazy"
+          className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+        />
+
+        <div className="absolute inset-x-0 top-0 h-20 bg-linear-to-b from-black/30 to-transparent" />
+
+        <ReportContentButton
+          onClick={() => onReport(item)}
+          reported={isReported}
+        />
+      </div>
+
       <button
         type="button"
         onClick={() => onOpen(item)}
-        className="block w-full text-left"
+        className="flex h-full w-full flex-col text-left"
       >
-        <div className="relative aspect-4/3 w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-          <img
-            src={item.pic_1_url}
-            alt={item.title}
-            loading="lazy"
-            className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
-          />
-
-          <div className="absolute inset-x-0 top-0 h-20 bg-linear-to-b from-black/30 to-transparent" />
-        </div>
-
         <div className="space-y-4 p-4">
           <div className="flex items-start justify-between gap-3">
             <h3 className="line-clamp-2 text-base font-semibold text-zinc-900 dark:text-white sm:text-lg">

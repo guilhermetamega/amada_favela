@@ -8,17 +8,20 @@ import LostAndFoundHeader from "@/components/lostAndFound/Header";
 import LostAndFoundHero from "@/components/lostAndFound/Hero";
 import LostAndFoundList from "@/components/lostAndFound/List";
 import LostAndFoundPageSkeleton from "@/components/lostAndFound/PageSkeleton";
+import ReportContentModal from "@/components/moderation/ReportContentModal";
 import {
   getLostAndFoundCached,
   hydrateLostAndFoundCache,
   preloadLostAndFoundImages,
   revalidateLostAndFoundCache,
 } from "@/lib/cache/lostAndFound";
+import { getMyReportedContentIds } from "@/services/supabase/content_reports";
 import type {
   LostAndFoundFiltersState,
   LostAndFoundItem,
 } from "@/types/lost_and_found";
 import { usePermissions } from "@/hooks/usePermissions";
+import type { ReportTarget } from "@/types/content_reports";
 
 const initialFilters: LostAndFoundFiltersState = {
   search: "",
@@ -41,6 +44,9 @@ export default function LostAndFoundPage() {
     null,
   );
 
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
+  const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     let active = true;
 
@@ -49,6 +55,7 @@ export default function LostAndFoundPage() {
 
       if (!communityName) {
         setItems([]);
+        setReportedIds(new Set());
         setErrorMessage(
           "Não foi possível identificar a comunidade do usuário.",
         );
@@ -99,6 +106,38 @@ export default function LostAndFoundPage() {
     };
   }, [communityName, profileLoading]);
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadReportedIds() {
+      if (profileLoading) return;
+
+      if (!items.length) {
+        setReportedIds(new Set());
+        return;
+      }
+
+      try {
+        const ids = await getMyReportedContentIds(
+          "lost_and_found",
+          items.map((item) => item.id),
+        );
+
+        if (!active) return;
+        setReportedIds(ids);
+      } catch {
+        if (!active) return;
+        setReportedIds(new Set());
+      }
+    }
+
+    void loadReportedIds();
+
+    return () => {
+      active = false;
+    };
+  }, [items, profileLoading]);
+
   const filteredItems = useMemo(() => {
     const search = filters.search.trim().toLowerCase();
 
@@ -133,7 +172,17 @@ export default function LostAndFoundPage() {
     setSelectedItem(item);
   }
 
+  function handleReportItem(item: LostAndFoundItem) {
+    setReportTarget({
+      contentType: "lost_and_found",
+      contentId: item.id,
+      contentLabel: item.title,
+    });
+  }
+
   const isPageLoading = loading || profileLoading;
+  const alreadyReportedCurrentTarget =
+    !!reportTarget && reportedIds.has(reportTarget.contentId);
 
   return (
     <DashboardLayout>
@@ -169,6 +218,8 @@ export default function LostAndFoundPage() {
                 <LostAndFoundList
                   items={filteredItems}
                   onOpen={handleOpenDetails}
+                  onReport={handleReportItem}
+                  reportedIds={reportedIds}
                 />
               ) : null}
             </>
@@ -187,6 +238,20 @@ export default function LostAndFoundPage() {
         open={!!selectedItem}
         item={selectedItem}
         onClose={() => setSelectedItem(null)}
+      />
+
+      <ReportContentModal
+        open={!!reportTarget}
+        target={reportTarget}
+        alreadyReported={alreadyReportedCurrentTarget}
+        onSubmitted={(contentId) => {
+          setReportedIds((prev) => {
+            const next = new Set(prev);
+            next.add(contentId);
+            return next;
+          });
+        }}
+        onClose={() => setReportTarget(null)}
       />
     </DashboardLayout>
   );

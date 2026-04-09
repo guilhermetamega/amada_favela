@@ -90,10 +90,6 @@ export default function HomeRentDetailsModal({ open, item, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="shrink-0 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
-          <div className="mb-3 flex justify-center sm:hidden">
-            <span className="h-1.5 w-14 rounded-full bg-zinc-300 dark:bg-zinc-700" />
-          </div>
-
           <div className="flex items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-semibold text-zinc-900 dark:text-white">

@@ -8,12 +8,15 @@ import HomeRentHeader from "@/components/homeRent/Header";
 import HomeRentHero from "@/components/homeRent/Hero";
 import HomeRentList from "@/components/homeRent/List";
 import HomeRentPageSkeleton from "@/components/homeRent/PageSkeleton";
+import ReportContentModal from "@/components/moderation/ReportContentModal";
 import {
   getHomeRentCached,
   hydrateHomeRentCache,
   preloadHomeRentImages,
   revalidateHomeRentCache,
 } from "@/lib/cache/homeRent";
+import { getMyReportedContentIds } from "@/services/supabase/content_reports";
+import type { ReportTarget } from "@/types/content_reports";
 import type { HomeRentFiltersState, HomeRentItem } from "@/types/home_rent";
 import { usePermissions } from "@/contexts/profile-context";
 
@@ -42,6 +45,9 @@ export default function HomeRentPage() {
   const [isPartnerAdOpen, setIsPartnerAdOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<HomeRentItem | null>(null);
 
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
+  const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     let active = true;
 
@@ -50,6 +56,7 @@ export default function HomeRentPage() {
 
       if (!communityName) {
         setItems([]);
+        setReportedIds(new Set());
         setErrorMessage(
           "Não foi possível identificar a comunidade do usuário.",
         );
@@ -100,6 +107,38 @@ export default function HomeRentPage() {
     };
   }, [communityName, profileLoading]);
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadReportedIds() {
+      if (profileLoading) return;
+
+      if (!items.length) {
+        setReportedIds(new Set());
+        return;
+      }
+
+      try {
+        const ids = await getMyReportedContentIds(
+          "home_rent",
+          items.map((item) => item.id),
+        );
+
+        if (!active) return;
+        setReportedIds(ids);
+      } catch {
+        if (!active) return;
+        setReportedIds(new Set());
+      }
+    }
+
+    void loadReportedIds();
+
+    return () => {
+      active = false;
+    };
+  }, [items, profileLoading]);
+
   const filteredItems = useMemo(() => {
     const search = filters.search.trim().toLowerCase();
 
@@ -140,7 +179,17 @@ export default function HomeRentPage() {
     setSelectedItem(item);
   }
 
+  function handleReportItem(item: HomeRentItem) {
+    setReportTarget({
+      contentType: "home_rent",
+      contentId: item.id,
+      contentLabel: item.title,
+    });
+  }
+
   const isPageLoading = loading || profileLoading;
+  const alreadyReportedCurrentTarget =
+    !!reportTarget && reportedIds.has(reportTarget.contentId);
 
   return (
     <DashboardLayout>
@@ -182,6 +231,8 @@ export default function HomeRentPage() {
                 <HomeRentList
                   items={filteredItems}
                   onOpen={handleOpenDetails}
+                  onReport={handleReportItem}
+                  reportedIds={reportedIds}
                 />
               ) : null}
             </>
@@ -200,6 +251,20 @@ export default function HomeRentPage() {
         open={!!selectedItem}
         item={selectedItem}
         onClose={() => setSelectedItem(null)}
+      />
+
+      <ReportContentModal
+        open={!!reportTarget}
+        target={reportTarget}
+        alreadyReported={alreadyReportedCurrentTarget}
+        onSubmitted={(contentId) => {
+          setReportedIds((prev) => {
+            const next = new Set(prev);
+            next.add(contentId);
+            return next;
+          });
+        }}
+        onClose={() => setReportTarget(null)}
       />
 
       {isPartnerAdOpen ? (

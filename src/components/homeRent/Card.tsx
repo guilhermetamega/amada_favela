@@ -1,8 +1,11 @@
 import type { HomeRentItem } from "@/types/home_rent";
+import ReportContentButton from "../moderation/ReportContentButton";
 
 type Props = {
   item: HomeRentItem;
   onOpen: (item: HomeRentItem) => void;
+  onReport: (item: HomeRentItem) => void;
+  isReported?: boolean;
 };
 
 function getTypeLabel(type: HomeRentItem["type"]) {
@@ -13,13 +16,23 @@ function getStatusLabel(status: HomeRentItem["status"]) {
   return status === "open" ? "Em aberto" : "Fechado";
 }
 
-export default function HomeRentCard({ item, onOpen }: Props) {
+export default function HomeRentCard({
+  item,
+  onOpen,
+  onReport,
+  isReported = false,
+}: Props) {
   return (
-    <article className="group overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
+    <article className="group relative h-full overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
+      <ReportContentButton
+        onClick={() => onReport(item)}
+        reported={isReported}
+      />
+
       <button
         type="button"
         onClick={() => onOpen(item)}
-        className="block w-full text-left"
+        className="flex h-full w-full flex-col text-left"
       >
         <div className="relative aspect-4/3 w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
           <img

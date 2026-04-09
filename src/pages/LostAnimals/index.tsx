@@ -8,12 +8,15 @@ import LostAnimalsHeader from "@/components/lostAnimals/Header";
 import LostAnimalsHero from "@/components/lostAnimals/Hero";
 import LostAnimalsList from "@/components/lostAnimals/List";
 import LostAnimalsPageSkeleton from "@/components/lostAnimals/PageSkeleton";
+import ReportContentModal from "@/components/moderation/ReportContentModal";
 import {
   getLostAnimalsCached,
   hydrateLostAnimalsCache,
   preloadLostAnimalsImages,
   revalidateLostAnimalsCache,
 } from "@/lib/cache/lostAnimals";
+import { getMyReportedContentIds } from "@/services/supabase/content_reports";
+import type { ReportTarget } from "@/types/content_reports";
 import type {
   LostAnimalsFiltersState,
   LostAnimalsItem,
@@ -41,6 +44,9 @@ export default function LostAnimalsPage() {
     null,
   );
 
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
+  const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     let active = true;
 
@@ -49,6 +55,7 @@ export default function LostAnimalsPage() {
 
       if (!communityName) {
         setItems([]);
+        setReportedIds(new Set());
         setErrorMessage(
           "Não foi possível identificar a comunidade do usuário.",
         );
@@ -81,7 +88,7 @@ export default function LostAnimalsPage() {
         setErrorMessage(
           error instanceof Error
             ? error.message
-            : "Erro ao carregar itens de achados e perdidos.",
+            : "Erro ao carregar itens de animais perdidos e achados.",
         );
       } finally {
         // eslint-disable-next-line no-unsafe-finally
@@ -98,6 +105,38 @@ export default function LostAnimalsPage() {
       active = false;
     };
   }, [communityName, profileLoading]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadReportedIds() {
+      if (profileLoading) return;
+
+      if (!items.length) {
+        setReportedIds(new Set());
+        return;
+      }
+
+      try {
+        const ids = await getMyReportedContentIds(
+          "lost_animals",
+          items.map((item) => item.id),
+        );
+
+        if (!active) return;
+        setReportedIds(ids);
+      } catch {
+        if (!active) return;
+        setReportedIds(new Set());
+      }
+    }
+
+    void loadReportedIds();
+
+    return () => {
+      active = false;
+    };
+  }, [items, profileLoading]);
 
   const filteredItems = useMemo(() => {
     const search = filters.search.trim().toLowerCase();
@@ -133,7 +172,17 @@ export default function LostAnimalsPage() {
     setSelectedItem(item);
   }
 
+  function handleReportItem(item: LostAnimalsItem) {
+    setReportTarget({
+      contentType: "lost_animals",
+      contentId: item.id,
+      contentLabel: item.name,
+    });
+  }
+
   const isPageLoading = loading || profileLoading;
+  const alreadyReportedCurrentTarget =
+    !!reportTarget && reportedIds.has(reportTarget.contentId);
 
   return (
     <DashboardLayout>
@@ -169,6 +218,8 @@ export default function LostAnimalsPage() {
                 <LostAnimalsList
                   items={filteredItems}
                   onOpen={handleOpenDetails}
+                  onReport={handleReportItem}
+                  reportedIds={reportedIds}
                 />
               ) : null}
             </>
@@ -187,6 +238,20 @@ export default function LostAnimalsPage() {
         open={!!selectedItem}
         item={selectedItem}
         onClose={() => setSelectedItem(null)}
+      />
+
+      <ReportContentModal
+        open={!!reportTarget}
+        target={reportTarget}
+        alreadyReported={alreadyReportedCurrentTarget}
+        onSubmitted={(contentId) => {
+          setReportedIds((prev) => {
+            const next = new Set(prev);
+            next.add(contentId);
+            return next;
+          });
+        }}
+        onClose={() => setReportTarget(null)}
       />
     </DashboardLayout>
   );
