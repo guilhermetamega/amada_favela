@@ -107,7 +107,7 @@ export default function ServiceOrdersPage() {
     <DashboardLayout>
       <MainLayout>
         <div className="mx-auto max-w-6xl space-y-4">
-          <ServiceOrdersHero title="Ordens de Serviço" />
+          <ServiceOrdersHero />
 
           <ServiceOrdersFeedback
             errorMessage={errorMessage}
