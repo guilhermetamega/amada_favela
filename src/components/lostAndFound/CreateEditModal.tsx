@@ -5,7 +5,6 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react";
-import { X } from "lucide-react";
 import { createLostAndFoundItem } from "@/services/supabase/lost_and_found";
 import type { LostAndFoundItem } from "@/types/lost_and_found";
 
@@ -234,21 +233,12 @@ export default function LostAndFoundCreateEditModal({
             <span className="h-1.5 w-14 rounded-full bg-zinc-300 dark:bg-zinc-700" />
           </div>
 
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-center gap-4">
             <div>
               <h2 className="text-xl font-semibold text-zinc-900 dark:text-white">
                 {modalTitle}
               </h2>
             </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-zinc-200 text-zinc-600 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-              aria-label="Fechar modal"
-            >
-              <X size={18} />
-            </button>
           </div>
         </div>
 

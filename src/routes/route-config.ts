@@ -145,9 +145,9 @@ export const appRoutes: AppRouteConfig[] = [
     canAccess: (permissions) => !!permissions,
   },
   {
-    path: "/lost-animals",
-    label: "Animais Perdidos",
-    description: "Acesse os animais encontrados e perdidos.",
+    path: "/missing",
+    label: "Desaparecidos",
+    description: "Acesse os animais e pessoas desaparecidas e encontradas.",
     icon: Dog,
     colorClass: "orange",
     showInSidebar: true,

@@ -1,17 +1,33 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import DashboardLayout from "@/components/layout/Layout";
 import DashboardModuleGrid from "@/components/dashboard/ModuleGrid";
 import DashboardWarningCarousel from "@/components/dashboard/WarningCarousel";
 import DashboardHeroSkeleton from "@/components/dashboard/HeroSkeleton";
+import PollCarousel from "@/components/dashboard/PollsCarousel";
+import DashboardPollModal from "@/components/dashboard/PollModal";
+import VoteConfirmModal from "@/components/polls/VoteConfirmModal";
 import { usePermissions } from "@/hooks/usePermissions";
 import { getDashboardRoutes } from "@/routes/route-config";
 import { useDashboardWarnings } from "@/hooks/useDashboardWarnings";
+import { useDashboardPolls } from "@/hooks/useDashboardPolls";
 import Hero from "@/components/dashboard/Hero";
 import MainLayout from "@/components/layout/MainLayout";
+import type { Poll } from "@/types/polls";
 
 export default function DashboardPage() {
   const { permissions, loading: permissionsLoading } = usePermissions();
   const { warnings, loading: warningsLoading } = useDashboardWarnings();
+
+  const {
+    polls,
+    loading: pollsLoading,
+    pendingVote,
+    setPendingVote,
+    confirmVote,
+    voteLoading,
+  } = useDashboardPolls();
+
+  const [activePoll, setActivePoll] = useState<Poll | null>(null);
 
   const dashboardRoutes = useMemo(
     () => getDashboardRoutes(permissions),
@@ -28,6 +44,13 @@ export default function DashboardPage() {
 
           {!warningsLoading && warnings.length > 0 ? (
             <DashboardWarningCarousel items={warnings} />
+          ) : null}
+
+          {!pollsLoading && polls.length > 0 ? (
+            <PollCarousel
+              items={polls}
+              onOpen={(poll) => setActivePoll(poll)}
+            />
           ) : null}
 
           {permissionsLoading ? (
@@ -47,6 +70,23 @@ export default function DashboardPage() {
           )}
         </div>
       </MainLayout>
+
+      <DashboardPollModal
+        open={!!activePoll}
+        poll={activePoll}
+        onClose={() => setActivePoll(null)}
+        onVote={(pollId, optionId, optionLabel) => {
+          setPendingVote({ pollId, optionId, optionLabel });
+        }}
+      />
+
+      <VoteConfirmModal
+        open={!!pendingVote}
+        optionLabel={pendingVote?.optionLabel ?? ""}
+        loading={voteLoading}
+        onClose={() => setPendingVote(null)}
+        onConfirm={confirmVote}
+      />
     </DashboardLayout>
   );
 }

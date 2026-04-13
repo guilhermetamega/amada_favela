@@ -68,7 +68,7 @@ export function AppRoutes() {
 
             <Route path="/lost-and-found" element={<LostAndFoundPage />} />
 
-            <Route path="/lost-animals" element={<LostAnimalsPage />} />
+            <Route path="/missing" element={<LostAnimalsPage />} />
 
             <Route path="/home-rent" element={<HomeRentPage />} />
 
