@@ -1,5 +1,9 @@
 import DashboardHeader from "@/components/layout/DashboardHeader";
 
-export default function PollsHero() {
-  return <DashboardHeader title="Enquetes" />;
+type Props = {
+  title?: string;
+};
+
+export default function PollsHero({ title = "Enquetes" }: Props) {
+  return <DashboardHeader title={title} />;
 }
