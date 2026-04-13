@@ -5,7 +5,6 @@ import LostAnimalsDetailsModal from "@/components/lostAnimals/DetailsModal";
 import LostAnimalsEmptyState from "@/components/lostAnimals/EmptyState";
 import LostAnimalsFilters from "@/components/lostAnimals/Filters";
 import LostAnimalsHeader from "@/components/lostAnimals/Header";
-import LostAnimalsHero from "@/components/lostAnimals/Hero";
 import LostAnimalsList from "@/components/lostAnimals/List";
 import LostAnimalsPageSkeleton from "@/components/lostAnimals/PageSkeleton";
 import ReportContentModal from "@/components/moderation/ReportContentModal";
@@ -22,6 +21,7 @@ import type {
   LostAnimalsItem,
 } from "@/types/lost_animals";
 import { usePermissions } from "@/hooks/usePermissions";
+import AddButton from "@/components/lostAnimals/AddButton";
 
 const initialFilters: LostAnimalsFiltersState = {
   search: "",
@@ -188,14 +188,12 @@ export default function LostAnimalsPage() {
     <DashboardLayout>
       <main className="px-4 py-4 sm:px-5 sm:py-5 md:px-8 md:py-8">
         <div className="mx-auto max-w-6xl space-y-4">
-          <LostAnimalsHeader onCreate={handleCreateButtonClick} />
+          <LostAnimalsHeader />
 
           {isPageLoading ? <LostAnimalsPageSkeleton /> : null}
 
           {!isPageLoading ? (
             <>
-              <LostAnimalsHero total={items.length} />
-
               <LostAnimalsFilters value={filters} onChange={setFilters} />
 
               {refreshing ? (
@@ -209,6 +207,8 @@ export default function LostAnimalsPage() {
                   {errorMessage}
                 </div>
               ) : null}
+
+              <AddButton onClick={handleCreateButtonClick} />
 
               {!errorMessage && filteredItems.length === 0 ? (
                 <LostAnimalsEmptyState onCreate={handleCreateButtonClick} />

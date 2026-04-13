@@ -17,7 +17,7 @@ export default function DashboardHeader({
   const navigate = useNavigate();
 
   return (
-    <header className="mb-8 flex items-center justify-between gap-4">
+    <header className="mt-4 mb-8 flex items-center justify-center gap-4">
       <div className="flex items-start gap-4">
         {showBackButton ? (
           <button

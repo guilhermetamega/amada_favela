@@ -5,7 +5,6 @@ import LostAndFoundDetailsModal from "@/components/lostAndFound/DetailsModal";
 import LostAndFoundEmptyState from "@/components/lostAndFound/EmptyState";
 import LostAndFoundFilters from "@/components/lostAndFound/Filters";
 import LostAndFoundHeader from "@/components/lostAndFound/Header";
-import LostAndFoundHero from "@/components/lostAndFound/Hero";
 import LostAndFoundList from "@/components/lostAndFound/List";
 import LostAndFoundPageSkeleton from "@/components/lostAndFound/PageSkeleton";
 import ReportContentModal from "@/components/moderation/ReportContentModal";
@@ -22,6 +21,7 @@ import type {
 } from "@/types/lost_and_found";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { ReportTarget } from "@/types/content_reports";
+import AddButton from "@/components/lostAndFound/AddButton";
 
 const initialFilters: LostAndFoundFiltersState = {
   search: "",
@@ -188,14 +188,12 @@ export default function LostAndFoundPage() {
     <DashboardLayout>
       <main className="px-4 py-4 sm:px-5 sm:py-5 md:px-8 md:py-8">
         <div className="mx-auto max-w-6xl space-y-4">
-          <LostAndFoundHeader onCreate={handleCreateButtonClick} />
+          <LostAndFoundHeader />
 
           {isPageLoading ? <LostAndFoundPageSkeleton /> : null}
 
           {!isPageLoading ? (
             <>
-              <LostAndFoundHero total={items.length} />
-
               <LostAndFoundFilters value={filters} onChange={setFilters} />
 
               {refreshing ? (
@@ -210,6 +208,7 @@ export default function LostAndFoundPage() {
                 </div>
               ) : null}
 
+              <AddButton onClick={handleCreateButtonClick} />
               {!errorMessage && filteredItems.length === 0 ? (
                 <LostAndFoundEmptyState onCreate={handleCreateButtonClick} />
               ) : null}

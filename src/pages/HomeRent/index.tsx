@@ -5,7 +5,6 @@ import HomeRentDetailsModal from "@/components/homeRent/DetailsModal";
 import HomeRentEmptyState from "@/components/homeRent/EmptyState";
 import HomeRentFilters from "@/components/homeRent/Filters";
 import HomeRentHeader from "@/components/homeRent/Header";
-import HomeRentHero from "@/components/homeRent/Hero";
 import HomeRentList from "@/components/homeRent/List";
 import HomeRentPageSkeleton from "@/components/homeRent/PageSkeleton";
 import ReportContentModal from "@/components/moderation/ReportContentModal";
@@ -19,6 +18,7 @@ import { getMyReportedContentIds } from "@/services/supabase/content_reports";
 import type { ReportTarget } from "@/types/content_reports";
 import type { HomeRentFiltersState, HomeRentItem } from "@/types/home_rent";
 import { usePermissions } from "@/contexts/profile-context";
+import AddButton from "@/components/homeRent/AddButton";
 
 const initialFilters: HomeRentFiltersState = {
   search: "",
@@ -195,17 +195,12 @@ export default function HomeRentPage() {
     <DashboardLayout>
       <main className="px-4 py-4 sm:px-5 sm:py-5 md:px-8 md:py-8">
         <div className="mx-auto max-w-6xl space-y-4">
-          <HomeRentHeader onCreate={handleCreateButtonClick} />
+          <HomeRentHeader />
 
           {isPageLoading ? <HomeRentPageSkeleton /> : null}
 
           {!isPageLoading ? (
             <>
-              <HomeRentHero
-                communityName={communityName || "Sua comunidade"}
-                total={items.length}
-              />
-
               <HomeRentFilters value={filters} onChange={setFilters} />
 
               {refreshing ? (
@@ -213,6 +208,7 @@ export default function HomeRentPage() {
                   Atualizando dados...
                 </p>
               ) : null}
+              <AddButton onClick={handleCreateButtonClick} />
 
               {errorMessage ? (
                 <div className="rounded-3xl border border-red-500/20 bg-red-500/10 px-5 py-4 text-sm text-red-600 dark:text-red-300">
