@@ -10,6 +10,7 @@ import {
   updatePoll,
 } from "@/services/supabase/polls";
 import type { Poll, PollStatus } from "@/types/polls";
+import MainLayout from "@/components/layout/MainLayout";
 
 export default function AdminPollsPage() {
   const [polls, setPolls] = useState<Poll[]>([]);
@@ -91,7 +92,7 @@ export default function AdminPollsPage() {
 
   return (
     <DashboardLayout>
-      <main className="px-4 py-4 sm:px-5 sm:py-5 md:px-8 md:py-8">
+      <MainLayout>
         <div className="mx-auto max-w-6xl space-y-4">
           <PollsHero title="Gerenciar Enquetes" />
 
@@ -141,7 +142,7 @@ export default function AdminPollsPage() {
             </div>
           )}
         </div>
-      </main>
+      </MainLayout>
 
       <PollEditorModal
         open={modalOpen}

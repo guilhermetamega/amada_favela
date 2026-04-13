@@ -10,6 +10,7 @@ import {
   resolveServiceOrderGroup,
 } from "@/services/supabase/sevice_orders";
 import type { GroupedServiceOrder } from "@/types/service_orders";
+import MainLayout from "@/components/layout/MainLayout";
 
 function matchesDate(dateString: string, selectedDate: string) {
   if (!selectedDate) return true;
@@ -118,7 +119,7 @@ export default function AdminServiceOrdersPage() {
 
   return (
     <DashboardLayout>
-      <main className="px-4 py-4 sm:px-5 sm:py-5 md:px-8 md:py-8">
+      <MainLayout>
         <div className="mx-auto max-w-6xl space-y-4">
           <AdminServiceOrdersHero title="Ocorrências" />
 
@@ -156,7 +157,7 @@ export default function AdminServiceOrdersPage() {
             />
           )}
         </div>
-      </main>
+      </MainLayout>
 
       <FinalizeOrderModal
         open={!!pendingResolve}

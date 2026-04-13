@@ -22,6 +22,7 @@ import type {
 import { usePermissions } from "@/hooks/usePermissions";
 import type { ReportTarget } from "@/types/content_reports";
 import AddButton from "@/components/lostAndFound/AddButton";
+import MainLayout from "@/components/layout/MainLayout";
 
 const initialFilters: LostAndFoundFiltersState = {
   search: "",
@@ -186,7 +187,7 @@ export default function LostAndFoundPage() {
 
   return (
     <DashboardLayout>
-      <main className="px-4 py-4 sm:px-5 sm:py-5 md:px-8 md:py-8">
+      <MainLayout>
         <div className="mx-auto max-w-6xl space-y-4">
           <LostAndFoundHeader />
 
@@ -224,7 +225,7 @@ export default function LostAndFoundPage() {
             </>
           ) : null}
         </div>
-      </main>
+      </MainLayout>
 
       <LostAndFoundCreateEditModal
         open={isCreateModalOpen}

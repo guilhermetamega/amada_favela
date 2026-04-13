@@ -4,6 +4,7 @@ import DashboardLayout from "@/components/layout/Layout";
 import DashboardHeader from "@/components/layout/DashboardHeader";
 import { getSocialProjectsItems } from "@/services/supabase/social_projects";
 import type { SocialProjectItem } from "@/types/social_projects";
+import MainLayout from "@/components/layout/MainLayout";
 
 export default function SocialProjectsPage() {
   const [items, setItems] = useState<SocialProjectItem[]>([]);
@@ -36,13 +37,9 @@ export default function SocialProjectsPage() {
 
   return (
     <DashboardLayout>
-      <main className="min-h-screen bg-zinc-950 px-4 py-10">
+      <MainLayout className="bg-zinc-950">
         <div className="mx-auto max-w-7xl">
-          <DashboardHeader
-            title="Projetos Sociais"
-            description="Conheça e apoie os projetos sociais da comunidade."
-            showBackButton
-          />
+          <DashboardHeader title="Projetos Sociais" />
 
           {loading ? (
             <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-zinc-300">
@@ -126,7 +123,7 @@ export default function SocialProjectsPage() {
             </section>
           ) : null}
         </div>
-      </main>
+      </MainLayout>
     </DashboardLayout>
   );
 }

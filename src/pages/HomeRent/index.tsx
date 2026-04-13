@@ -19,6 +19,7 @@ import type { ReportTarget } from "@/types/content_reports";
 import type { HomeRentFiltersState, HomeRentItem } from "@/types/home_rent";
 import { usePermissions } from "@/contexts/profile-context";
 import AddButton from "@/components/homeRent/AddButton";
+import MainLayout from "@/components/layout/MainLayout";
 
 const initialFilters: HomeRentFiltersState = {
   search: "",
@@ -193,7 +194,7 @@ export default function HomeRentPage() {
 
   return (
     <DashboardLayout>
-      <main className="px-4 py-4 sm:px-5 sm:py-5 md:px-8 md:py-8">
+      <MainLayout>
         <div className="mx-auto max-w-6xl space-y-4">
           <HomeRentHeader />
 
@@ -234,7 +235,7 @@ export default function HomeRentPage() {
             </>
           ) : null}
         </div>
-      </main>
+      </MainLayout>
 
       <HomeRentCreateEditModal
         open={isCreateModalOpen}

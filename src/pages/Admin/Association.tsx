@@ -23,6 +23,7 @@ import {
   uploadAssociationSignature,
 } from "@/services/supabase/association";
 import { invalidateAssociationContactCache } from "@/services/supabase/association_public";
+import MainLayout from "@/components/layout/MainLayout";
 
 const initialForm: AssociationFormData = {
   id: "",
@@ -218,7 +219,11 @@ export default function AssociationSettingsPage() {
       } finally {
         if (active) {
           setStripeStatusSyncing(false);
-          window.history.replaceState({}, document.title, window.location.pathname);
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname,
+          );
         }
       }
     }
@@ -402,7 +407,7 @@ export default function AssociationSettingsPage() {
 
   return (
     <DashboardLayout>
-      <main className="px-4 py-4 sm:px-5 sm:py-5 md:px-8 md:py-8">
+      <MainLayout>
         <div className="mx-auto max-w-7xl space-y-4">
           <AssociationHero />
 
@@ -454,7 +459,7 @@ export default function AssociationSettingsPage() {
             </div>
           ) : null}
         </div>
-      </main>
+      </MainLayout>
     </DashboardLayout>
   );
 }

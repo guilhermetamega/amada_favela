@@ -14,6 +14,7 @@ import {
   updateSocialProjectItem,
 } from "@/services/supabase/social_projects";
 import type { SocialProjectItem } from "@/types/social_projects";
+import MainLayout from "@/components/layout/MainLayout";
 
 type FormState = {
   title: string;
@@ -226,7 +227,7 @@ export default function AdminSocialProjectsPage() {
 
   return (
     <DashboardLayout>
-      <main className="px-4 py-10">
+      <MainLayout>
         <div className="mx-auto max-w-7xl">
           <DashboardHeader
             title="Projetos Sociais"
@@ -541,7 +542,7 @@ export default function AdminSocialProjectsPage() {
             </section>
           </div>
         </div>
-      </main>
+      </MainLayout>
     </DashboardLayout>
   );
 }

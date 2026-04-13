@@ -33,7 +33,7 @@ export default function NavigationButton({
         className={`absolute inset-x-0 top-0 h-1.5 bg-linear-to-r md:h-3 ${color.topBar}`}
       />
 
-      <div className="flex h-full flex-col justify-between gap-2 sm:gap-4">
+      <div className="flex h-full flex-col justify-center gap-2 sm:gap-4">
         <div className="flex items-start justify-between gap-2 sm:gap-3">
           <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
             <div

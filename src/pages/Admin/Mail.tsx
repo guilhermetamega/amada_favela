@@ -12,6 +12,7 @@ import {
   type MailItem,
   type MailRecipient,
 } from "@/services/supabase/mail";
+import MainLayout from "@/components/layout/MainLayout";
 
 type RecipientWithPriority = MailRecipient & {
   isPartnerActive?: boolean;
@@ -94,7 +95,7 @@ export default function AdminMailPage() {
 
   return (
     <DashboardLayout>
-      <main className="px-4 py-4 sm:px-5 sm:py-5 md:px-8 md:py-8">
+      <MainLayout>
         <div className="mx-auto max-w-7xl space-y-4">
           <AdminMailHero />
 
@@ -122,7 +123,7 @@ export default function AdminMailPage() {
             </div>
           )}
         </div>
-      </main>
+      </MainLayout>
 
       <CreateMailModal
         isOpen={isModalOpen}

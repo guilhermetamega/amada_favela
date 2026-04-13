@@ -14,7 +14,7 @@ export default function Layout({ children }: Props) {
       </div>
 
       <div className="lg:pl-0 sm:pl-76">
-        <div className="min-h-screen pb-24 md:pb-0">{children}</div>
+        <div className="min-h-screen pb-56 md:pb-0">{children}</div>
       </div>
 
       <MobileBottomNav />

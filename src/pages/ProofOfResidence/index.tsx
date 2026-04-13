@@ -17,6 +17,7 @@ import {
   generateValidationCode,
 } from "@/utils/proof_of_residence_crypto";
 import { generateResidenceProofPdf } from "@/utils/proof_of_residence_pdf";
+import MainLayout from "@/components/layout/MainLayout";
 
 export default function ProofOfResidencePage() {
   const [eligibility, setEligibility] = useState<ProofEligibility | null>(null);
@@ -138,13 +139,9 @@ export default function ProofOfResidencePage() {
 
   return (
     <DashboardLayout>
-      <main className="px-4 py-8 sm:px-6">
+      <MainLayout>
         <div className="mx-auto max-w-6xl">
-          <DashboardHeader
-            title="Declaração de Residência"
-            description="Emissão digital do comprovante institucional da associação."
-            showBackButton
-          />
+          <DashboardHeader title="Declaração de Residência" />
 
           {errorMessage ? (
             <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-600 dark:text-red-300">
@@ -342,7 +339,7 @@ export default function ProofOfResidencePage() {
             </div>
           ) : null}
         </div>
-      </main>
+      </MainLayout>
     </DashboardLayout>
   );
 }

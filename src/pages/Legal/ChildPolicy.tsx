@@ -1,5 +1,6 @@
 import DashboardHeader from "@/components/layout/DashboardHeader";
 import DashboardLayout from "@/components/layout/Layout";
+import MainLayout from "@/components/layout/MainLayout";
 import { AlertTriangle, Eye, Mail, Shield, Siren, Ban } from "lucide-react";
 
 const REPORT_EMAIL = "guitamega06@gmail.com";
@@ -50,7 +51,7 @@ const actions = [
 export default function CSAEPage() {
   return (
     <DashboardLayout>
-      <main className="px-4 py-8 sm:px-6 sm:py-10">
+      <MainLayout>
         <div className="mx-auto max-w-5xl">
           <DashboardHeader
             title="Segurança Infantil e Prevenção de Abuso (CSAE)"
@@ -204,7 +205,7 @@ export default function CSAEPage() {
             </p>
           </section>
         </div>
-      </main>
+      </MainLayout>
     </DashboardLayout>
   );
 }

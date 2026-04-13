@@ -6,6 +6,7 @@ import DashboardHeader from "@/components/layout/DashboardHeader";
 import { getMyMemberCardData } from "@/services/supabase/member_card";
 import MembershipPayButton from "@/components/membership/MembershipPayButton";
 import { MemberCardData } from "@/types/member_card";
+import MainLayout from "@/components/layout/MainLayout";
 
 function formatDate(date: string | null | undefined) {
   if (!date) return "Não informado";
@@ -102,13 +103,9 @@ export default function MemberCardPage() {
 
   return (
     <DashboardLayout>
-      <main className="px-4 py-10">
+      <MainLayout>
         <div className="mx-auto max-w-5xl">
-          <DashboardHeader
-            title="Carteirinha Virtual"
-            description="Visualize e baixe sua carteirinha de sócio."
-            showBackButton
-          />
+          <DashboardHeader title="Carteirinha Virtual" />
 
           {errorMessage ? (
             <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-300">
@@ -331,7 +328,7 @@ export default function MemberCardPage() {
             </div>
           ) : null}
         </div>
-      </main>
+      </MainLayout>
     </DashboardLayout>
   );
 }

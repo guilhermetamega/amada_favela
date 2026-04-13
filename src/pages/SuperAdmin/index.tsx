@@ -6,6 +6,7 @@ import {
 } from "@/services/supabase/admin";
 import type { ManageableUser, UserRole } from "@/types/admin";
 import DashboardHeader from "@/components/layout/DashboardHeader";
+import MainLayout from "@/components/layout/MainLayout";
 
 export default function SuperAdminPage() {
   const [users, setUsers] = useState<ManageableUser[]>([]);
@@ -57,12 +58,11 @@ export default function SuperAdminPage() {
 
   return (
     <DashboardLayout>
-      <main className="px-4 py-10">
+      <MainLayout>
         <div className="mx-auto max-w-6xl">
           <DashboardHeader
             title="Super Admin"
             description="Gerencie os usuários globais."
-            showBackButton
           />
 
           {loading ? (
@@ -127,7 +127,7 @@ export default function SuperAdminPage() {
             </div>
           ) : null}
         </div>
-      </main>
+      </MainLayout>
     </DashboardLayout>
   );
 }

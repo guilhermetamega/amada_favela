@@ -54,6 +54,7 @@ import ProfilePersonalSection from "@/components/profile/PersonalSection";
 import ProfileSecuritySection from "@/components/profile/SecuritySection";
 import ProfileLegalSection from "@/components/profile/LegalSection";
 import ProfileDeleteAccountSection from "@/components/profile/DeleteAccountSection";
+import MainLayout from "@/components/layout/MainLayout";
 
 type ProfileFormState = UpdateProfileInput;
 
@@ -801,7 +802,7 @@ export default function ProfilePage() {
 
   return (
     <DashboardLayout>
-      <main className="min-h-screen bg-zinc-50 px-4 py-6 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 sm:py-8 md:py-10">
+      <MainLayout>
         {loading && !profile ? (
           <ProfilePageSkeleton />
         ) : !profile ? (
@@ -904,7 +905,7 @@ export default function ProfilePage() {
             </div>
           </div>
         )}
-      </main>
+      </MainLayout>
 
       <PartnerHistoryModal
         open={isPartnerHistoryModalOpen}

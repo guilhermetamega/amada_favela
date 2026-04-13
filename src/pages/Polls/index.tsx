@@ -6,6 +6,7 @@ import PollCard from "@/components/polls/PollCard";
 import VoteConfirmModal from "@/components/polls/VoteConfirmModal";
 import { getVisiblePolls, voteOnPoll } from "@/services/supabase/polls";
 import type { Poll } from "@/types/polls";
+import MainLayout from "@/components/layout/MainLayout";
 
 export default function PollsPage() {
   const [polls, setPolls] = useState<Poll[]>([]);
@@ -69,9 +70,9 @@ export default function PollsPage() {
 
   return (
     <DashboardLayout>
-      <main className="px-4 py-4 sm:px-5 sm:py-5 md:px-8 md:py-8">
+      <MainLayout>
         <div className="mx-auto max-w-6xl space-y-4">
-          <PollsHero title="Enquetes" />
+          <PollsHero />
 
           <PollsFeedback
             errorMessage={errorMessage}
@@ -105,7 +106,7 @@ export default function PollsPage() {
             </div>
           )}
         </div>
-      </main>
+      </MainLayout>
 
       <VoteConfirmModal
         open={!!pendingVote}

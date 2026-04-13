@@ -15,6 +15,7 @@ import type {
   ServiceOrderCategory,
 } from "@/types/service_orders";
 import { supabase } from "@/services/supabase/client";
+import MainLayout from "@/components/layout/MainLayout";
 
 export default function ServiceOrdersPage() {
   const [categories, setCategories] = useState<ServiceOrderCategory[]>([]);
@@ -104,7 +105,7 @@ export default function ServiceOrdersPage() {
 
   return (
     <DashboardLayout>
-      <main className="px-4 py-4 sm:px-5 sm:py-5 md:px-8 md:py-8">
+      <MainLayout>
         <div className="mx-auto max-w-6xl space-y-4">
           <ServiceOrdersHero title="Ordens de Serviço" />
 
@@ -135,7 +136,7 @@ export default function ServiceOrdersPage() {
             </div>
           )}
         </div>
-      </main>
+      </MainLayout>
 
       <SubmitConfirmModal
         open={confirmOpen}

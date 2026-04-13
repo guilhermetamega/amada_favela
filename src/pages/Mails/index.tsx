@@ -6,6 +6,7 @@ import {
   markMailAsWithdrawn,
   type MailItem,
 } from "@/services/supabase/mail";
+import MainLayout from "@/components/layout/MainLayout";
 
 type CurrentUserMailProfile = {
   id: string;
@@ -70,13 +71,9 @@ export default function MailsPage() {
 
   return (
     <DashboardLayout>
-      <main className="px-4 py-10">
+      <MainLayout>
         <div className="mx-auto max-w-5xl">
-          <DashboardHeader
-            title="Minhas Cartas"
-            description="Visualize e confirme o recebimento das suas cartas."
-            showBackButton
-          />
+          <DashboardHeader title="Minhas Cartas" />
 
           {errorMessage ? (
             <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-300">
@@ -149,7 +146,7 @@ export default function MailsPage() {
             </div>
           ) : null}
         </div>
-      </main>
+      </MainLayout>
     </DashboardLayout>
   );
 }

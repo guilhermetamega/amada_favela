@@ -57,7 +57,7 @@ export default function SocialProjectsDetailsPage() {
     const phone = normalizePhoneToWhatsapp(item.contact_phone);
     const message = `Olá! Vi o projeto social "${item.title}" e gostaria de saber como posso ajudar.`;
 
-    return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    return `https://wa.me/+55${phone}?text=${encodeURIComponent(message)}`;
   }, [item]);
 
   function handlePreviousImage() {
@@ -85,7 +85,6 @@ export default function SocialProjectsDetailsPage() {
           <DashboardHeader
             title="Erro ao encontrar projeto"
             description="Volte e tente novamente."
-            showBackButton
           />
 
           <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-6 text-red-300">
@@ -100,11 +99,7 @@ export default function SocialProjectsDetailsPage() {
     <DashboardLayout>
       <main className="min-h-screen bg-zinc-950 px-4 py-10">
         <div className="mx-auto max-w-6xl">
-          <DashboardHeader
-            title="Detalhes do projeto social"
-            description=""
-            showBackButton
-          />
+          <DashboardHeader title="Detalhes do projeto social" />
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 shadow-xl">

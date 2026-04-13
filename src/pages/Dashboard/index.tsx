@@ -7,6 +7,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { getDashboardRoutes } from "@/routes/route-config";
 import { useDashboardWarnings } from "@/hooks/useDashboardWarnings";
 import Hero from "@/components/dashboard/Hero";
+import MainLayout from "@/components/layout/MainLayout";
 
 export default function DashboardPage() {
   const { permissions, loading: permissionsLoading } = usePermissions();
@@ -19,7 +20,7 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout>
-      <main className="px-4 py-4 sm:px-5 sm:py-5 md:px-8 md:py-8">
+      <MainLayout>
         <div className="mx-auto max-w-6xl">
           <div className="mb-5">
             <Hero />
@@ -45,7 +46,7 @@ export default function DashboardPage() {
             <DashboardModuleGrid routes={dashboardRoutes} />
           )}
         </div>
-      </main>
+      </MainLayout>
     </DashboardLayout>
   );
 }

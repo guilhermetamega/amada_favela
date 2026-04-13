@@ -22,6 +22,7 @@ import type {
 } from "@/types/lost_animals";
 import { usePermissions } from "@/hooks/usePermissions";
 import AddButton from "@/components/lostAnimals/AddButton";
+import MainLayout from "@/components/layout/MainLayout";
 
 const initialFilters: LostAnimalsFiltersState = {
   search: "",
@@ -186,7 +187,7 @@ export default function LostAnimalsPage() {
 
   return (
     <DashboardLayout>
-      <main className="px-4 py-4 sm:px-5 sm:py-5 md:px-8 md:py-8">
+      <MainLayout>
         <div className="mx-auto max-w-6xl space-y-4">
           <LostAnimalsHeader />
 
@@ -225,7 +226,7 @@ export default function LostAnimalsPage() {
             </>
           ) : null}
         </div>
-      </main>
+      </MainLayout>
 
       <LostAnimalsCreateEditModal
         open={isCreateModalOpen}

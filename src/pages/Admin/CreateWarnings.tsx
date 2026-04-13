@@ -12,6 +12,7 @@ import {
   updateWarningBanner,
 } from "@/services/supabase/warning_banners";
 import type { WarningBanner } from "@/types/warning_banners";
+import MainLayout from "@/components/layout/MainLayout";
 
 export default function CreateWarningsPage() {
   const [message, setMessage] = useState("");
@@ -121,7 +122,7 @@ export default function CreateWarningsPage() {
 
   return (
     <DashboardLayout>
-      <main className="px-4 py-4 sm:px-5 sm:py-5 md:px-8 md:py-8">
+      <MainLayout>
         <div className="mx-auto max-w-6xl space-y-4">
           <CreateWarningHero />
 
@@ -160,7 +161,7 @@ export default function CreateWarningsPage() {
             />
           </div>
         </div>
-      </main>
+      </MainLayout>
 
       <EditWarningsModal
         open={editModalOpen}

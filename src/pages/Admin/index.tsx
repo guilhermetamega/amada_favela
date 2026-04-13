@@ -14,6 +14,7 @@ import {
   updateUserRoleAsPresident,
 } from "@/services/supabase/admin";
 import type { ManageableUser } from "@/types/admin";
+import MainLayout from "@/components/layout/MainLayout";
 
 export default function AdminPage() {
   const { permissions, loading: permissionsLoading } = usePermissions();
@@ -82,9 +83,9 @@ export default function AdminPage() {
 
   return (
     <DashboardLayout>
-      <main className="px-4 py-4 sm:px-5 sm:py-5 md:px-8 md:py-8">
+      <MainLayout>
         <div className="mx-auto max-w-6xl space-y-4">
-          <AdminHero title="Painel Administrativo" />
+          <AdminHero />
 
           {permissionsLoading ? (
             <AdminPageSkeleton />
@@ -135,7 +136,7 @@ export default function AdminPage() {
             </>
           )}
         </div>
-      </main>
+      </MainLayout>
     </DashboardLayout>
   );
 }

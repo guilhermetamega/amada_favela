@@ -7,6 +7,7 @@ import {
   upsertCurrentCommunityData,
 } from "@/services/supabase/community_data";
 import { getAssociationDisplayName } from "@/utils/communities";
+import MainLayout from "@/components/layout/MainLayout";
 
 const DEFAULT_DESCRIPTION = "Tecnologia para conectar a favela ao futuro";
 
@@ -138,7 +139,7 @@ export default function WelcomeBannerPage() {
   if (loading) {
     return (
       <DashboardLayout>
-        <main className="px-4 py-10">
+        <MainLayout>
           <div className="mx-auto max-w-7xl">
             <DashboardHeader
               title="Welcome Banner"
@@ -150,14 +151,14 @@ export default function WelcomeBannerPage() {
               <div className="mt-6 h-80 animate-pulse rounded-3xl bg-zinc-200 dark:bg-zinc-800" />
             </div>
           </div>
-        </main>
+        </MainLayout>
       </DashboardLayout>
     );
   }
 
   return (
     <DashboardLayout>
-      <main className="px-4 py-10">
+      <MainLayout>
         <div className="mx-auto max-w-7xl">
           <DashboardHeader
             title="Editar banner de boas-vindas"
@@ -282,7 +283,7 @@ export default function WelcomeBannerPage() {
             </section>
           </div>
         </div>
-      </main>
+      </MainLayout>
     </DashboardLayout>
   );
 }

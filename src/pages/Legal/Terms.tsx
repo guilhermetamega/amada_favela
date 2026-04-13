@@ -1,13 +1,14 @@
 import Layout from "@/components/layout/Layout";
+import MainLayout from "@/components/layout/MainLayout";
 import LegalDocument from "@/components/legal/LegalDocument";
 import { TERMS_OF_USE_CONTENT } from "@/lib/legal";
 
 export default function TermsOfUsePage() {
   return (
     <Layout>
-      <main className="px-4 py-8 sm:px-6 sm:py-10">
+      <MainLayout>
         <LegalDocument content={TERMS_OF_USE_CONTENT} />
-      </main>
+      </MainLayout>
     </Layout>
   );
 }

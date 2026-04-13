@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { getMembershipCheckoutStatus } from "@/services/supabase/membership";
 import type { MembershipCheckoutStatusResponse } from "@/types/membership";
 import { usePermissions } from "@/hooks/usePermissions";
+import MainLayout from "@/components/layout/MainLayout";
 
 type StatusCard = {
   title: string;
@@ -153,7 +154,7 @@ export default function PaymentResultPage() {
   );
 
   return (
-    <main className="min-h-screen bg-zinc-50 px-4 py-8 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <MainLayout className="min-h-screen bg-zinc-50 px-4 py-8 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <div className="mx-auto flex min-h-[80vh] max-w-2xl items-center justify-center">
         <section className="w-full rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8">
           <span
@@ -227,6 +228,6 @@ export default function PaymentResultPage() {
           </p>
         </section>
       </div>
-    </main>
+    </MainLayout>
   );
 }
