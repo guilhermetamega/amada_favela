@@ -1,10 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/layout/Layout";
 import DashboardModuleGrid from "@/components/dashboard/ModuleGrid";
 import DashboardWarningCarousel from "@/components/dashboard/WarningCarousel";
 import DashboardHeroSkeleton from "@/components/dashboard/HeroSkeleton";
-import PollCarousel from "@/components/dashboard/PollsCarousel";
-import DashboardPollModal from "@/components/dashboard/PollModal";
+import DashboardPollQueueModal from "@/components/dashboard/PollQueueModal";
 import VoteConfirmModal from "@/components/polls/VoteConfirmModal";
 import { usePermissions } from "@/hooks/usePermissions";
 import { getDashboardRoutes } from "@/routes/route-config";
@@ -12,7 +11,6 @@ import { useDashboardWarnings } from "@/hooks/useDashboardWarnings";
 import { useDashboardPolls } from "@/hooks/useDashboardPolls";
 import Hero from "@/components/dashboard/Hero";
 import MainLayout from "@/components/layout/MainLayout";
-import type { Poll } from "@/types/polls";
 
 export default function DashboardPage() {
   const { permissions, loading: permissionsLoading } = usePermissions();
@@ -21,18 +19,91 @@ export default function DashboardPage() {
   const {
     polls,
     loading: pollsLoading,
+    errorMessage: pollsErrorMessage,
     pendingVote,
     setPendingVote,
     confirmVote,
     voteLoading,
   } = useDashboardPolls();
 
-  const [activePoll, setActivePoll] = useState<Poll | null>(null);
+  const [activePollId, setActivePollId] = useState<string | null>(null);
+  const [queueDismissed, setQueueDismissed] = useState(false);
 
   const dashboardRoutes = useMemo(
     () => getDashboardRoutes(permissions),
     [permissions],
   );
+
+  const pendingPolls = useMemo(() => {
+    return [...polls]
+      .filter((poll) => !poll.has_voted && poll.voting_open && poll.visible_now)
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
+  }, [polls]);
+
+  const activePoll = useMemo(() => {
+    if (!pendingPolls.length || queueDismissed) return null;
+
+    if (!activePollId) return pendingPolls[0] ?? null;
+    return (
+      pendingPolls.find((poll) => poll.id === activePollId) ??
+      pendingPolls[0] ??
+      null
+    );
+  }, [activePollId, pendingPolls, queueDismissed]);
+
+  const activePollQueuePosition = useMemo(() => {
+    if (!activePoll) return 0;
+    return pendingPolls.findIndex((poll) => poll.id === activePoll.id) + 1;
+  }, [activePoll, pendingPolls]);
+
+  useEffect(() => {
+    if (pollsLoading || queueDismissed) return;
+
+    if (!pendingPolls.length) {
+      if (activePollId !== null) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setActivePollId(null);
+      }
+      return;
+    }
+
+    if (pendingVote) return;
+
+    const currentStillExists =
+      activePollId && pendingPolls.some((poll) => poll.id === activePollId);
+
+    if (currentStillExists) return;
+
+    setActivePollId(pendingPolls[0].id);
+  }, [pollsLoading, pendingPolls, pendingVote, activePollId, queueDismissed]);
+
+  function handleClosePollQueue() {
+    setQueueDismissed(true);
+    setActivePollId(null);
+  }
+
+  function handleSelectPollOption(
+    pollId: string,
+    optionId: string,
+    optionLabel: string,
+  ) {
+    setQueueDismissed(false);
+    setPendingVote({ pollId, optionId, optionLabel });
+  }
+
+  async function handleConfirmVote() {
+    const currentPollId = pendingVote?.pollId ?? null;
+
+    await confirmVote();
+
+    if (!currentPollId) return;
+
+    const remaining = pendingPolls.filter((poll) => poll.id !== currentPollId);
+    setActivePollId(remaining[0]?.id ?? null);
+  }
 
   return (
     <DashboardLayout>
@@ -42,15 +113,14 @@ export default function DashboardPage() {
             <Hero />
           </div>
 
-          {!warningsLoading && warnings.length > 0 ? (
-            <DashboardWarningCarousel items={warnings} />
+          {pollsErrorMessage ? (
+            <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
+              {pollsErrorMessage}
+            </div>
           ) : null}
 
-          {!pollsLoading && polls.length > 0 ? (
-            <PollCarousel
-              items={polls}
-              onOpen={(poll) => setActivePoll(poll)}
-            />
+          {!warningsLoading && warnings.length > 0 ? (
+            <DashboardWarningCarousel items={warnings} />
           ) : null}
 
           {permissionsLoading ? (
@@ -71,13 +141,13 @@ export default function DashboardPage() {
         </div>
       </MainLayout>
 
-      <DashboardPollModal
-        open={!!activePoll}
+      <DashboardPollQueueModal
+        open={!!activePoll && !pendingVote && !queueDismissed}
         poll={activePoll}
-        onClose={() => setActivePoll(null)}
-        onVote={(pollId, optionId, optionLabel) => {
-          setPendingVote({ pollId, optionId, optionLabel });
-        }}
+        queuePosition={activePollQueuePosition}
+        queueTotal={pendingPolls.length}
+        onSelect={handleSelectPollOption}
+        onClose={handleClosePollQueue}
       />
 
       <VoteConfirmModal
@@ -85,7 +155,7 @@ export default function DashboardPage() {
         optionLabel={pendingVote?.optionLabel ?? ""}
         loading={voteLoading}
         onClose={() => setPendingVote(null)}
-        onConfirm={confirmVote}
+        onConfirm={handleConfirmVote}
       />
     </DashboardLayout>
   );

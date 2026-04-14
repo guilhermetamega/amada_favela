@@ -6,8 +6,12 @@ type Props = {
   onOpen: (poll: Poll) => void;
 };
 
+const SWIPE_THRESHOLD = 50;
+
 export default function DashboardPollCarousel({ items, onOpen }: Props) {
   const [index, setIndex] = useState(0);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchEndX, setTouchEndX] = useState<number | null>(null);
 
   const safeItems = useMemo(
     () => items.filter((poll) => poll?.title?.trim()),
@@ -57,8 +61,47 @@ export default function DashboardPollCarousel({ items, onOpen }: Props) {
     return "Toque para votar";
   }
 
+  function goToPrevious() {
+    setIndex((prev) => (prev === 0 ? safeItems.length - 1 : prev - 1));
+  }
+
+  function goToNext() {
+    setIndex((prev) => (prev + 1) % safeItems.length);
+  }
+
+  function handleTouchStart(event: React.TouchEvent<HTMLElement>) {
+    setTouchStartX(event.touches[0]?.clientX ?? null);
+    setTouchEndX(null);
+  }
+
+  function handleTouchMove(event: React.TouchEvent<HTMLElement>) {
+    setTouchEndX(event.touches[0]?.clientX ?? null);
+  }
+
+  function handleTouchEnd() {
+    if (touchStartX === null || touchEndX === null) return;
+
+    const deltaX = touchStartX - touchEndX;
+
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD) return;
+
+    if (deltaX > 0) {
+      goToNext();
+    } else {
+      goToPrevious();
+    }
+
+    setTouchStartX(null);
+    setTouchEndX(null);
+  }
+
   return (
-    <section className="mb-5 overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <section
+      className="mb-5 overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+      onTouchStart={safeItems.length > 1 ? handleTouchStart : undefined}
+      onTouchMove={safeItems.length > 1 ? handleTouchMove : undefined}
+      onTouchEnd={safeItems.length > 1 ? handleTouchEnd : undefined}
+    >
       <button
         type="button"
         onClick={() => {
@@ -145,20 +188,28 @@ export default function DashboardPollCarousel({ items, onOpen }: Props) {
       </button>
 
       {safeItems.length > 1 ? (
-        <div className="flex justify-center gap-2 px-4 pb-3">
-          {safeItems.map((item, itemIndex) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setIndex(itemIndex)}
-              className={`h-2.5 rounded-full transition ${
-                itemIndex === index
-                  ? "w-7 bg-zinc-900 dark:bg-white"
-                  : "w-2.5 bg-zinc-300 hover:bg-zinc-400 dark:bg-zinc-600 dark:hover:bg-zinc-500"
-              }`}
-              aria-label={`Ir para enquete ${itemIndex + 1}`}
-            />
-          ))}
+        <div className="flex items-center justify-between gap-3 border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
+          <button
+            type="button"
+            onClick={goToPrevious}
+            className="rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            aria-label="Enquete anterior"
+          >
+            Anterior
+          </button>
+
+          <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+            {index + 1} / {safeItems.length}
+          </span>
+
+          <button
+            type="button"
+            onClick={goToNext}
+            className="rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            aria-label="Próxima enquete"
+          >
+            Próxima
+          </button>
         </div>
       ) : null}
     </section>

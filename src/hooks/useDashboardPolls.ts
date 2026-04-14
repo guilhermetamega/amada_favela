@@ -5,6 +5,7 @@ import type { Poll } from "@/types/polls";
 export function useDashboardPolls() {
   const [polls, setPolls] = useState<Poll[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const [pendingVote, setPendingVote] = useState<{
     pollId: string;
@@ -17,8 +18,13 @@ export function useDashboardPolls() {
   async function load() {
     try {
       setLoading(true);
+      setErrorMessage("");
       const data = await getVisiblePolls();
       setPolls(data);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Erro ao carregar enquetes.",
+      );
     } finally {
       setLoading(false);
     }
@@ -33,11 +39,17 @@ export function useDashboardPolls() {
 
     try {
       setVoteLoading(true);
+      setErrorMessage("");
 
       await voteOnPoll(pendingVote.pollId, pendingVote.optionId);
 
-      await load();
+      const data = await getVisiblePolls();
+      setPolls(data);
       setPendingVote(null);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Erro ao registrar voto.",
+      );
     } finally {
       setVoteLoading(false);
     }
@@ -46,9 +58,11 @@ export function useDashboardPolls() {
   return {
     polls,
     loading,
+    errorMessage,
     pendingVote,
     setPendingVote,
     confirmVote,
     voteLoading,
+    reload: load,
   };
 }
