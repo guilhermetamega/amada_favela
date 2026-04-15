@@ -55,6 +55,7 @@ import ProfileSecuritySection from "@/components/profile/SecuritySection";
 import ProfileLegalSection from "@/components/profile/LegalSection";
 import ProfileDeleteAccountSection from "@/components/profile/DeleteAccountSection";
 import MainLayout from "@/components/layout/MainLayout";
+import { LogOut } from "lucide-react";
 
 type ProfileFormState = UpdateProfileInput;
 
@@ -327,6 +328,11 @@ export default function ProfilePage() {
 
     return "Digite sua rua ou quadra";
   }, [selectedCommunity, communityAddressItems]);
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  }
 
   useEffect(() => {
     const cache = getProfileCache();
@@ -901,6 +907,25 @@ export default function ProfilePage() {
                   loading={deletingAccount}
                   onDelete={handleDeleteAccount}
                 />
+
+                <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-3 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-left text-red-600 transition hover:bg-red-500/15 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-red-500/30 bg-red-500/10 dark:border-red-500/20">
+                      <LogOut size={18} />
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold">Sair da conta</p>
+                      <p className="text-xs opacity-80">
+                        Encerrar a sessão atual
+                      </p>
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
