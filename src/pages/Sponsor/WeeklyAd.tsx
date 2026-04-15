@@ -169,13 +169,13 @@ export default function SponsorWeeklyAdPage() {
 
   if (loading) {
     return (
-      <main className="min-h-dvh bg-zinc-50 px-4 py-6 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50">
+      <MainLayout className="min-h-dvh bg-zinc-50 px-4 py-6 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50">
         <div className="mx-auto max-w-6xl">
           <div className="rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             Carregando encarte...
           </div>
         </div>
-      </main>
+      </MainLayout>
     );
   }
 

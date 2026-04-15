@@ -4,6 +4,7 @@ import NavigationButton from "@/components/ui/NavigationButton";
 import { getSponsorProfile } from "@/lib/sponsorSession";
 import { getSponsorFeatureIcon } from "@/lib/sponsorFeatureIcons";
 import { sponsorNavigationTheme } from "@/lib/sponsorNavigationTheme";
+import MainLayout from "@/components/layout/MainLayout";
 
 export default function SponsorHomePage() {
   const navigate = useNavigate();
@@ -16,7 +17,7 @@ export default function SponsorHomePage() {
   }, [session]);
 
   return (
-    <main className="min-h-dvh bg-zinc-50 px-4 py-6 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50 sm:py-8">
+    <MainLayout className="min-h-dvh bg-zinc-50 px-4 py-6 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50 sm:py-8">
       <div className="mx-auto max-w-6xl">
         <section className="rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8">
           <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
@@ -57,6 +58,6 @@ export default function SponsorHomePage() {
           </div>
         )}
       </div>
-    </main>
+    </MainLayout>
   );
 }

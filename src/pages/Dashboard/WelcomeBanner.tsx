@@ -141,11 +141,7 @@ export default function WelcomeBannerPage() {
       <DashboardLayout>
         <MainLayout>
           <div className="mx-auto max-w-7xl">
-            <DashboardHeader
-              title="Welcome Banner"
-              description="Carregando configurações da associação..."
-              showBackButton
-            />
+            <DashboardHeader title="" />
             <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
               <div className="h-10 w-48 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
               <div className="mt-6 h-80 animate-pulse rounded-3xl bg-zinc-200 dark:bg-zinc-800" />
@@ -160,11 +156,7 @@ export default function WelcomeBannerPage() {
     <DashboardLayout>
       <MainLayout>
         <div className="mx-auto max-w-7xl">
-          <DashboardHeader
-            title="Editar banner de boas-vindas"
-            description="Atualize a logo e a descrição da associação exibidas no dashboard."
-            showBackButton
-          />
+          <DashboardHeader title="Editar banner de boas-vindas" />
 
           {errorMessage ? (
             <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-600 dark:text-red-300">
@@ -249,7 +241,7 @@ export default function WelcomeBannerPage() {
             <section className="space-y-6">
               <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                 <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                  Preview desktop
+                  Preview
                 </h2>
 
                 <div className="mt-4">
@@ -259,25 +251,6 @@ export default function WelcomeBannerPage() {
                     description={description.trim() || DEFAULT_DESCRIPTION}
                     imageUrl={imageUrl}
                   />
-                </div>
-              </div>
-
-              <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                  Preview mobile
-                </h2>
-
-                <div className="mt-4 flex justify-center">
-                  <div className="w-full max-w-82.5 rounded-4xl border border-zinc-300 bg-zinc-100 p-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-950">
-                    <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-black">
-                      <HeroPreview
-                        mode="mobile"
-                        communityName={communityName}
-                        description={description.trim() || DEFAULT_DESCRIPTION}
-                        imageUrl={imageUrl}
-                      />
-                    </div>
-                  </div>
                 </div>
               </div>
             </section>

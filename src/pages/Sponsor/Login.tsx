@@ -68,14 +68,14 @@ export default function SponsorLoginPage() {
           <section className="rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8">
             <div className="max-w-lg">
               <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                Área do patrocinador
+                Acesso rápido
               </p>
               <h1 className="mt-2 text-2xl font-bold sm:text-3xl">
-                Acesso rápido e objetivo
+                Área do patrocinador
               </h1>
               <p className="mt-3 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
-                Entre com seu email e data de nascimento para acessar apenas as
-                funções liberadas para o seu perfil.
+                Entre com seu email e data de nascimento para acessar as funções
+                liberadas para o seu perfil.
               </p>
             </div>
           </section>
