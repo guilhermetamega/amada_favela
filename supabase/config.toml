@@ -368,6 +368,15 @@ verify_jwt = false
 [functions.sponsor-weekly-ad-delete]
 verify_jwt = false
 
+[functions.sponsor-store-banner-get]
+verify_jwt = false
+
+[functions.sponsor-store-banner-save]
+verify_jwt = false
+
+[functions.sponsor-store-banner-delete]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

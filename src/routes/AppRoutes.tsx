@@ -12,6 +12,7 @@ import SponsorLoginPage from "@/pages/Sponsor/Login";
 import SponsorSessionGuard from "./SponsorSessionGuard";
 import SponsorHomePage from "@/pages/Sponsor";
 import SponsorWeeklyAdPage from "@/pages/Sponsor/WeeklyAd";
+import SponsorBannerPage from "@/pages/Sponsor/Banner";
 
 const AuthPage = lazy(() => import("@/pages/Auth"));
 const DashboardPage = lazy(() => import("@/pages/Dashboard"));
@@ -69,6 +70,8 @@ export function AppRoutes() {
               path="/sponsor/weekly-ad"
               element={<SponsorWeeklyAdPage />}
             />
+
+            <Route path="/sponsor/banner" element={<SponsorBannerPage />} />
           </Route>
 
           <Route path="/privacy" element={<PrivacyPolicyPage />} />

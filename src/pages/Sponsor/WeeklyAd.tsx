@@ -197,7 +197,7 @@ export default function SponsorWeeklyAdPage() {
         ) : null}
 
         <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[1fr_0.95fr]">
-          <section className="rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8">
+          <section className="h-fit rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8">
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label
@@ -251,8 +251,8 @@ export default function SponsorWeeklyAdPage() {
                 />
               </div>
 
-              <div className="w-full flex justify-center items-center text-center gap-4 sm:flex">
-                <div className="w-full flex-col text-center justify-center items-center gap-2 sm:flex">
+              <div className="w-full sm:flex flex-col justify-center items-center text-center gap-4">
+                <div className="w-full sm:w-fit flex-col justify-center items-center gap-2 sm:flex pb-8 sm:pb-4">
                   <label htmlFor="imagePrimary" className="">
                     Imagem 1
                   </label>
@@ -261,12 +261,12 @@ export default function SponsorWeeklyAdPage() {
                     type="file"
                     accept="image/*"
                     onChange={handlePrimaryChange}
-                    className="file:w-full file:flex file:justify-center file:items-center text-zinc-700 file:mr-3 file:rounded-xl file:border-0 file:bg-emerald-500 file:px-4 file:py-2 file:font-medium file:text-white dark:text-zinc-300 dark:file:bg-emerald-500 dark:file:text-white"
+                    className="w-full file:w-full file:flex file:justify-center file:items-center text-zinc-700 file:mr-3 file:rounded-xl file:border-0 file:bg-emerald-500 file:px-4 file:py-2 file:font-medium file:text-white dark:text-zinc-300 dark:file:bg-emerald-500 dark:file:text-white"
                     required={!currentAd}
                   />
                 </div>
 
-                <div className="w-full flex-col text-center justify-center items-center gap-2 sm:flex">
+                <div className="w-full sm:w-fit flex-col justify-center items-center gap-2 sm:flex">
                   <label htmlFor="imagePrimary" className="">
                     Imagem 2
                   </label>
@@ -275,7 +275,7 @@ export default function SponsorWeeklyAdPage() {
                     type="file"
                     accept="image/*"
                     onChange={handleSecondaryChange}
-                    className="file:w-full file:flex file:justify-center file:items-center text-zinc-700 file:mr-3 file:rounded-xl file:border-0 file:bg-emerald-500 file:px-4 file:py-2 file:font-medium file:text-white dark:text-zinc-300 dark:file:bg-emerald-500 dark:file:text-white"
+                    className="w-full file:w-full file:flex file:justify-center file:items-center text-zinc-700 file:mr-3 file:rounded-xl file:border-0 file:bg-emerald-500 file:px-4 file:py-2 file:font-medium file:text-white dark:text-zinc-300 dark:file:bg-emerald-500 dark:file:text-white"
                     required={!currentAd}
                   />
                 </div>
@@ -309,12 +309,9 @@ export default function SponsorWeeklyAdPage() {
           </section>
 
           <section className="rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8">
-            <div className="flex items-center justify-center gap-4">
+            <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold">Preview</h2>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
-                  Visualização do que será publicado.
-                </p>
               </div>
 
               {currentAd ? (

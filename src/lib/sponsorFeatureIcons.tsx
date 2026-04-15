@@ -12,6 +12,7 @@ import {
   Store,
   UserRound,
   Users,
+  Image,
 } from "lucide-react";
 
 const iconMap: Record<string, LucideIcon> = {
@@ -27,6 +28,7 @@ const iconMap: Record<string, LucideIcon> = {
   Store,
   UserRound,
   Users,
+  Image,
 };
 
 export function getSponsorFeatureIcon(iconName?: string | null) {
