@@ -11,10 +11,24 @@ import { useDashboardWarnings } from "@/hooks/useDashboardWarnings";
 import { useDashboardPolls } from "@/hooks/useDashboardPolls";
 import Hero from "@/components/dashboard/Hero";
 import MainLayout from "@/components/layout/MainLayout";
+import {
+  DashboardSponsorBannerItem,
+  getDashboardSponsorBanners,
+  resolveDashboardSponsorBannerAction,
+} from "@/services/supabase/dashboard_sponsor_banners";
+import { SponsorWeeklyAd } from "@/types/sponsor-weekly-ad";
+import DashboardSponsorBannerCarousel from "@/components/dashboard/SponsorBannerCarousel";
+import SponsorWeeklyAdModal from "@/components/dashboard/SponsorWeeklyAdModal";
 
 export default function DashboardPage() {
   const { permissions, loading: permissionsLoading } = usePermissions();
   const { warnings, loading: warningsLoading } = useDashboardWarnings();
+
+  const [sponsorBanners, setSponsorBanners] = useState<
+    DashboardSponsorBannerItem[]
+  >([]);
+  const [selectedWeeklyAd, setSelectedWeeklyAd] =
+    useState<SponsorWeeklyAd | null>(null);
 
   const {
     polls,
@@ -58,6 +72,29 @@ export default function DashboardPage() {
     if (!activePoll) return 0;
     return pendingPolls.findIndex((poll) => poll.id === activePoll.id) + 1;
   }, [activePoll, pendingPolls]);
+
+  function handleOpenSponsorBanner(item: DashboardSponsorBannerItem) {
+    const action = resolveDashboardSponsorBannerAction(item);
+
+    if (!action) return;
+
+    if (action.type === "weekly_ad") {
+      setSelectedWeeklyAd(action.weeklyAd);
+    }
+  }
+
+  useEffect(() => {
+    async function loadSponsorBanners() {
+      try {
+        const data = await getDashboardSponsorBanners();
+        setSponsorBanners(data);
+      } catch {
+        setSponsorBanners([]);
+      }
+    }
+
+    void loadSponsorBanners();
+  }, []);
 
   useEffect(() => {
     if (pollsLoading || queueDismissed) return;
@@ -122,6 +159,10 @@ export default function DashboardPage() {
           {!warningsLoading && warnings.length > 0 ? (
             <DashboardWarningCarousel items={warnings} />
           ) : null}
+          <DashboardSponsorBannerCarousel
+            items={sponsorBanners}
+            onOpen={handleOpenSponsorBanner}
+          />
 
           {permissionsLoading ? (
             <>
@@ -156,6 +197,12 @@ export default function DashboardPage() {
         loading={voteLoading}
         onClose={() => setPendingVote(null)}
         onConfirm={handleConfirmVote}
+      />
+
+      <SponsorWeeklyAdModal
+        open={!!selectedWeeklyAd}
+        item={selectedWeeklyAd}
+        onClose={() => setSelectedWeeklyAd(null)}
       />
     </DashboardLayout>
   );
