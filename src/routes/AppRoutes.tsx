@@ -8,6 +8,10 @@ import AdminPollsPage from "@/pages/Admin/Polls";
 import ServiceOrdersPage from "@/pages/ServiceOrders";
 import AdminServiceOrdersPage from "@/pages/Admin/ServiceOrders";
 import DeleteAccountPage from "@/pages/DeleteAccount";
+import SponsorLoginPage from "@/pages/Sponsor/Login";
+import SponsorSessionGuard from "./SponsorSessionGuard";
+import SponsorHomePage from "@/pages/Sponsor";
+import SponsorWeeklyAdPage from "@/pages/Sponsor/WeeklyAd";
 
 const AuthPage = lazy(() => import("@/pages/Auth"));
 const DashboardPage = lazy(() => import("@/pages/Dashboard"));
@@ -55,6 +59,17 @@ export function AppRoutes() {
         <Routes>
           <Route path="/" element={<AuthPage />} />
           <Route path="/auth" element={<AuthPage />} />
+
+          <Route path="/sponsor/login" element={<SponsorLoginPage />} />
+
+          <Route element={<SponsorSessionGuard />}>
+            <Route path="/sponsor" element={<SponsorHomePage />} />
+
+            <Route
+              path="/sponsor/weekly-ad"
+              element={<SponsorWeeklyAdPage />}
+            />
+          </Route>
 
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfUsePage />} />

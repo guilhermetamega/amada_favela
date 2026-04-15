@@ -455,7 +455,7 @@ export default function AuthPage() {
                   AMA da Favela
                 </h1>
 
-                <p className="mt-3 max-w-sm text-sm leading-6 text-zinc-600 dark:text-zinc-300">
+                <p className="mt-3 w-full text-center text-sm leading-6 text-zinc-600 dark:text-zinc-300">
                   Serviços da comunidade, avisos importantes e acesso rápido aos
                   módulos da plataforma.
                 </p>
@@ -467,7 +467,7 @@ export default function AuthPage() {
                     Feito para celular
                   </p>
                   <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-                    Experiência otimizada para smartphone e PWA.
+                    Experiência otimizada para smartphone.
                   </p>
                 </div>
 
@@ -477,16 +477,6 @@ export default function AuthPage() {
                   </p>
                   <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
                     Entre com sua conta ou cadastre-se rapidamente.
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200/80 bg-white/70 p-3.5 dark:border-zinc-800/80 dark:bg-zinc-950/60">
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-white">
-                    Transparência jurídica
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-                    Termos e política acessíveis antes do login, com navegação
-                    pública e leitura em modal.
                   </p>
                 </div>
               </div>
