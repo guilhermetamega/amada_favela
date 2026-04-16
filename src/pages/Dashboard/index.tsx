@@ -143,7 +143,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout hasLogo>
       <MainLayout>
         <div className="mx-auto max-w-6xl">
           <div className="mb-5">
