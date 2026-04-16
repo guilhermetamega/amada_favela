@@ -68,9 +68,7 @@ export default function SocialProjectsPage() {
                 >
                   <button
                     type="button"
-                    onClick={() =>
-                      navigate(`/dashboard/social-projects/${item.id}`)
-                    }
+                    onClick={() => navigate(`/social-projects/${item.id}`)}
                     className="block w-full text-left"
                   >
                     <div className="aspect-square w-full overflow-hidden bg-zinc-800">
