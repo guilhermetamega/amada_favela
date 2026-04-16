@@ -152,24 +152,7 @@ export default function AuthPage() {
   const hasPresetAddressItems = communityAddressItems.length > 0;
   const hasPresetZipcodes = communityZipcodes.length > 0;
 
-  const address1Label = useMemo(() => {
-    if (!selectedCommunity) {
-      return "Rua / Quadra";
-    }
-
-    const hasStreet = communityAddressItems.some(
-      (item) => item.type === "street",
-    );
-    const hasBlock = communityAddressItems.some(
-      (item) => item.type === "block",
-    );
-
-    if (hasStreet && hasBlock) return "Rua / Quadra";
-    if (hasStreet) return "Rua";
-    if (hasBlock) return "Quadra";
-
-    return "Rua / Quadra";
-  }, [selectedCommunity, communityAddressItems]);
+  const address1Label = "Endereço";
 
   const address1Placeholder = useMemo(() => {
     if (!selectedCommunity) {
@@ -223,6 +206,34 @@ export default function AuthPage() {
       }
     });
   }, []);
+
+  function formatBirthInput(value: string) {
+    const digits = value.replace(/\D/g, "").slice(0, 8);
+
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+    return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+  }
+
+  function convertBirthToIso(value: string) {
+    const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+
+    if (!match) return value;
+
+    const [, day, month, year] = match;
+    return `${year}-${month}-${day}`;
+  }
+
+  function formatBirthForDisplay(value: string) {
+    if (!value) return "";
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const [year, month, day] = value.split("-");
+      return `${day}/${month}/${year}`;
+    }
+
+    return value;
+  }
 
   useEffect(() => {
     if (!profilePictureFile) {
@@ -283,6 +294,16 @@ export default function AuthPage() {
       setRegisterForm((prev) => ({
         ...prev,
         zipcode: formatZipcode(value),
+      }));
+      return;
+    }
+
+    if (name === "birth") {
+      const formatted = formatBirthInput(value);
+
+      setRegisterForm((prev) => ({
+        ...prev,
+        birth: formatted,
       }));
       return;
     }
@@ -404,6 +425,14 @@ export default function AuthPage() {
       setErrorMessage(`Informe ${address1Label.toLowerCase()}.`);
       return;
     }
+
+    await signUpWithEmail(
+      {
+        ...registerForm,
+        birth: convertBirthToIso(registerForm.birth),
+      },
+      profilePictureFile,
+    );
 
     setLoading(true);
     setIsRegisterFlow(true);
@@ -756,10 +785,16 @@ export default function AuthPage() {
                               <input
                                 id="birth"
                                 name="birth"
-                                type="date"
-                                value={registerForm.birth}
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={10}
+                                value={formatBirthForDisplay(
+                                  registerForm.birth,
+                                )}
                                 onChange={handleRegisterChange}
                                 className={`${inputClassName()} pl-11`}
+                                placeholder="dd/mm/aaaa"
+                                pattern="\d{2}/\d{2}/\d{4}"
                                 required
                               />
                             </div>

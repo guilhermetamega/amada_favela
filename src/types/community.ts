@@ -1,7 +1,7 @@
 export type CommunityAddressItem = {
   value: string;
   label: string;
-  type: "street" | "block";
+  type: "street" | "block" | "village" | "lane" | "others";
 };
 
 export type CommunityData = {
