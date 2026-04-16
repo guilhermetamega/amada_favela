@@ -17,26 +17,28 @@ export default function Layout({ children, hasLogo = false }: Props) {
       </div>
 
       <div className="lg:pl-0 sm:pl-76">
-        <div className="min-h-screen pb-16 md:pb-0">{children}</div>
+        <div className={`min-h-screen ${hasLogo ? "pb-0" : "pb-56"} md:pb-0`}>
+          {children}
+        </div>
+
+        {hasLogo && (
+          <div className="block pb-38 bg-zinc-50 text-zinc-900 transition-colors dark:bg-zinc-950 dark:text-zinc-100">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Desenvolvido Pela Equipe das:
+            </p>
+
+            <div className="mt-2 flex justify-center">
+              <img
+                src={developedByLogo}
+                alt="Equipe de Desenvolvimento"
+                className="h-10 object-contain opacity-85 transition hover:opacity-100"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <MobileBottomNav />
-
-      {hasLogo && (
-        <div className="block pb-30 bg-zinc-50 text-zinc-900 transition-colors dark:bg-zinc-950 dark:text-zinc-100">
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Desenvolvido Pela Equipe das:
-          </p>
-
-          <div className="mt-2 flex justify-center">
-            <img
-              src={developedByLogo}
-              alt="Equipe de Desenvolvimento"
-              className="h-10 object-contain opacity-85 transition hover:opacity-100"
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
