@@ -5,6 +5,8 @@ import type { MembershipCheckoutStatusResponse } from "@/types/membership";
 import { usePermissions } from "@/hooks/usePermissions";
 import MainLayout from "@/components/layout/MainLayout";
 
+const LOG_PREFIX = "[payment-result]";
+
 type StatusCard = {
   title: string;
   description: string;
@@ -25,7 +27,7 @@ function getBaseCopy(status: string | null): StatusCard {
   return {
     title: "Pagamento iniciado",
     description:
-      "Estamos aguardando a confirmação final da Stripe e a sincronização do vínculo de sócio no banco de dados.",
+      "Estamos aguardando a confirmação final da Stripe e a sincronização do vínculo de sócio.",
     badgeClassName:
       "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300",
   };
@@ -47,19 +49,24 @@ function getResolvedCopy(
     return {
       title: "Mensalidade confirmada",
       description:
-        "O pagamento foi conciliado e o status de sócio já foi liberado para a sua conta.",
+        "O pagamento foi conciliado e o vínculo do associado já foi liberado.",
       badgeClassName:
         "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
     };
   }
 
   if (
-    ["failed", "cancelled", "past_due"].includes(checkoutStatus.paymentStatus)
+    ["failed", "cancelled", "refunded", "partially_refunded"].includes(
+      checkoutStatus.paymentStatus,
+    ) ||
+    ["past_due", "cancelled", "expired"].includes(
+      checkoutStatus.partnerStatus ?? "",
+    )
   ) {
     return {
       title: "Pagamento não concluído",
       description:
-        "A cobrança retornou com falha ou pendência financeira. Revise o método de pagamento e tente novamente.",
+        "A cobrança retornou com falha, cancelamento ou pendência financeira. Revise o método de pagamento e tente novamente.",
       badgeClassName:
         "border-red-500/20 bg-red-500/10 text-red-700 dark:text-red-300",
     };
@@ -68,7 +75,7 @@ function getResolvedCopy(
   return {
     title: "Pagamento em processamento",
     description:
-      "A cobrança foi criada, mas ainda estamos aguardando a confirmação final e a atualização do vínculo em partners.",
+      "A cobrança já existe, mas ainda estamos aguardando a atualização final do vínculo em partners.",
     badgeClassName:
       "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300",
   };
@@ -81,6 +88,27 @@ function formatDateTime(value: string | null) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function formatPaymentMethod(value: string | null) {
+  if (!value) return "Aguardando definição";
+
+  switch (value) {
+    case "card":
+      return "Cartão";
+    case "apple_pay":
+      return "Apple Pay";
+    case "google_pay":
+      return "Google Pay";
+    case "boleto":
+      return "Boleto";
+    case "pix":
+      return "Pix";
+    case "link":
+      return "Link";
+    default:
+      return value;
+  }
 }
 
 export default function PaymentResultPage() {
@@ -105,11 +133,23 @@ export default function PaymentResultPage() {
     const currentSessionId = sessionId;
 
     async function loadStatus() {
+      console.info(`${LOG_PREFIX} poll:start`, { sessionId: currentSessionId });
+
       try {
         setErrorMessage("");
+
         const data = await getMembershipCheckoutStatus(currentSessionId);
 
         if (cancelled) return;
+
+        console.info(`${LOG_PREFIX} poll:success`, {
+          sessionId: currentSessionId,
+          paymentId: data.paymentId,
+          paymentStatus: data.paymentStatus,
+          partnerStatus: data.partnerStatus,
+          partnerActive: data.partnerActive,
+          terminal: data.terminal,
+        });
 
         setCheckoutStatus(data);
         setLoading(false);
@@ -118,13 +158,16 @@ export default function PaymentResultPage() {
           await refreshPermissions();
         }
 
-        if (data.terminal) {
-          if (intervalId !== null) {
-            window.clearInterval(intervalId);
-          }
+        if (data.terminal && intervalId !== null) {
+          window.clearInterval(intervalId);
         }
       } catch (error) {
         if (cancelled) return;
+
+        console.error(`${LOG_PREFIX} poll:error`, {
+          sessionId: currentSessionId,
+          message: error instanceof Error ? error.message : "unknown",
+        });
 
         setLoading(false);
         setErrorMessage(
@@ -136,12 +179,14 @@ export default function PaymentResultPage() {
     }
 
     void loadStatus();
+
     intervalId = window.setInterval(() => {
       void loadStatus();
     }, 4000);
 
     return () => {
       cancelled = true;
+
       if (intervalId !== null) {
         window.clearInterval(intervalId);
       }
@@ -185,14 +230,31 @@ export default function PaymentResultPage() {
               <p className="font-medium text-zinc-900 dark:text-zinc-100">
                 Situação atual
               </p>
+
               <p className="mt-2">
                 {loading
                   ? "Consultando Stripe e banco de dados..."
                   : `Pagamento: ${checkoutStatus?.paymentStatus ?? "não identificado"}`}
               </p>
+
+              <p className="mt-1">
+                Método:{" "}
+                {formatPaymentMethod(checkoutStatus?.paymentMethodType ?? null)}
+              </p>
+
+              <p className="mt-1">
+                Modo: {checkoutStatus?.checkoutMode ?? "não identificado"}
+              </p>
+
+              <p className="mt-1">
+                Partner status:{" "}
+                {checkoutStatus?.partnerStatus ?? "não definido"}
+              </p>
+
               <p className="mt-1">
                 Sócio ativo: {checkoutStatus?.partnerActive ? "sim" : "não"}
               </p>
+
               <p className="mt-1">
                 Vigência: {formatDateTime(checkoutStatus?.expiresAt ?? null)}
               </p>
@@ -205,26 +267,19 @@ export default function PaymentResultPage() {
             </div>
           ) : null}
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              to="/member-card"
-              className="rounded-2xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-violet-500"
-            >
-              Voltar para a carteirinha
-            </Link>
-
+          <div className="mt-6 flex justify-center items-center">
             <Link
               to="/dashboard"
               className="rounded-2xl border border-zinc-200 px-5 py-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
             >
-              Ir ao dashboard
+              Voltar ao Início
             </Link>
           </div>
 
           <p className="mt-6 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-            A página agora consulta periodicamente a cobrança e tenta refletir o
-            vínculo real do associado assim que o webhook concluir a
-            sincronização.
+            Esta página consulta periodicamente a cobrança em{" "}
+            <code>payments</code> e o vínculo do associado em{" "}
+            <code>partners</code>.
           </p>
         </section>
       </div>

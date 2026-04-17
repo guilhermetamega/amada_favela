@@ -7,6 +7,10 @@ export type MembershipCheckoutResponse = {
 export type MembershipCheckoutStatusResponse = {
   paymentId: string;
   paymentStatus: string;
+  paymentMethodType: string | null;
+  checkoutMode: string | null;
+  partnerId: string | null;
+  partnerStatus: string | null;
   partnerActive: boolean;
   subscriptionId: string | null;
   expiresAt: string | null;

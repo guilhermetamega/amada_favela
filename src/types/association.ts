@@ -42,8 +42,6 @@ export type AssociationRow = {
   president_role: string | null;
   is_active: boolean;
   monthly_fee: number | string | null;
-  stripe_connected_account_id: string | null;
-  stripe_onboarding_completed: boolean | null;
 };
 
 export type AssociationUpdateInput = {
@@ -87,4 +85,11 @@ export type AssociationStripeOnboardingResponse = {
 export type AssociationStripeStatusResponse = {
   stripe_connected_account_id: string | null;
   stripe_onboarding_completed: boolean;
+  charges_enabled: boolean;
+  payouts_enabled: boolean;
+  details_submitted: boolean;
+  pix_enabled: boolean;
+  card_payments_enabled: boolean;
+  boleto_enabled: boolean;
+  requirements_currently_due: string[];
 };

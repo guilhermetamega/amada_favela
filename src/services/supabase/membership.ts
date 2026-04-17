@@ -4,19 +4,27 @@ import type {
   MembershipCheckoutStatusResponse,
 } from "@/types/membership";
 
+const LOG_PREFIX = "[membership-service]";
+
 export async function createMembershipCheckout(
   recurring = true,
 ): Promise<MembershipCheckoutResponse> {
+  console.info(`${LOG_PREFIX} createMembershipCheckout:start`, { recurring });
+
   const {
     data: { session },
     error: sessionError,
   } = await supabase.auth.getSession();
 
   if (sessionError) {
+    console.error(`${LOG_PREFIX} createMembershipCheckout:session-error`, {
+      message: sessionError.message,
+    });
     throw new Error("Erro ao validar sessão.");
   }
 
   if (!session?.access_token) {
+    console.warn(`${LOG_PREFIX} createMembershipCheckout:no-session`);
     throw new Error("Sessão expirada. Faça login novamente.");
   }
 
@@ -28,12 +36,23 @@ export async function createMembershipCheckout(
   );
 
   if (error) {
+    console.error(`${LOG_PREFIX} createMembershipCheckout:function-error`, {
+      message: error.message,
+    });
     throw new Error(error.message || "Erro ao iniciar pagamento.");
   }
 
-  if (!data?.url) {
-    throw new Error("Checkout não retornou URL válida.");
+  if (!data?.url || !data?.sessionId) {
+    console.error(`${LOG_PREFIX} createMembershipCheckout:invalid-response`, {
+      data,
+    });
+    throw new Error("Checkout não retornou dados válidos.");
   }
+
+  console.info(`${LOG_PREFIX} createMembershipCheckout:success`, {
+    sessionId: data.sessionId,
+    paymentMethods: data.paymentMethods ?? [],
+  });
 
   return data as MembershipCheckoutResponse;
 }
@@ -41,16 +60,24 @@ export async function createMembershipCheckout(
 export async function getMembershipCheckoutStatus(
   sessionId: string,
 ): Promise<MembershipCheckoutStatusResponse> {
+  console.info(`${LOG_PREFIX} getMembershipCheckoutStatus:start`, {
+    sessionId,
+  });
+
   const {
     data: { session },
     error: sessionError,
   } = await supabase.auth.getSession();
 
   if (sessionError) {
+    console.error(`${LOG_PREFIX} getMembershipCheckoutStatus:session-error`, {
+      message: sessionError.message,
+    });
     throw new Error("Erro ao validar sessão.");
   }
 
   if (!session?.access_token) {
+    console.warn(`${LOG_PREFIX} getMembershipCheckoutStatus:no-session`);
     throw new Error("Sessão expirada. Faça login novamente.");
   }
 
@@ -62,8 +89,21 @@ export async function getMembershipCheckoutStatus(
   );
 
   if (error) {
+    console.error(`${LOG_PREFIX} getMembershipCheckoutStatus:function-error`, {
+      message: error.message,
+      sessionId,
+    });
     throw new Error(error.message || "Erro ao consultar pagamento.");
   }
+
+  console.info(`${LOG_PREFIX} getMembershipCheckoutStatus:success`, {
+    sessionId,
+    paymentId: data?.paymentId ?? null,
+    paymentStatus: data?.paymentStatus ?? null,
+    partnerStatus: data?.partnerStatus ?? null,
+    partnerActive: data?.partnerActive ?? false,
+    terminal: data?.terminal ?? false,
+  });
 
   return data as MembershipCheckoutStatusResponse;
 }

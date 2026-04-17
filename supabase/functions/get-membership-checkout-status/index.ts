@@ -9,6 +9,8 @@ const corsHeaders = {
   "Content-Type": "application/json",
 };
 
+const LOG_PREFIX = "[get-membership-checkout-status]";
+
 type RequestBody = {
   sessionId?: string;
 };
@@ -17,6 +19,8 @@ type PaymentRow = {
   id: string;
   user_id: string;
   status: string;
+  payment_method_type: string | null;
+  checkout_mode: string | null;
   stripe_subscription_id: string | null;
   paid_at: string | null;
   period_end: string | null;
@@ -25,9 +29,15 @@ type PaymentRow = {
 
 type PartnerRow = {
   id: string;
+  payment_id: string | null;
   expires_at: string;
   status: string | null;
+  payment_status: string | null;
 };
+
+function log(step: string, payload?: unknown) {
+  console.log(`${LOG_PREFIX} ${step}`, payload ?? "");
+}
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -38,7 +48,12 @@ function json(status: number, body: unknown) {
 
 function isPartnerActive(partner: PartnerRow | null) {
   if (!partner) return false;
-  if (partner.status === "expired" || partner.status === "cancelled") {
+
+  if (
+    partner.status === "expired" ||
+    partner.status === "cancelled" ||
+    partner.status === "past_due"
+  ) {
     return false;
   }
 
@@ -89,11 +104,11 @@ serve(async (req) => {
     });
 
     const {
-      data: { user },
+      data: { user: authUser },
       error: authError,
     } = await userClient.auth.getUser();
 
-    if (authError || !user) {
+    if (authError || !authUser) {
       return json(401, { error: "Sessão inválida." });
     }
 
@@ -104,49 +119,98 @@ serve(async (req) => {
       return json(400, { error: "sessionId é obrigatório." });
     }
 
+    log("lookup:start", {
+      sessionId,
+      authUserId: authUser.id,
+    });
+
     const { data: paymentData, error: paymentError } = await admin
-      .from("membership_payments")
+      .from("payments")
       .select(
-        "id, user_id, status, stripe_subscription_id, paid_at, period_end, created_at",
+        `
+          id,
+          user_id,
+          status,
+          payment_method_type,
+          checkout_mode,
+          stripe_subscription_id,
+          paid_at,
+          period_end,
+          created_at
+        `,
       )
       .eq("stripe_checkout_session_id", sessionId)
-      .eq("user_id", user.id)
+      .eq("purpose", "partner_membership")
+      .eq("user_id", authUser.id)
       .maybeSingle();
 
     if (paymentError) {
-      return json(500, { error: paymentError.message });
+      log("lookup:payment-error", { message: paymentError.message, sessionId });
+      throw new Error(paymentError.message);
     }
 
     if (!paymentData) {
-      return json(404, { error: "Cobrança não encontrada." });
+      return json(404, { error: "Pagamento não encontrado para esta sessão." });
     }
 
     const payment = paymentData as PaymentRow;
 
     const { data: partnerData, error: partnerError } = await admin
       .from("partners")
-      .select("id, expires_at, status")
-      .eq("membership_payment_id", payment.id)
+      .select("id, payment_id, expires_at, status, payment_status")
+      .eq("payment_id", payment.id)
+      .order("expires_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (partnerError) {
-      return json(500, { error: partnerError.message });
+      log("lookup:partner-error", {
+        message: partnerError.message,
+        paymentId: payment.id,
+      });
+      throw new Error(partnerError.message);
     }
 
     const partner = (partnerData ?? null) as PartnerRow | null;
     const partnerActive = isPartnerActive(partner);
 
+    const terminal =
+      partnerActive ||
+      ["failed", "cancelled", "refunded", "partially_refunded"].includes(
+        payment.status,
+      ) ||
+      ["past_due", "cancelled", "expired"].includes(partner?.status ?? "");
+
+    log("lookup:resolved", {
+      sessionId,
+      paymentId: payment.id,
+      paymentStatus: payment.status,
+      partnerId: partner?.id ?? null,
+      partnerStatus: partner?.status ?? null,
+      partnerActive,
+      terminal,
+    });
+
     return json(200, {
       paymentId: payment.id,
       paymentStatus: payment.status,
+      paymentMethodType: payment.payment_method_type,
+      checkoutMode: payment.checkout_mode,
+      partnerId: partner?.id ?? null,
+      partnerStatus: partner?.status ?? null,
       partnerActive,
       subscriptionId: payment.stripe_subscription_id,
       expiresAt: partner?.expires_at ?? payment.period_end ?? null,
-      terminal:
-        partnerActive ||
-        ["failed", "cancelled", "past_due"].includes(payment.status),
+      terminal,
     });
   } catch (error) {
+    log("fatal", {
+      message:
+        error instanceof Error
+          ? error.message
+          : "Erro interno ao consultar cobrança.",
+    });
+
     return json(500, {
       error:
         error instanceof Error

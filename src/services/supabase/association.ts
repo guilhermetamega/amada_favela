@@ -175,10 +175,8 @@ function mapAssociationRowToFormData(
     president_role: normalizeNullableText(row.president_role) || "Presidente",
     is_active: row.is_active,
     monthly_fee: formatMonthlyFeeValue(row.monthly_fee),
-    stripe_connected_account_id: normalizeNullableText(
-      row.stripe_connected_account_id,
-    ),
-    stripe_onboarding_completed: Boolean(row.stripe_onboarding_completed),
+    stripe_connected_account_id: "",
+    stripe_onboarding_completed: false,
   };
 }
 
@@ -206,9 +204,7 @@ async function getAssociationRowByCommunity(
         president_name,
         president_role,
         is_active,
-        monthly_fee,
-        stripe_connected_account_id,
-        stripe_onboarding_completed
+        monthly_fee
       `,
     )
     .eq("community", community)
@@ -368,9 +364,7 @@ export async function updateAssociation(
         president_name,
         president_role,
         is_active,
-        monthly_fee,
-        stripe_connected_account_id,
-        stripe_onboarding_completed
+        monthly_fee
       `,
     )
     .single();
@@ -383,6 +377,8 @@ export async function updateAssociation(
 }
 
 export async function createAssociationStripeOnboarding(): Promise<AssociationStripeOnboardingResponse> {
+  console.info("[association-service] createAssociationStripeOnboarding:start");
+
   const { data, error } = await supabase.functions.invoke(
     "create-association-stripe-onboarding",
     {
@@ -391,19 +387,41 @@ export async function createAssociationStripeOnboarding(): Promise<AssociationSt
   );
 
   if (error) {
+    console.error(
+      "[association-service] createAssociationStripeOnboarding:error",
+      {
+        message: error.message,
+      },
+    );
+
     throw new Error(
       error.message || "Não foi possível iniciar o onboarding da Stripe.",
     );
   }
 
   if (!data?.url || !data?.mode) {
+    console.error(
+      "[association-service] createAssociationStripeOnboarding:invalid-response",
+      { data },
+    );
     throw new Error("A Stripe não retornou um link de onboarding válido.");
   }
+
+  console.info(
+    "[association-service] createAssociationStripeOnboarding:success",
+    {
+      mode: data.mode,
+    },
+  );
 
   return data as AssociationStripeOnboardingResponse;
 }
 
 export async function syncAssociationStripeOnboardingStatus(): Promise<AssociationStripeStatusResponse> {
+  console.info(
+    "[association-service] syncAssociationStripeOnboardingStatus:start",
+  );
+
   const { data, error } = await supabase.functions.invoke(
     "sync-association-stripe-onboarding-status",
     {
@@ -412,15 +430,38 @@ export async function syncAssociationStripeOnboardingStatus(): Promise<Associati
   );
 
   if (error) {
+    console.error(
+      "[association-service] syncAssociationStripeOnboardingStatus:error",
+      {
+        message: error.message,
+      },
+    );
+
     throw new Error(
       error.message || "Não foi possível sincronizar o status da Stripe.",
     );
   }
 
-  return {
+  const response: AssociationStripeStatusResponse = {
     stripe_connected_account_id: data?.stripe_connected_account_id ?? null,
     stripe_onboarding_completed: Boolean(data?.stripe_onboarding_completed),
+    charges_enabled: Boolean(data?.charges_enabled),
+    payouts_enabled: Boolean(data?.payouts_enabled),
+    details_submitted: Boolean(data?.details_submitted),
+    pix_enabled: Boolean(data?.pix_enabled),
+    card_payments_enabled: Boolean(data?.card_payments_enabled),
+    boleto_enabled: Boolean(data?.boleto_enabled),
+    requirements_currently_due: Array.isArray(data?.requirements_currently_due)
+      ? data.requirements_currently_due
+      : [],
   };
+
+  console.info(
+    "[association-service] syncAssociationStripeOnboardingStatus:success",
+    response,
+  );
+
+  return response;
 }
 
 export async function getAssociationPublicData(): Promise<AssociationPublicData> {

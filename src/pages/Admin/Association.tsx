@@ -109,6 +109,7 @@ export default function AssociationSettingsPage() {
     let active = true;
 
     async function load() {
+      console.info("[association-admin] load:start");
       setLoading(true);
       setErrorMessage("");
       setSuccessMessage("");
@@ -134,30 +135,42 @@ export default function AssociationSettingsPage() {
         setAccessDenied(false);
         setForm(association);
 
-        if (association.stripe_connected_account_id) {
-          setStripeStatusSyncing(true);
+        setStripeStatusSyncing(true);
 
-          try {
-            const stripeStatus = await syncAssociationStripeOnboardingStatus();
+        try {
+          const stripeStatus = await syncAssociationStripeOnboardingStatus();
 
-            if (!active) return;
+          if (!active) return;
 
-            setForm((current) => ({
-              ...current,
-              stripe_connected_account_id:
-                stripeStatus.stripe_connected_account_id ??
-                current.stripe_connected_account_id,
-              stripe_onboarding_completed:
-                stripeStatus.stripe_onboarding_completed,
-            }));
-          } finally {
-            if (active) {
-              setStripeStatusSyncing(false);
-            }
+          console.info("[association-admin] stripe-sync:success", stripeStatus);
+
+          setForm((current) => ({
+            ...current,
+            stripe_connected_account_id:
+              stripeStatus.stripe_connected_account_id ?? "",
+            stripe_onboarding_completed:
+              stripeStatus.stripe_onboarding_completed,
+          }));
+        } catch (stripeError) {
+          if (!active) return;
+
+          console.warn("[association-admin] stripe-sync:warning", {
+            message:
+              stripeError instanceof Error
+                ? stripeError.message
+                : "sync failed",
+          });
+        } finally {
+          if (active) {
+            setStripeStatusSyncing(false);
           }
         }
       } catch (error) {
         if (!active) return;
+
+        console.error("[association-admin] load:error", {
+          message: error instanceof Error ? error.message : "unknown",
+        });
 
         setErrorMessage(
           error instanceof Error
@@ -181,13 +194,17 @@ export default function AssociationSettingsPage() {
   useEffect(() => {
     const stripeFlowState = searchParams.get("stripe");
 
-    if (!stripeFlowState || !form.stripe_connected_account_id) {
+    if (!stripeFlowState) {
       return;
     }
 
     let active = true;
 
     async function syncAfterReturn() {
+      console.info("[association-admin] stripe-return:start", {
+        stripeFlowState,
+      });
+
       setStripeStatusSyncing(true);
 
       try {
@@ -198,8 +215,7 @@ export default function AssociationSettingsPage() {
         setForm((current) => ({
           ...current,
           stripe_connected_account_id:
-            stripeStatus.stripe_connected_account_id ??
-            current.stripe_connected_account_id,
+            stripeStatus.stripe_connected_account_id ?? "",
           stripe_onboarding_completed: stripeStatus.stripe_onboarding_completed,
         }));
 
@@ -210,6 +226,10 @@ export default function AssociationSettingsPage() {
         );
       } catch (error) {
         if (!active) return;
+
+        console.error("[association-admin] stripe-return:error", {
+          message: error instanceof Error ? error.message : "unknown",
+        });
 
         setErrorMessage(
           error instanceof Error
@@ -233,7 +253,7 @@ export default function AssociationSettingsPage() {
     return () => {
       active = false;
     };
-  }, [form.stripe_connected_account_id, searchParams]);
+  }, [searchParams]);
 
   const institutionalAddressPreview = useMemo(() => {
     return [
@@ -335,14 +355,23 @@ export default function AssociationSettingsPage() {
       return;
     }
 
+    console.info("[association-admin] stripe-onboarding:click");
+
     setStripeOnboardingLoading(true);
     setErrorMessage("");
     setSuccessMessage("");
 
     try {
       const result = await createAssociationStripeOnboarding();
-      window.location.assign(result.url);
+
+      console.info("[association-admin] stripe-onboarding:redirect", result);
+
+      window.open(result.url, "_blank", "noopener,noreferrer");
     } catch (error) {
+      console.error("[association-admin] stripe-onboarding:error", {
+        message: error instanceof Error ? error.message : "unknown",
+      });
+
       setErrorMessage(
         error instanceof Error
           ? error.message
@@ -357,6 +386,11 @@ export default function AssociationSettingsPage() {
     event.preventDefault();
 
     if (saving || accessDenied) return;
+
+    console.info("[association-admin] submit:start", {
+      associationId: form.id,
+      community: form.community,
+    });
 
     setSaving(true);
     setErrorMessage("");
@@ -393,8 +427,16 @@ export default function AssociationSettingsPage() {
         invalidateAssociationContactCache(updated.community);
       }
 
+      console.info("[association-admin] submit:success", {
+        associationId: updated.id,
+      });
+
       setSuccessMessage("Dados da associação atualizados com sucesso.");
     } catch (error) {
+      console.error("[association-admin] submit:error", {
+        message: error instanceof Error ? error.message : "unknown",
+      });
+
       setErrorMessage(
         error instanceof Error
           ? error.message

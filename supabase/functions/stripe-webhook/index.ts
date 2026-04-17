@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@latest?target=denonext";
+import Stripe from "https://esm.sh/stripe@14?target=denonext";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const stripeSecret = Deno.env.get("STRIPE_SECRET_KEY");
@@ -8,39 +8,94 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const kayoAccountId = Deno.env.get("STRIPE_KAYO_ACCOUNT_ID");
 
+const LOG_PREFIX = "[stripe-webhook]";
+const PLATFORM_RETAINED_CENTS = 250;
+const PLATFORM_TRANSFER_CENTS = 250;
+const THIRD_PARTY_TRANSFER_CENTS = 100;
+
 if (!stripeSecret || !webhookSecret || !supabaseUrl || !serviceRoleKey) {
   throw new Error("Secrets obrigatórios do webhook não configurados.");
 }
 
 const stripe = new Stripe(stripeSecret);
-
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
 const admin = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false },
 });
 
-type MembershipPaymentRow = {
+type JsonObject = Record<string, unknown>;
+
+type PaymentRow = {
   id: string;
   user_id: string;
-  community: string;
   association_id: string;
-  amount_gross_cents: number;
+  connected_account_id: string | null;
+  community: string | null;
+  amount_total: number;
+  amount_platform_fee: number;
+  amount_platform_transfer: number;
+  amount_third_party_transfer: number;
+  amount_association_transfer: number;
+  amount_stripe_fee: number;
   currency: string;
-  transfer_group: string;
+  stripe_payment_intent_id: string | null;
+  stripe_charge_id: string | null;
+  stripe_balance_transaction_id: string | null;
   stripe_checkout_session_id: string | null;
   stripe_invoice_id: string | null;
   stripe_subscription_id: string | null;
   stripe_customer_id: string | null;
-  payment_method: string | null;
+  stripe_event_id: string | null;
+  payment_method_type: string | null;
   checkout_mode: string | null;
-  notes: string | null;
-  status: string;
+  transfer_group: string | null;
+  stripe_platform_transfer_id: string | null;
+  stripe_third_party_transfer_id: string | null;
+  stripe_association_transfer_id: string | null;
+  platform_transfer_destination_account_id: string | null;
+  third_party_transfer_destination_account_id: string | null;
+  association_transfer_destination_account_id: string | null;
   paid_at: string | null;
   period_start: string | null;
   period_end: string | null;
-  created_at: string;
+  status: string;
+  description: string | null;
+  external_reference: string | null;
+  metadata: JsonObject | null;
+  gateway_response: JsonObject | null;
 };
+
+type AssociationRow = {
+  id: string;
+  name: string;
+  community: string;
+  stripe_third_party_account_id: string | null;
+  stripe_third_party_label: string | null;
+};
+
+type ConnectedAccountRow = {
+  id: string;
+  stripe_account_id: string | null;
+  onboarding_completed: boolean;
+  payouts_enabled: boolean;
+  charges_enabled: boolean;
+};
+
+type BillingConfig = {
+  association: AssociationRow;
+  connectedAccount: ConnectedAccountRow;
+};
+
+type PartnerRow = {
+  id: string;
+  status: string | null;
+  expires_at: string;
+};
+
+function log(step: string, payload?: unknown) {
+  console.log(`${LOG_PREFIX} ${step}`, payload ?? "");
+}
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -49,147 +104,8 @@ function json(status: number, body: unknown) {
   });
 }
 
-async function getAssociationPayoutConfig(associationId: string) {
-  const { data, error } = await admin
-    .from("association")
-    .select(
-      "id, stripe_connected_account_id, stripe_third_party_account_id, stripe_third_party_label",
-    )
-    .eq("id", associationId)
-    .single();
-
-  if (
-    error ||
-    !data?.stripe_connected_account_id ||
-    !data?.stripe_third_party_account_id
-  ) {
-    throw new Error("Configuração de split da associação não encontrada.");
-  }
-
-  return data as {
-    id: string;
-    stripe_connected_account_id: string;
-    stripe_third_party_account_id: string;
-    stripe_third_party_label: string | null;
-  };
-}
-
-async function getPaymentByCheckoutSession(sessionId: string) {
-  const { data, error } = await admin
-    .from("membership_payments")
-    .select("*")
-    .eq("stripe_checkout_session_id", sessionId)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (data ?? null) as MembershipPaymentRow | null;
-}
-
-async function getPaymentByInvoice(invoiceId: string) {
-  const { data, error } = await admin
-    .from("membership_payments")
-    .select("*")
-    .eq("stripe_invoice_id", invoiceId)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (data ?? null) as MembershipPaymentRow | null;
-}
-
-async function getLatestPaymentBySubscription(subscriptionId: string) {
-  const { data, error } = await admin
-    .from("membership_payments")
-    .select("*")
-    .eq("stripe_subscription_id", subscriptionId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (data ?? null) as MembershipPaymentRow | null;
-}
-
-async function getOrCreatePaymentForInvoice(
-  subscriptionId: string,
-  invoice: Stripe.Invoice,
-) {
-  const existingInvoicePayment = await getPaymentByInvoice(invoice.id);
-
-  if (existingInvoicePayment) {
-    return existingInvoicePayment;
-  }
-
-  const latestPayment = await getLatestPaymentBySubscription(subscriptionId);
-
-  if (!latestPayment) {
-    return null;
-  }
-
-  const amountGrossCents =
-    typeof invoice.amount_paid === "number" && invoice.amount_paid > 0
-      ? invoice.amount_paid
-      : latestPayment.amount_gross_cents;
-
-  if (!latestPayment.stripe_invoice_id) {
-    const { data, error } = await admin
-      .from("membership_payments")
-      .update({
-        stripe_invoice_id: invoice.id,
-        amount_gross_cents: amountGrossCents,
-        status: "processing",
-      })
-      .eq("id", latestPayment.id)
-      .select("*")
-      .single();
-
-    if (error || !data) {
-      throw new Error(error?.message || "Falha ao atualizar cobrança inicial.");
-    }
-
-    return data as MembershipPaymentRow;
-  }
-
-  const newTransferGroup = `membership_${latestPayment.user_id}_${Date.now()}`;
-
-  const insertPayload = {
-    user_id: latestPayment.user_id,
-    community: latestPayment.community,
-    association_id: latestPayment.association_id,
-    amount_gross_cents: amountGrossCents,
-    currency: latestPayment.currency || "brl",
-    stripe_subscription_id: subscriptionId,
-    stripe_invoice_id: invoice.id,
-    stripe_customer_id: latestPayment.stripe_customer_id,
-    payment_method: latestPayment.payment_method ?? "pix",
-    checkout_mode: "subscription",
-    transfer_group: newTransferGroup,
-    platform_retained_cents: 250,
-    platform_two_cents: 250,
-    third_party_cents: 100,
-    notes: latestPayment.notes,
-    status: "processing",
-  };
-
-  const { data, error } = await admin
-    .from("membership_payments")
-    .insert(insertPayload)
-    .select("*")
-    .single();
-
-  if (error || !data) {
-    throw new Error(error?.message || "Falha ao criar cobrança recorrente.");
-  }
-
-  return data as MembershipPaymentRow;
+function nowIso() {
+  return new Date().toISOString();
 }
 
 function addMonthIso(baseIso: string) {
@@ -203,34 +119,512 @@ function addMonthIso(baseIso: string) {
   return date.toISOString();
 }
 
-async function syncPartnerEntitlement(params: {
-  payment: MembershipPaymentRow;
-  paidAt?: string | null;
-  periodStart?: string | null;
-  periodEnd?: string | null;
-}) {
-  const effectivePaidAt =
-    params.paidAt ?? params.payment.paid_at ?? new Date().toISOString();
-  const effectivePeriodStart =
-    params.periodStart ?? params.payment.period_start ?? effectivePaidAt;
-  const effectivePeriodEnd =
-    params.periodEnd ??
-    params.payment.period_end ??
-    addMonthIso(effectivePeriodStart);
+function buildReferenceMonth(
+  periodStartIso: string | null,
+  fallbackIso: string,
+) {
+  const base = periodStartIso
+    ? new Date(periodStartIso)
+    : new Date(fallbackIso);
 
+  return `${base.getUTCFullYear()}-${String(base.getUTCMonth() + 1).padStart(
+    2,
+    "0",
+  )}-01`;
+}
+
+function determinePaymentMethodType(charge: Stripe.Charge): string {
+  const details = charge.payment_method_details;
+
+  if (!details) {
+    return "unknown";
+  }
+
+  if (details.type === "card") {
+    const walletType = details.card?.wallet?.type;
+
+    if (walletType === "apple_pay") return "apple_pay";
+    if (walletType === "google_pay") return "google_pay";
+    return "card";
+  }
+
+  if (details.type === "boleto") return "boleto";
+  if (details.type === "pix") return "pix";
+  if (details.type === "link") return "link";
+
+  return "unknown";
+}
+
+function getSplitConfig(hasThirdParty: boolean) {
+  return {
+    platformRetainedCents: PLATFORM_RETAINED_CENTS,
+    platformTransferCents: PLATFORM_TRANSFER_CENTS,
+    thirdPartyTransferCents: hasThirdParty ? THIRD_PARTY_TRANSFER_CENTS : 0,
+  };
+}
+
+async function getBillingConfig(associationId: string): Promise<BillingConfig> {
+  const { data: associationData, error: associationError } = await admin
+    .from("association")
+    .select(
+      "id, name, community, stripe_third_party_account_id, stripe_third_party_label",
+    )
+    .eq("id", associationId)
+    .single();
+
+  if (associationError || !associationData) {
+    throw new Error(
+      associationError?.message ||
+        "Associação não encontrada ao processar webhook.",
+    );
+  }
+
+  const { data: connectedAccountData, error: connectedAccountError } =
+    await admin
+      .from("connected_accounts")
+      .select(
+        "id, stripe_account_id, onboarding_completed, payouts_enabled, charges_enabled",
+      )
+      .eq("association_id", associationId)
+      .single();
+
+  if (connectedAccountError || !connectedAccountData) {
+    throw new Error(
+      connectedAccountError?.message ||
+        "Conta conectada não encontrada ao processar webhook.",
+    );
+  }
+
+  const connectedAccount = connectedAccountData as ConnectedAccountRow;
+
+  if (!connectedAccount.stripe_account_id) {
+    throw new Error("Conta conectada sem stripe_account_id.");
+  }
+
+  return {
+    association: associationData as AssociationRow,
+    connectedAccount,
+  };
+}
+
+const PAYMENT_SELECT = `
+  id,
+  user_id,
+  association_id,
+  connected_account_id,
+  community,
+  amount_total,
+  amount_platform_fee,
+  amount_platform_transfer,
+  amount_third_party_transfer,
+  amount_association_transfer,
+  amount_stripe_fee,
+  currency,
+  stripe_payment_intent_id,
+  stripe_charge_id,
+  stripe_balance_transaction_id,
+  stripe_checkout_session_id,
+  stripe_invoice_id,
+  stripe_subscription_id,
+  stripe_customer_id,
+  stripe_event_id,
+  payment_method_type,
+  checkout_mode,
+  transfer_group,
+  stripe_platform_transfer_id,
+  stripe_third_party_transfer_id,
+  stripe_association_transfer_id,
+  platform_transfer_destination_account_id,
+  third_party_transfer_destination_account_id,
+  association_transfer_destination_account_id,
+  paid_at,
+  period_start,
+  period_end,
+  status,
+  description,
+  external_reference,
+  metadata,
+  gateway_response
+`;
+
+async function updatePaymentById(
+  paymentId: string,
+  payload: Partial<PaymentRow> & Record<string, unknown>,
+) {
+  const { data, error } = await admin
+    .from("payments")
+    .update({
+      ...payload,
+      updated_at: nowIso(),
+    })
+    .eq("id", paymentId)
+    .select(PAYMENT_SELECT)
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message || "Falha ao atualizar payment.");
+  }
+
+  return data as PaymentRow;
+}
+
+async function getPaymentByCheckoutSession(sessionId: string) {
+  const { data, error } = await admin
+    .from("payments")
+    .select(PAYMENT_SELECT)
+    .eq("stripe_checkout_session_id", sessionId)
+    .eq("purpose", "partner_membership")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? null) as PaymentRow | null;
+}
+
+async function getPaymentByInvoice(invoiceId: string) {
+  const { data, error } = await admin
+    .from("payments")
+    .select(PAYMENT_SELECT)
+    .eq("stripe_invoice_id", invoiceId)
+    .eq("purpose", "partner_membership")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? null) as PaymentRow | null;
+}
+
+async function getPaymentByPaymentIntent(paymentIntentId: string) {
+  const { data, error } = await admin
+    .from("payments")
+    .select(PAYMENT_SELECT)
+    .eq("stripe_payment_intent_id", paymentIntentId)
+    .eq("purpose", "partner_membership")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? null) as PaymentRow | null;
+}
+
+async function getLatestPaymentBySubscription(subscriptionId: string) {
+  const { data, error } = await admin
+    .from("payments")
+    .select(PAYMENT_SELECT)
+    .eq("stripe_subscription_id", subscriptionId)
+    .eq("purpose", "partner_membership")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? null) as PaymentRow | null;
+}
+
+async function getLatestOpenSubscriptionPaymentByCustomer(customerId: string) {
+  const { data, error } = await admin
+    .from("payments")
+    .select(PAYMENT_SELECT)
+    .eq("stripe_customer_id", customerId)
+    .eq("purpose", "partner_membership")
+    .eq("checkout_mode", "subscription")
+    .in("status", ["pending", "processing", "requires_action"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? null) as PaymentRow | null;
+}
+
+async function getOrCreatePaymentForInvoice(
+  subscriptionId: string,
+  invoice: Stripe.Invoice,
+) {
+  const existingInvoicePayment = await getPaymentByInvoice(invoice.id);
+
+  if (existingInvoicePayment) {
+    return existingInvoicePayment;
+  }
+
+  let latestPayment = await getLatestPaymentBySubscription(subscriptionId);
+
+  const customerId =
+    typeof invoice.customer === "string" ? invoice.customer : null;
+
+  if (!latestPayment && customerId) {
+    latestPayment =
+      await getLatestOpenSubscriptionPaymentByCustomer(customerId);
+  }
+
+  if (!latestPayment) {
+    return null;
+  }
+
+  const amountTotal =
+    typeof invoice.amount_paid === "number" && invoice.amount_paid > 0
+      ? invoice.amount_paid
+      : typeof invoice.amount_due === "number" && invoice.amount_due > 0
+        ? invoice.amount_due
+        : latestPayment.amount_total;
+
+  if (!latestPayment.stripe_invoice_id) {
+    return await updatePaymentById(latestPayment.id, {
+      stripe_invoice_id: invoice.id,
+      stripe_subscription_id: subscriptionId,
+      amount_total: amountTotal,
+      status: "processing",
+      stripe_event_id: null,
+    });
+  }
+
+  const referenceMonth = invoice.period_start
+    ? buildReferenceMonth(
+        new Date(invoice.period_start * 1000).toISOString(),
+        nowIso(),
+      )
+    : buildReferenceMonth(latestPayment.period_start, nowIso());
+
+  const { data, error } = await admin
+    .from("payments")
+    .insert({
+      user_id: latestPayment.user_id,
+      association_id: latestPayment.association_id,
+      connected_account_id: latestPayment.connected_account_id,
+      provider: "stripe",
+      purpose: "partner_membership",
+      payment_method_type: latestPayment.payment_method_type,
+      status: "processing",
+      currency: latestPayment.currency || "brl",
+      amount_total: amountTotal,
+      amount_platform_fee:
+        latestPayment.amount_platform_fee || PLATFORM_RETAINED_CENTS,
+      amount_platform_transfer:
+        latestPayment.amount_platform_transfer || PLATFORM_TRANSFER_CENTS,
+      amount_third_party_transfer:
+        latestPayment.amount_third_party_transfer || 0,
+      amount_association_transfer: 0,
+      amount_stripe_fee: 0,
+      reference_month: referenceMonth,
+      period_start: null,
+      period_end: null,
+      description:
+        latestPayment.description ||
+        `Mensalidade recorrente - ${latestPayment.community ?? "associação"}`,
+      paid_at: null,
+      stripe_payment_intent_id: null,
+      stripe_checkout_session_id: latestPayment.stripe_checkout_session_id,
+      stripe_charge_id: null,
+      stripe_transfer_id: null,
+      stripe_balance_transaction_id: null,
+      stripe_customer_id: latestPayment.stripe_customer_id,
+      stripe_invoice_id: invoice.id,
+      external_reference: `partner_membership:invoice:${invoice.id}`,
+      metadata: {
+        ...(latestPayment.metadata ?? {}),
+        source: "invoice.paid",
+        cloned_from_payment_id: latestPayment.id,
+      },
+      gateway_response: {
+        ...(latestPayment.gateway_response ?? {}),
+        created_from_invoice_paid: true,
+      },
+      community: latestPayment.community,
+      checkout_mode: "subscription",
+      stripe_subscription_id: subscriptionId,
+      stripe_event_id: null,
+      transfer_group:
+        latestPayment.transfer_group ||
+        `partner_membership_${latestPayment.user_id}_${Date.now()}`,
+      stripe_platform_transfer_id: null,
+      stripe_third_party_transfer_id: null,
+      stripe_association_transfer_id: null,
+      platform_transfer_destination_account_id:
+        latestPayment.platform_transfer_destination_account_id,
+      third_party_transfer_destination_account_id:
+        latestPayment.third_party_transfer_destination_account_id,
+      association_transfer_destination_account_id:
+        latestPayment.association_transfer_destination_account_id,
+      created_by: null,
+      updated_by: null,
+    })
+    .select(PAYMENT_SELECT)
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message || "Falha ao criar cobrança recorrente.");
+  }
+
+  return data as PaymentRow;
+}
+
+async function resolveChargeFromPaymentIntent(paymentIntentId: string) {
+  const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+    expand: ["latest_charge.balance_transaction"],
+  });
+
+  if (!paymentIntent.latest_charge) {
+    throw new Error("PaymentIntent sem latest_charge.");
+  }
+
+  if (typeof paymentIntent.latest_charge === "string") {
+    return await stripe.charges.retrieve(paymentIntent.latest_charge, {
+      expand: ["balance_transaction"],
+    });
+  }
+
+  return paymentIntent.latest_charge as Stripe.Charge;
+}
+
+function extractPaymentIntentIdFromInvoiceObject(
+  invoice: Stripe.Invoice,
+): string | null {
+  const legacyTopLevel = (
+    invoice as Stripe.Invoice & {
+      payment_intent?: string | Stripe.PaymentIntent | null;
+    }
+  ).payment_intent;
+
+  if (typeof legacyTopLevel === "string" && legacyTopLevel.length > 0) {
+    return legacyTopLevel;
+  }
+
+  const payments = (
+    invoice as Stripe.Invoice & {
+      payments?: {
+        data?: Array<{
+          payment?: {
+            type?: string | null;
+            payment_intent?: string | null;
+          } | null;
+        }>;
+      };
+    }
+  ).payments?.data;
+
+  if (!Array.isArray(payments)) {
+    return null;
+  }
+
+  for (const item of payments) {
+    const payment = item?.payment;
+
+    if (
+      payment?.type === "payment_intent" &&
+      typeof payment.payment_intent === "string" &&
+      payment.payment_intent.length > 0
+    ) {
+      return payment.payment_intent;
+    }
+  }
+
+  return null;
+}
+
+async function resolvePaymentIntentIdFromInvoice(
+  invoice: Stripe.Invoice,
+): Promise<string | null> {
+  const direct = extractPaymentIntentIdFromInvoiceObject(invoice);
+
+  if (direct) {
+    log("invoice:payment-intent-resolved:embedded", {
+      invoiceId: invoice.id,
+      paymentIntentId: direct,
+    });
+    return direct;
+  }
+
+  const refreshed = await stripe.invoices.retrieve(invoice.id, {
+    expand: ["payments"],
+  });
+
+  const refreshedId = extractPaymentIntentIdFromInvoiceObject(
+    refreshed as Stripe.Invoice,
+  );
+
+  log("invoice:payment-intent-resolved:refreshed", {
+    invoiceId: invoice.id,
+    paymentIntentId: refreshedId,
+  });
+
+  return refreshedId;
+}
+
+async function resolveInvoiceFromInvoicePayment(
+  invoicePayment: Stripe.InvoicePayment,
+): Promise<{
+  invoice: Stripe.Invoice;
+  paymentIntentId: string | null;
+} | null> {
+  const invoiceId =
+    typeof invoicePayment.invoice === "string"
+      ? invoicePayment.invoice
+      : (invoicePayment.invoice?.id ?? null);
+
+  if (!invoiceId) {
+    log("invoice-payment:missing-invoice-id", {
+      invoicePaymentId: invoicePayment.id,
+    });
+    return null;
+  }
+
+  const paymentIntentId =
+    invoicePayment.payment?.type === "payment_intent" &&
+    typeof invoicePayment.payment.payment_intent === "string"
+      ? invoicePayment.payment.payment_intent
+      : null;
+
+  const invoice = await stripe.invoices.retrieve(invoiceId, {
+    expand: ["payments"],
+  });
+
+  log("invoice-payment:resolved", {
+    invoicePaymentId: invoicePayment.id,
+    invoiceId,
+    paymentIntentId,
+  });
+
+  return {
+    invoice,
+    paymentIntentId,
+  };
+}
+
+async function syncPartnerEntitlement(params: {
+  payment: PaymentRow;
+  paidAt: string;
+  periodStart: string;
+  periodEnd: string;
+}) {
   const partnerPayload = {
     user_id: params.payment.user_id,
     association_id: params.payment.association_id,
-    membership_payment_id: params.payment.id,
-    created_at: effectivePaidAt,
-    expires_at: effectivePeriodEnd,
+    payment_id: params.payment.id,
+    stripe_subscription_id: params.payment.stripe_subscription_id,
+    stripe_payment_intent_id: params.payment.stripe_payment_intent_id,
+    stripe_checkout_session_id: params.payment.stripe_checkout_session_id,
+    payment_status: "paid",
+    created_at: params.paidAt,
+    expires_at: params.periodEnd,
     status: "active",
   };
 
   const { data: existingPartner, error: existingPartnerError } = await admin
     .from("partners")
     .select("id")
-    .eq("membership_payment_id", params.payment.id)
+    .eq("payment_id", params.payment.id)
     .maybeSingle();
 
   if (existingPartnerError) {
@@ -238,160 +632,297 @@ async function syncPartnerEntitlement(params: {
   }
 
   if (existingPartner?.id) {
-    const { error: updatePartnerError } = await admin
+    const { error } = await admin
       .from("partners")
       .update(partnerPayload)
       .eq("id", existingPartner.id);
 
-    if (updatePartnerError) {
-      throw new Error(updatePartnerError.message);
+    if (error) {
+      throw new Error(error.message);
     }
 
+    log("partner:updated", {
+      partnerId: existingPartner.id,
+      paymentId: params.payment.id,
+      expiresAt: params.periodEnd,
+    });
+
     return;
   }
 
-  const { error: insertPartnerError } = await admin
-    .from("partners")
-    .insert(partnerPayload);
+  const { error } = await admin.from("partners").insert(partnerPayload);
 
-  if (insertPartnerError) {
-    throw new Error(insertPartnerError.message);
+  if (error) {
+    throw new Error(error.message);
   }
+
+  log("partner:inserted", {
+    paymentId: params.payment.id,
+    expiresAt: params.periodEnd,
+  });
 }
 
-async function ensureTransfers(params: {
-  membershipPaymentId: string;
-  associationId: string;
-  transferGroup: string;
-  chargeId: string;
-  paymentIntentId: string | null;
-  invoiceId?: string | null;
-  subscriptionId?: string | null;
-  paidAt?: string | null;
-  periodStart?: string | null;
-  periodEnd?: string | null;
-  eventId?: string | null;
-}) {
-  const existingTransfers = await admin
-    .from("membership_payment_transfers")
-    .select("id")
-    .eq("membership_payment_id", params.membershipPaymentId)
-    .limit(1);
+async function markLatestPartnerPastDueBySubscription(subscriptionId: string) {
+  const { data, error } = await admin
+    .from("partners")
+    .select("id, status, expires_at")
+    .eq("stripe_subscription_id", subscriptionId)
+    .in("status", ["active", "past_due"])
+    .order("expires_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  if (existingTransfers.data && existingTransfers.data.length > 0) {
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const partner = (data ?? null) as PartnerRow | null;
+
+  if (!partner) {
     return;
   }
+
+  const { error: updateError } = await admin
+    .from("partners")
+    .update({
+      status: "past_due",
+      payment_status: "past_due",
+    })
+    .eq("id", partner.id);
+
+  if (updateError) {
+    throw new Error(updateError.message);
+  }
+
+  log("partner:past-due", {
+    partnerId: partner.id,
+    subscriptionId,
+  });
+}
+
+async function cancelPartnersBySubscription(subscriptionId: string) {
+  const { error } = await admin
+    .from("partners")
+    .update({
+      status: "cancelled",
+      payment_status: "cancelled",
+    })
+    .eq("stripe_subscription_id", subscriptionId)
+    .in("status", ["active", "past_due"]);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  log("partner:cancelled", { subscriptionId });
+}
+
+async function ensureTransfersAndPersist(params: {
+  payment: PaymentRow;
+  paymentIntentId: string;
+  charge: Stripe.Charge;
+  invoiceId?: string | null;
+  subscriptionId?: string | null;
+  paidAt: string;
+  periodStart: string;
+  periodEnd: string;
+  eventId: string | null;
+}) {
+  const billingConfig = await getBillingConfig(params.payment.association_id);
 
   if (!kayoAccountId) {
     throw new Error("STRIPE_KAYO_ACCOUNT_ID não configurado.");
   }
 
-  const association = await getAssociationPayoutConfig(params.associationId);
+  const balanceTx = params.charge.balance_transaction as
+    | Stripe.BalanceTransaction
+    | string
+    | null;
 
-  const charge = await stripe.charges.retrieve(params.chargeId, {
-    expand: ["balance_transaction"],
-  });
+  if (!balanceTx || typeof balanceTx === "string") {
+    throw new Error("Charge sem balance_transaction expandido.");
+  }
 
-  const balanceTx = charge.balance_transaction as Stripe.BalanceTransaction;
   const fee = balanceTx.fee ?? 0;
-  const gross = charge.amount;
+  const gross = params.charge.amount;
   const net = gross - fee;
 
-  const kayoCents = 250;
-  const thirdPartyCents = 100;
-  const platformRetainedCents = 250;
-  const associationCents =
-    net - kayoCents - thirdPartyCents - platformRetainedCents;
+  const split = getSplitConfig(
+    Boolean(billingConfig.association.stripe_third_party_account_id),
+  );
 
-  if (associationCents < 0) {
+  const associationTransferCents =
+    net -
+    split.platformRetainedCents -
+    split.platformTransferCents -
+    split.thirdPartyTransferCents;
+
+  if (associationTransferCents < 0) {
     throw new Error(
       "Valor líquido insuficiente para executar o split configurado.",
     );
   }
 
-  const sourceTransaction = charge.id;
+  let platformTransferId = params.payment.stripe_platform_transfer_id;
+  let thirdPartyTransferId = params.payment.stripe_third_party_transfer_id;
+  let associationTransferId = params.payment.stripe_association_transfer_id;
 
-  const [kayoTransfer, thirdTransfer, associationTransfer] = await Promise.all([
-    stripe.transfers.create({
-      amount: kayoCents,
-      currency: "brl",
-      destination: kayoAccountId,
-      transfer_group: params.transferGroup,
-      source_transaction: sourceTransaction,
-      metadata: {
-        membership_payment_id: params.membershipPaymentId,
-        recipient_type: "kayo",
+  if (!platformTransferId) {
+    const transfer = await stripe.transfers.create(
+      {
+        amount: split.platformTransferCents,
+        currency: "brl",
+        destination: kayoAccountId,
+        transfer_group:
+          params.payment.transfer_group ??
+          `partner_membership_${params.payment.user_id}_${Date.now()}`,
+        source_transaction: params.charge.id,
+        metadata: {
+          payment_id: params.payment.id,
+          recipient_type: "platform",
+        },
       },
-    }),
-    stripe.transfers.create({
-      amount: thirdPartyCents,
-      currency: "brl",
-      destination: association.stripe_third_party_account_id,
-      transfer_group: params.transferGroup,
-      source_transaction: sourceTransaction,
-      metadata: {
-        membership_payment_id: params.membershipPaymentId,
-        recipient_type: "third_party",
+      {
+        idempotencyKey: `payment:${params.payment.id}:platform-transfer:v1`,
       },
-    }),
-    stripe.transfers.create({
-      amount: associationCents,
-      currency: "brl",
-      destination: association.stripe_connected_account_id,
-      transfer_group: params.transferGroup,
-      source_transaction: sourceTransaction,
-      metadata: {
-        membership_payment_id: params.membershipPaymentId,
-        recipient_type: "association",
-      },
-    }),
-  ]);
+    );
 
-  await admin.from("membership_payment_transfers").insert([
-    {
-      membership_payment_id: params.membershipPaymentId,
-      recipient_type: "kayo",
-      recipient_account_id: kayoAccountId,
-      amount_cents: kayoCents,
-      stripe_transfer_id: kayoTransfer.id,
-    },
-    {
-      membership_payment_id: params.membershipPaymentId,
-      recipient_type: "third_party",
-      recipient_account_id: association.stripe_third_party_account_id,
-      amount_cents: thirdPartyCents,
-      stripe_transfer_id: thirdTransfer.id,
-    },
-    {
-      membership_payment_id: params.membershipPaymentId,
-      recipient_type: "association",
-      recipient_account_id: association.stripe_connected_account_id,
-      amount_cents: associationCents,
-      stripe_transfer_id: associationTransfer.id,
-    },
-  ]);
+    platformTransferId = transfer.id;
+  }
 
-  await admin
-    .from("membership_payments")
-    .update({
-      stripe_fee_cents: fee,
-      amount_net_cents: net,
-      platform_one_cents: platformRetainedCents,
-      platform_two_cents: kayoCents,
-      third_party_cents: thirdPartyCents,
-      association_cents: associationCents,
-      stripe_charge_id: params.chargeId,
-      stripe_payment_intent_id: params.paymentIntentId,
-      stripe_balance_transaction_id: balanceTx.id,
-      stripe_invoice_id: params.invoiceId ?? null,
-      stripe_subscription_id: params.subscriptionId ?? null,
-      stripe_event_id: params.eventId ?? null,
-      paid_at: params.paidAt,
-      period_start: params.periodStart,
-      period_end: params.periodEnd,
-      status: params.subscriptionId ? "active" : "paid",
-    })
-    .eq("id", params.membershipPaymentId);
+  if (
+    split.thirdPartyTransferCents > 0 &&
+    billingConfig.association.stripe_third_party_account_id &&
+    !thirdPartyTransferId
+  ) {
+    const transfer = await stripe.transfers.create(
+      {
+        amount: split.thirdPartyTransferCents,
+        currency: "brl",
+        destination: billingConfig.association.stripe_third_party_account_id,
+        transfer_group:
+          params.payment.transfer_group ??
+          `partner_membership_${params.payment.user_id}_${Date.now()}`,
+        source_transaction: params.charge.id,
+        metadata: {
+          payment_id: params.payment.id,
+          recipient_type: "third_party",
+        },
+      },
+      {
+        idempotencyKey: `payment:${params.payment.id}:third-party-transfer:v1`,
+      },
+    );
+
+    thirdPartyTransferId = transfer.id;
+  }
+
+  if (!associationTransferId) {
+    const transfer = await stripe.transfers.create(
+      {
+        amount: associationTransferCents,
+        currency: "brl",
+        destination: billingConfig.connectedAccount.stripe_account_id!,
+        transfer_group:
+          params.payment.transfer_group ??
+          `partner_membership_${params.payment.user_id}_${Date.now()}`,
+        source_transaction: params.charge.id,
+        metadata: {
+          payment_id: params.payment.id,
+          recipient_type: "association",
+        },
+      },
+      {
+        idempotencyKey: `payment:${params.payment.id}:association-transfer:v1`,
+      },
+    );
+
+    associationTransferId = transfer.id;
+  }
+
+  const paymentMethodType = determinePaymentMethodType(params.charge);
+
+  const updatedPayment = await updatePaymentById(params.payment.id, {
+    amount_total: gross,
+    amount_platform_fee: split.platformRetainedCents,
+    amount_platform_transfer: split.platformTransferCents,
+    amount_third_party_transfer: split.thirdPartyTransferCents,
+    amount_association_transfer: associationTransferCents,
+    amount_stripe_fee: fee,
+    payment_method_type: paymentMethodType,
+    stripe_charge_id: params.charge.id,
+    stripe_payment_intent_id: params.paymentIntentId,
+    stripe_balance_transaction_id: balanceTx.id,
+    stripe_invoice_id: params.invoiceId ?? params.payment.stripe_invoice_id,
+    stripe_subscription_id:
+      params.subscriptionId ?? params.payment.stripe_subscription_id,
+    stripe_event_id: params.eventId,
+    paid_at: params.paidAt,
+    period_start: params.periodStart,
+    period_end: params.periodEnd,
+    reference_month: buildReferenceMonth(params.periodStart, params.paidAt),
+    status: "succeeded",
+    stripe_platform_transfer_id: platformTransferId,
+    stripe_third_party_transfer_id: thirdPartyTransferId,
+    stripe_association_transfer_id: associationTransferId,
+    platform_transfer_destination_account_id: kayoAccountId,
+    third_party_transfer_destination_account_id:
+      billingConfig.association.stripe_third_party_account_id,
+    association_transfer_destination_account_id:
+      billingConfig.connectedAccount.stripe_account_id,
+    gateway_response: {
+      ...(params.payment.gateway_response ?? {}),
+      last_processed_event_id: params.eventId,
+      charge_id: params.charge.id,
+      balance_transaction_id: balanceTx.id,
+      payment_method_type: paymentMethodType,
+    },
+  });
+
+  log("payment:reconciled", {
+    paymentId: updatedPayment.id,
+    status: updatedPayment.status,
+    chargeId: updatedPayment.stripe_charge_id,
+    invoiceId: updatedPayment.stripe_invoice_id,
+    subscriptionId: updatedPayment.stripe_subscription_id,
+    paymentMethodType: updatedPayment.payment_method_type,
+    platformTransferId,
+    thirdPartyTransferId,
+    associationTransferId,
+  });
+
+  return updatedPayment;
+}
+
+async function processSuccessfulPayment(params: {
+  payment: PaymentRow;
+  paymentIntentId: string;
+  charge: Stripe.Charge;
+  invoiceId?: string | null;
+  subscriptionId?: string | null;
+  paidAt: string;
+  periodStart: string;
+  periodEnd: string;
+  eventId: string;
+}) {
+  const updatedPayment = await ensureTransfersAndPersist({
+    payment: params.payment,
+    paymentIntentId: params.paymentIntentId,
+    charge: params.charge,
+    invoiceId: params.invoiceId,
+    subscriptionId: params.subscriptionId,
+    paidAt: params.paidAt,
+    periodStart: params.periodStart,
+    periodEnd: params.periodEnd,
+    eventId: params.eventId,
+  });
+
+  await syncPartnerEntitlement({
+    payment: updatedPayment,
+    paidAt: params.paidAt,
+    periodStart: params.periodStart,
+    periodEnd: params.periodEnd,
+  });
 }
 
 serve(async (req) => {
@@ -412,68 +943,81 @@ serve(async (req) => {
       cryptoProvider,
     );
 
+    log("event:received", {
+      id: event.id,
+      type: event.type,
+    });
+
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
 
-      await admin
-        .from("membership_payments")
-        .update({
-          stripe_checkout_session_id: session.id,
-          stripe_subscription_id:
-            typeof session.subscription === "string"
-              ? session.subscription
-              : null,
-          stripe_customer_id:
-            typeof session.customer === "string" ? session.customer : null,
-          status: session.payment_status === "paid" ? "processing" : "pending",
-          stripe_event_id: event.id,
-        })
-        .eq("stripe_checkout_session_id", session.id);
+      const payment = await getPaymentByCheckoutSession(session.id);
+
+      if (!payment) {
+        log("checkout.session.completed:payment-not-found", {
+          sessionId: session.id,
+        });
+        return json(200, { received: true, skipped: true });
+      }
+
+      const updatedPayment = await updatePaymentById(payment.id, {
+        stripe_checkout_session_id: session.id,
+        stripe_invoice_id:
+          typeof session.invoice === "string"
+            ? session.invoice
+            : payment.stripe_invoice_id,
+        stripe_subscription_id:
+          typeof session.subscription === "string"
+            ? session.subscription
+            : payment.stripe_subscription_id,
+        stripe_customer_id:
+          typeof session.customer === "string"
+            ? session.customer
+            : payment.stripe_customer_id,
+        status: session.payment_status === "paid" ? "processing" : "pending",
+        stripe_event_id: event.id,
+        gateway_response: {
+          ...(payment.gateway_response ?? {}),
+          checkout_session_completed_payment_status: session.payment_status,
+          checkout_session_completed_status: session.status,
+        },
+      });
+
+      log("checkout.session.completed:updated", {
+        paymentId: updatedPayment.id,
+        sessionId: session.id,
+        status: updatedPayment.status,
+        invoiceId: updatedPayment.stripe_invoice_id,
+        subscriptionId: updatedPayment.stripe_subscription_id,
+      });
 
       if (session.mode === "payment" && session.payment_status === "paid") {
-        const payment = await getPaymentByCheckoutSession(session.id);
-
-        if (!payment) {
-          return json(200, { received: true, skipped: true });
-        }
-
         const paymentIntentId =
           typeof session.payment_intent === "string"
             ? session.payment_intent
             : null;
 
         if (!paymentIntentId) {
+          log("checkout.session.completed:missing-payment-intent", {
+            paymentId: updatedPayment.id,
+            sessionId: session.id,
+          });
           return json(200, { received: true, skipped: true });
         }
 
-        const paymentIntent = await stripe.paymentIntents.retrieve(
-          paymentIntentId,
-          {
-            expand: ["latest_charge.balance_transaction"],
-          },
-        );
+        const charge = await resolveChargeFromPaymentIntent(paymentIntentId);
+        const paidAt = nowIso();
+        const periodStart = paidAt;
+        const periodEnd = addMonthIso(periodStart);
 
-        const latestCharge = paymentIntent.latest_charge as Stripe.Charge;
-        const paidAt = new Date().toISOString();
-        const periodEnd = addMonthIso(paidAt);
-
-        await ensureTransfers({
-          membershipPaymentId: payment.id,
-          associationId: payment.association_id,
-          transferGroup: payment.transfer_group,
-          chargeId: latestCharge.id,
+        await processSuccessfulPayment({
+          payment: updatedPayment,
           paymentIntentId,
+          charge,
           paidAt,
-          periodStart: paidAt,
+          periodStart,
           periodEnd,
           eventId: event.id,
-        });
-
-        await syncPartnerEntitlement({
-          payment,
-          paidAt,
-          periodStart: paidAt,
-          periodEnd,
         });
       }
     }
@@ -483,6 +1027,9 @@ serve(async (req) => {
       const payment = await getPaymentByCheckoutSession(session.id);
 
       if (!payment) {
+        log("checkout.session.async_payment_succeeded:payment-not-found", {
+          sessionId: session.id,
+        });
         return json(200, { received: true, skipped: true });
       }
 
@@ -492,51 +1039,73 @@ serve(async (req) => {
           : null;
 
       if (!paymentIntentId) {
+        log("checkout.session.async_payment_succeeded:missing-payment-intent", {
+          paymentId: payment.id,
+          sessionId: session.id,
+        });
         return json(200, { received: true, skipped: true });
       }
 
-      const paymentIntent = await stripe.paymentIntents.retrieve(
+      const charge = await resolveChargeFromPaymentIntent(paymentIntentId);
+      const paidAt = nowIso();
+      const periodStart = paidAt;
+      const periodEnd = addMonthIso(periodStart);
+
+      await processSuccessfulPayment({
+        payment,
         paymentIntentId,
-        {
-          expand: ["latest_charge.balance_transaction"],
-        },
-      );
-
-      const latestCharge = paymentIntent.latest_charge as Stripe.Charge;
-
-      const paidAt = new Date().toISOString();
-      const periodEnd = addMonthIso(paidAt);
-
-      await ensureTransfers({
-        membershipPaymentId: payment.id,
-        associationId: payment.association_id,
-        transferGroup: payment.transfer_group,
-        chargeId: latestCharge.id,
-        paymentIntentId,
+        charge,
         paidAt,
-        periodStart: paidAt,
+        periodStart,
         periodEnd,
         eventId: event.id,
-      });
-
-      await syncPartnerEntitlement({
-        payment,
-        paidAt,
-        periodStart: paidAt,
-        periodEnd,
       });
     }
 
     if (event.type === "checkout.session.async_payment_failed") {
       const session = event.data.object as Stripe.Checkout.Session;
+      const payment = await getPaymentByCheckoutSession(session.id);
 
-      await admin
-        .from("membership_payments")
-        .update({
-          status: "failed",
-          stripe_event_id: event.id,
-        })
-        .eq("stripe_checkout_session_id", session.id);
+      if (!payment) {
+        log("checkout.session.async_payment_failed:payment-not-found", {
+          sessionId: session.id,
+        });
+        return json(200, { received: true, skipped: true });
+      }
+
+      await updatePaymentById(payment.id, {
+        status: "failed",
+        stripe_event_id: event.id,
+      });
+
+      log("payment:failed", {
+        reason: "checkout.session.async_payment_failed",
+        paymentId: payment.id,
+        sessionId: session.id,
+      });
+    }
+
+    if (event.type === "checkout.session.expired") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const payment = await getPaymentByCheckoutSession(session.id);
+
+      if (!payment) {
+        log("checkout.session.expired:payment-not-found", {
+          sessionId: session.id,
+        });
+        return json(200, { received: true, skipped: true });
+      }
+
+      await updatePaymentById(payment.id, {
+        status: "cancelled",
+        stripe_event_id: event.id,
+      });
+
+      log("payment:cancelled", {
+        reason: "checkout.session.expired",
+        paymentId: payment.id,
+        sessionId: session.id,
+      });
     }
 
     if (event.type === "invoice.paid") {
@@ -545,6 +1114,120 @@ serve(async (req) => {
         typeof invoice.subscription === "string" ? invoice.subscription : null;
 
       if (!subscriptionId) {
+        log("invoice.paid:missing-subscription", {
+          eventId: event.id,
+          invoiceId: invoice.id,
+        });
+        return json(200, { received: true, skipped: true });
+      }
+
+      log("invoice.paid:start", {
+        eventId: event.id,
+        invoiceId: invoice.id,
+        subscriptionId,
+      });
+
+      const payment = await getOrCreatePaymentForInvoice(
+        subscriptionId,
+        invoice,
+      );
+
+      if (!payment) {
+        log("invoice.paid:no-payment-context", {
+          eventId: event.id,
+          invoiceId: invoice.id,
+          subscriptionId,
+        });
+        return json(200, { received: true, skipped: true });
+      }
+
+      const paymentIntentId = await resolvePaymentIntentIdFromInvoice(invoice);
+
+      if (!paymentIntentId) {
+        log("invoice.paid:missing-payment-intent", {
+          eventId: event.id,
+          invoiceId: invoice.id,
+          subscriptionId,
+          paymentId: payment.id,
+        });
+
+        await updatePaymentById(payment.id, {
+          stripe_invoice_id: invoice.id,
+          stripe_subscription_id: subscriptionId,
+          stripe_event_id: event.id,
+          status: "processing",
+          gateway_response: {
+            ...(payment.gateway_response ?? {}),
+            invoice_paid_missing_payment_intent: true,
+            invoice_paid_event_id: event.id,
+          },
+        });
+
+        return json(200, { received: true, skipped: true });
+      }
+
+      const charge = await resolveChargeFromPaymentIntent(paymentIntentId);
+
+      const paidAt = invoice.status_transitions?.paid_at
+        ? new Date(invoice.status_transitions.paid_at * 1000).toISOString()
+        : nowIso();
+
+      const periodStart = invoice.lines?.data?.[0]?.period?.start
+        ? new Date(invoice.lines.data[0].period.start * 1000).toISOString()
+        : invoice.period_start
+          ? new Date(invoice.period_start * 1000).toISOString()
+          : paidAt;
+
+      const periodEnd = invoice.lines?.data?.[0]?.period?.end
+        ? new Date(invoice.lines.data[0].period.end * 1000).toISOString()
+        : invoice.period_end
+          ? new Date(invoice.period_end * 1000).toISOString()
+          : addMonthIso(periodStart);
+
+      log("invoice.paid:process-successful-payment", {
+        eventId: event.id,
+        invoiceId: invoice.id,
+        paymentId: payment.id,
+        paymentIntentId,
+        chargeId: charge.id,
+        periodStart,
+        periodEnd,
+      });
+
+      await processSuccessfulPayment({
+        payment,
+        paymentIntentId,
+        charge,
+        invoiceId: invoice.id,
+        subscriptionId,
+        paidAt,
+        periodStart,
+        periodEnd,
+        eventId: event.id,
+      });
+    }
+
+    if (event.type === "invoice_payment.paid") {
+      const invoicePayment = event.data.object as Stripe.InvoicePayment;
+
+      const resolved = await resolveInvoiceFromInvoicePayment(invoicePayment);
+
+      if (!resolved) {
+        return json(200, { received: true, skipped: true });
+      }
+
+      const { invoice, paymentIntentId } = resolved;
+      const subscriptionId =
+        typeof invoice.subscription === "string" ? invoice.subscription : null;
+
+      if (!subscriptionId || !paymentIntentId) {
+        log("invoice_payment.paid:missing-context", {
+          eventId: event.id,
+          invoicePaymentId: invoicePayment.id,
+          invoiceId: invoice.id,
+          subscriptionId,
+          paymentIntentId,
+        });
         return json(200, { received: true, skipped: true });
       }
 
@@ -554,54 +1237,58 @@ serve(async (req) => {
       );
 
       if (!payment) {
+        log("invoice_payment.paid:no-payment-context", {
+          eventId: event.id,
+          invoicePaymentId: invoicePayment.id,
+          invoiceId: invoice.id,
+          subscriptionId,
+        });
         return json(200, { received: true, skipped: true });
       }
 
-      const paymentIntentId =
-        typeof invoice.payment_intent === "string"
-          ? invoice.payment_intent
-          : null;
+      const charge = await resolveChargeFromPaymentIntent(paymentIntentId);
 
-      if (!paymentIntentId) {
-        return json(200, { received: true, skipped: true });
-      }
+      const paidAt = invoicePayment.status_transitions?.paid_at
+        ? new Date(
+            invoicePayment.status_transitions.paid_at * 1000,
+          ).toISOString()
+        : invoice.status_transitions?.paid_at
+          ? new Date(invoice.status_transitions.paid_at * 1000).toISOString()
+          : nowIso();
 
-      const paymentIntent = await stripe.paymentIntents.retrieve(
+      const periodStart = invoice.lines?.data?.[0]?.period?.start
+        ? new Date(invoice.lines.data[0].period.start * 1000).toISOString()
+        : invoice.period_start
+          ? new Date(invoice.period_start * 1000).toISOString()
+          : paidAt;
+
+      const periodEnd = invoice.lines?.data?.[0]?.period?.end
+        ? new Date(invoice.lines.data[0].period.end * 1000).toISOString()
+        : invoice.period_end
+          ? new Date(invoice.period_end * 1000).toISOString()
+          : addMonthIso(periodStart);
+
+      log("invoice_payment.paid:process-successful-payment", {
+        eventId: event.id,
+        invoicePaymentId: invoicePayment.id,
+        invoiceId: invoice.id,
+        paymentId: payment.id,
         paymentIntentId,
-        {
-          expand: ["latest_charge.balance_transaction"],
-        },
-      );
+        chargeId: charge.id,
+        periodStart,
+        periodEnd,
+      });
 
-      const latestCharge = paymentIntent.latest_charge as Stripe.Charge;
-
-      const paidAt = new Date().toISOString();
-      const periodStart = invoice.period_start
-        ? new Date(invoice.period_start * 1000).toISOString()
-        : paidAt;
-      const periodEnd = invoice.period_end
-        ? new Date(invoice.period_end * 1000).toISOString()
-        : addMonthIso(periodStart);
-
-      await ensureTransfers({
-        membershipPaymentId: payment.id,
-        associationId: payment.association_id,
-        transferGroup: payment.transfer_group,
-        chargeId: latestCharge.id,
+      await processSuccessfulPayment({
+        payment,
         paymentIntentId,
+        charge,
         invoiceId: invoice.id,
         subscriptionId,
         paidAt,
         periodStart,
         periodEnd,
         eventId: event.id,
-      });
-
-      await syncPartnerEntitlement({
-        payment,
-        paidAt,
-        periodStart,
-        periodEnd,
       });
     }
 
@@ -610,20 +1297,75 @@ serve(async (req) => {
       const subscriptionId =
         typeof invoice.subscription === "string" ? invoice.subscription : null;
 
-      if (subscriptionId) {
-        await admin
-          .from("membership_payments")
-          .update({
-            status: "past_due",
-            stripe_invoice_id: invoice.id,
-            stripe_event_id: event.id,
-          })
-          .eq("stripe_subscription_id", subscriptionId);
+      let payment = invoice.id ? await getPaymentByInvoice(invoice.id) : null;
+
+      if (!payment) {
+        const paymentIntentId =
+          await resolvePaymentIntentIdFromInvoice(invoice);
+
+        if (paymentIntentId) {
+          payment = await getPaymentByPaymentIntent(paymentIntentId);
+        }
       }
+
+      if (!payment && subscriptionId) {
+        payment = await getLatestPaymentBySubscription(subscriptionId);
+      }
+
+      if (payment) {
+        await updatePaymentById(payment.id, {
+          status: "failed",
+          stripe_invoice_id: invoice.id,
+          stripe_subscription_id:
+            subscriptionId ?? payment.stripe_subscription_id,
+          stripe_event_id: event.id,
+        });
+
+        log("payment:failed", {
+          reason: "invoice.payment_failed",
+          paymentId: payment.id,
+          invoiceId: invoice.id,
+          subscriptionId,
+        });
+      } else {
+        log("invoice.payment_failed:payment-not-found", {
+          invoiceId: invoice.id,
+          subscriptionId,
+        });
+      }
+
+      if (subscriptionId) {
+        await markLatestPartnerPastDueBySubscription(subscriptionId);
+      }
+    }
+
+    if (event.type === "customer.subscription.deleted") {
+      const subscription = event.data.object as Stripe.Subscription;
+      const subscriptionId = subscription.id;
+
+      await admin
+        .from("payments")
+        .update({
+          status: "cancelled",
+          stripe_event_id: event.id,
+          updated_at: nowIso(),
+        })
+        .eq("stripe_subscription_id", subscriptionId)
+        .in("status", ["pending", "processing", "requires_action"]);
+
+      await cancelPartnersBySubscription(subscriptionId);
+
+      log("subscription:deleted", {
+        subscriptionId,
+      });
     }
 
     return json(200, { received: true });
   } catch (error) {
+    log("fatal", {
+      message: error instanceof Error ? error.message : "Webhook inválido.",
+    });
+
     return json(400, {
       error: error instanceof Error ? error.message : "Webhook inválido.",
     });
