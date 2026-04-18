@@ -1,4 +1,4 @@
-import { CreditCard, LoaderCircle } from "lucide-react";
+import { Clock3, CreditCard, LoaderCircle } from "lucide-react";
 import type { PartnerHistoryItem } from "@/types/profile";
 
 type Props = {
@@ -6,6 +6,13 @@ type Props = {
   hasActivePartner: boolean;
   partnerBadge: { label: string; className: string };
   payingMonthlyFee: boolean;
+  hasOpenMembershipPayment: boolean;
+  openMembershipPaymentStatus:
+    | "pending"
+    | "processing"
+    | "requires_action"
+    | null;
+  loadingOpenMembershipPayment: boolean;
   onPayMonthlyFeeClick: () => void;
   onOpenHistory: () => void;
 };
@@ -23,11 +30,33 @@ export default function ProfilePartnerSection({
   hasActivePartner,
   partnerBadge,
   payingMonthlyFee,
+  hasOpenMembershipPayment,
+  openMembershipPaymentStatus,
+  loadingOpenMembershipPayment,
   onPayMonthlyFeeClick,
   onOpenHistory,
 }: Props) {
   const preview = partnerHistory.slice(0, 3);
-  const payDisabled = hasActivePartner || payingMonthlyFee;
+
+  const payDisabled =
+    hasActivePartner ||
+    payingMonthlyFee ||
+    hasOpenMembershipPayment ||
+    loadingOpenMembershipPayment;
+
+  const buttonLabel = payingMonthlyFee
+    ? "Abrindo checkout..."
+    : hasOpenMembershipPayment
+      ? "Processando pagamento"
+      : hasActivePartner
+        ? "Mensalidade ativa"
+        : "Apoiar Associação";
+
+  const helperLabel = hasOpenMembershipPayment
+    ? openMembershipPaymentStatus === "requires_action"
+      ? "Existe uma cobrança que ainda requer ação ou confirmação."
+      : "Existe uma cobrança em aberto. Aguarde a confirmação antes de tentar novamente."
+    : null;
 
   return (
     <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
@@ -85,14 +114,13 @@ export default function ProfilePartnerSection({
         >
           {payingMonthlyFee ? (
             <LoaderCircle size={16} className="animate-spin" />
+          ) : hasOpenMembershipPayment ? (
+            <Clock3 size={16} />
           ) : (
             <CreditCard size={16} />
           )}
-          {payingMonthlyFee
-            ? "Abrindo checkout..."
-            : hasActivePartner
-              ? "Mensalidade ativa"
-              : "Apoiar Associação"}
+
+          {buttonLabel}
         </button>
 
         {partnerHistory.length > 3 ? (
@@ -105,6 +133,12 @@ export default function ProfilePartnerSection({
           </button>
         ) : null}
       </div>
+
+      {helperLabel ? (
+        <p className="mt-3 text-center text-xs text-zinc-500 dark:text-zinc-400">
+          {helperLabel}
+        </p>
+      ) : null}
     </section>
   );
 }

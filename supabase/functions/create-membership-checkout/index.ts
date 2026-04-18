@@ -46,6 +46,15 @@ type ConnectedAccountRow = {
   requirements_currently_due: string[] | null;
 };
 
+type OpenPaymentRow = {
+  id: string;
+  status: "pending" | "processing" | "requires_action";
+  created_at: string;
+  stripe_checkout_session_id: string | null;
+  checkout_mode: string | null;
+  gateway_response: Record<string, unknown> | null;
+};
+
 function log(step: string, payload?: unknown) {
   console.log(`${LOG_PREFIX} ${step}`, payload ?? "");
 }
@@ -103,6 +112,165 @@ function getMinimumGrossCents(hasThirdParty: boolean) {
     split.thirdPartyTransferCents +
     100
   );
+}
+
+async function cancelAbandonedPendingPayments(params: {
+  stripe: Stripe;
+  admin: ReturnType<typeof createClient>;
+  userId: string;
+  associationId: string;
+  checkoutMode: "subscription" | "payment";
+}) {
+  const { stripe, admin, userId, associationId, checkoutMode } = params;
+
+  const { data, error } = await admin
+    .from("payments")
+    .select(
+      `
+        id,
+        status,
+        created_at,
+        stripe_checkout_session_id,
+        checkout_mode,
+        gateway_response
+      `,
+    )
+    .eq("user_id", userId)
+    .eq("association_id", associationId)
+    .eq("purpose", "partner_membership")
+    .eq("checkout_mode", checkoutMode)
+    .in("status", ["pending"])
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(
+      `Erro ao consultar cobranças pendentes abandonadas: ${error.message}`,
+    );
+  }
+
+  const pendingPayments = (data ?? []) as OpenPaymentRow[];
+
+  log("pending-payments:found", {
+    userId,
+    associationId,
+    checkoutMode,
+    count: pendingPayments.length,
+    ids: pendingPayments.map((item) => item.id),
+  });
+
+  for (const payment of pendingPayments) {
+    if (!payment.stripe_checkout_session_id) {
+      log("pending-payments:no-session-id", {
+        paymentId: payment.id,
+      });
+
+      const { error: updateError } = await admin
+        .from("payments")
+        .update({
+          status: "cancelled",
+          updated_at: new Date().toISOString(),
+          gateway_response: {
+            ...(payment.gateway_response ?? {}),
+            cancelled_reason: "missing_checkout_session_id",
+            cancelled_by: "create-membership-checkout",
+            cancelled_at: new Date().toISOString(),
+          },
+        })
+        .eq("id", payment.id);
+
+      if (updateError) {
+        throw new Error(
+          `Erro ao cancelar cobrança pendente sem session id: ${updateError.message}`,
+        );
+      }
+
+      continue;
+    }
+
+    try {
+      const session = await stripe.checkout.sessions.retrieve(
+        payment.stripe_checkout_session_id,
+      );
+
+      log("pending-payments:session-status", {
+        paymentId: payment.id,
+        sessionId: payment.stripe_checkout_session_id,
+        stripeStatus: session.status,
+        paymentStatus: session.payment_status,
+      });
+
+      if (session.status === "complete") {
+        log("pending-payments:session-complete-keep", {
+          paymentId: payment.id,
+          sessionId: payment.stripe_checkout_session_id,
+        });
+        continue;
+      }
+
+      if (session.status === "open") {
+        await stripe.checkout.sessions.expire(
+          payment.stripe_checkout_session_id,
+        );
+
+        log("pending-payments:session-expired", {
+          paymentId: payment.id,
+          sessionId: payment.stripe_checkout_session_id,
+        });
+      }
+
+      const { error: updateError } = await admin
+        .from("payments")
+        .update({
+          status: "cancelled",
+          updated_at: new Date().toISOString(),
+          gateway_response: {
+            ...(payment.gateway_response ?? {}),
+            cancelled_reason: "abandoned_checkout_session",
+            cancelled_by: "create-membership-checkout",
+            cancelled_at: new Date().toISOString(),
+            previous_checkout_session_status: session.status,
+            previous_checkout_payment_status: session.payment_status,
+          },
+        })
+        .eq("id", payment.id);
+
+      if (updateError) {
+        throw new Error(
+          `Erro ao cancelar cobrança pendente abandonada: ${updateError.message}`,
+        );
+      }
+
+      log("pending-payments:db-cancelled", {
+        paymentId: payment.id,
+      });
+    } catch (error) {
+      log("pending-payments:session-retrieve-failed", {
+        paymentId: payment.id,
+        sessionId: payment.stripe_checkout_session_id,
+        message: error instanceof Error ? error.message : "unknown",
+      });
+
+      const { error: updateError } = await admin
+        .from("payments")
+        .update({
+          status: "cancelled",
+          updated_at: new Date().toISOString(),
+          gateway_response: {
+            ...(payment.gateway_response ?? {}),
+            cancelled_reason: "checkout_session_not_retrievable",
+            cancelled_by: "create-membership-checkout",
+            cancelled_at: new Date().toISOString(),
+          },
+        })
+        .eq("id", payment.id);
+
+      if (updateError) {
+        throw new Error(
+          `Erro ao cancelar cobrança pendente inválida: ${updateError.message}`,
+        );
+      }
+    }
+  }
 }
 
 serve(async (req) => {
@@ -315,32 +483,50 @@ serve(async (req) => {
             "Já existe um vínculo recorrente ativo ou em atraso para este associado.",
         });
       }
+    }
 
-      const { data: existingOpenPayment, error: existingOpenPaymentError } =
-        await admin
-          .from("payments")
-          .select("id, status, created_at")
-          .eq("user_id", user.id)
-          .eq("association_id", association.id)
-          .eq("purpose", "partner_membership")
-          .eq("checkout_mode", "subscription")
-          .in("status", ["pending", "processing", "requires_action"])
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+    await cancelAbandonedPendingPayments({
+      stripe,
+      admin,
+      userId: user.id,
+      associationId: association.id,
+      checkoutMode: recurring ? "subscription" : "payment",
+    });
 
-      if (existingOpenPaymentError) {
-        return json(500, {
-          error: `Erro ao validar cobrança em aberto: ${existingOpenPaymentError.message}`,
-        });
-      }
+    const { data: existingOpenPayment, error: existingOpenPaymentError } =
+      await admin
+        .from("payments")
+        .select("id, status, created_at, stripe_checkout_session_id")
+        .eq("user_id", user.id)
+        .eq("association_id", association.id)
+        .eq("purpose", "partner_membership")
+        .eq("checkout_mode", recurring ? "subscription" : "payment")
+        .in("status", ["pending", "processing", "requires_action"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (existingOpenPayment) {
-        return json(400, {
-          error:
-            "Já existe uma cobrança recorrente em aberto para este associado.",
-        });
-      }
+    if (existingOpenPaymentError) {
+      return json(500, {
+        error: `Erro ao validar cobrança em aberto: ${existingOpenPaymentError.message}`,
+      });
+    }
+
+    if (existingOpenPayment) {
+      log("existing-open-payment:block", {
+        paymentId: existingOpenPayment.id,
+        status: existingOpenPayment.status,
+        sessionId: existingOpenPayment.stripe_checkout_session_id,
+      });
+
+      return json(400, {
+        error:
+          existingOpenPayment.status === "processing"
+            ? "Seu pagamento já está sendo processado. Aguarde a confirmação."
+            : existingOpenPayment.status === "requires_action"
+              ? "Existe um pagamento que ainda requer ação adicional."
+              : "Já existe uma cobrança em aberto para este associado.",
+      });
     }
 
     let stripeCustomerId = user.stripe_customer_id;

@@ -2,6 +2,7 @@ import { supabase } from "@/services/supabase/client";
 import type {
   MembershipCheckoutResponse,
   MembershipCheckoutStatusResponse,
+  OpenMembershipPayment,
 } from "@/types/membership";
 
 const LOG_PREFIX = "[membership-service]";
@@ -106,4 +107,34 @@ export async function getMembershipCheckoutStatus(
   });
 
   return data as MembershipCheckoutStatusResponse;
+}
+
+export async function getOpenMembershipPayment(): Promise<OpenMembershipPayment | null> {
+  console.info("[membership-service] getOpenMembershipPayment:start");
+
+  const { data, error } = await supabase.functions.invoke(
+    "sync-open-membership-payment-state",
+    {
+      body: {},
+    },
+  );
+
+  if (error) {
+    console.error("[membership-service] getOpenMembershipPayment:error", {
+      message: error.message,
+    });
+    throw new Error(
+      error.message || "Não foi possível consultar pagamentos em aberto.",
+    );
+  }
+
+  const payment = (data?.payment ?? null) as OpenMembershipPayment | null;
+
+  console.info("[membership-service] getOpenMembershipPayment:success", {
+    hasOpenPayment: Boolean(payment),
+    paymentId: payment?.id ?? null,
+    status: payment?.status ?? null,
+  });
+
+  return payment;
 }

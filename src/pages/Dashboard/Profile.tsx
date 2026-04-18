@@ -29,8 +29,11 @@ import {
   uploadMyAvatar,
 } from "@/services/supabase/user_profile";
 import { supabase } from "@/services/supabase/client";
-import { createMembershipCheckout } from "@/services/supabase/membership";
-import { openExternalUrl } from "@/lib/open-external-url";
+import {
+  createMembershipCheckout,
+  getOpenMembershipPayment,
+} from "@/services/supabase/membership";
+import type { OpenMembershipPayment } from "@/types/membership";
 import type {
   MyListingsData,
   PartnerHistoryItem,
@@ -236,6 +239,11 @@ export default function ProfilePage() {
   const [partnerActionMessage, setPartnerActionMessage] = useState("");
   const [payingMonthlyFee, setPayingMonthlyFee] = useState(false);
 
+  const [openMembershipPayment, setOpenMembershipPayment] =
+    useState<OpenMembershipPayment | null>(null);
+  const [loadingOpenMembershipPayment, setLoadingOpenMembershipPayment] =
+    useState(false);
+
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileForm, setProfileForm] =
     useState<ProfileFormState>(EMPTY_PROFILE_FORM);
@@ -268,6 +276,11 @@ export default function ProfilePage() {
   const hasActivePartner = useMemo(
     () => partnerHistory.some((item) => isPartnerHistoryItemActive(item)),
     [partnerHistory],
+  );
+
+  const hasOpenMembershipPayment = useMemo(
+    () => Boolean(openMembershipPayment),
+    [openMembershipPayment],
   );
 
   const selectedCommunity = useMemo(
@@ -334,6 +347,27 @@ export default function ProfilePage() {
     navigate("/auth");
   }
 
+  async function refreshOpenMembershipPayment() {
+    try {
+      setLoadingOpenMembershipPayment(true);
+
+      const payment = await getOpenMembershipPayment();
+      setOpenMembershipPayment(payment);
+
+      console.info("[profile] refreshOpenMembershipPayment:success", {
+        hasOpenPayment: Boolean(payment),
+        paymentId: payment?.id ?? null,
+        status: payment?.status ?? null,
+      });
+    } catch (error) {
+      console.error("[profile] refreshOpenMembershipPayment:error", {
+        message: error instanceof Error ? error.message : "unknown",
+      });
+    } finally {
+      setLoadingOpenMembershipPayment(false);
+    }
+  }
+
   useEffect(() => {
     const cache = getProfileCache();
 
@@ -362,11 +396,13 @@ export default function ProfilePage() {
 
         setErrorMessage("");
 
-        const [profileData, partnerData, listingData] = await Promise.all([
-          getMyProfile(),
-          getMyPartnerHistory(),
-          getMyListings(),
-        ]);
+        const [profileData, partnerData, listingData, openPaymentData] =
+          await Promise.all([
+            getMyProfile(),
+            getMyPartnerHistory(),
+            getMyListings(),
+            getOpenMembershipPayment(),
+          ]);
 
         let nextAvatarUrl: string | null = cache?.avatarUrl ?? null;
 
@@ -387,6 +423,7 @@ export default function ProfilePage() {
         setProfile(profileData);
         setPartnerHistory(partnerData);
         setListings(listingData);
+        setOpenMembershipPayment(openPaymentData);
         setAvatarUrl(nextAvatarUrl);
         setProfileForm({
           fullname: profileData.fullname ?? "",
@@ -446,8 +483,28 @@ export default function ProfilePage() {
     setPartnerActionMessage("");
   }
 
+  useEffect(() => {
+    function handleFocus() {
+      void refreshOpenMembershipPayment();
+    }
+
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, []);
+
   async function handlePayMonthlyFeeClick() {
-    if (payingMonthlyFee || hasActivePartner) {
+    if (payingMonthlyFee || hasActivePartner || hasOpenMembershipPayment) {
+      if (hasOpenMembershipPayment) {
+        setPartnerActionMessage(
+          "Já existe um pagamento em processamento. Aguarde a confirmação antes de tentar novamente.",
+        );
+        setErrorMessage("");
+        setSuccessMessage("");
+      }
+
       return;
     }
 
@@ -455,12 +512,29 @@ export default function ProfilePage() {
       setPayingMonthlyFee(true);
       clearMessages();
 
-      const { url } = await createMembershipCheckout(true);
-      setPartnerActionMessage(
-        "Checkout aberto no navegador. A confirmação final da mensalidade acontece via webhook da Stripe.",
-      );
-      openExternalUrl(url);
+      const { url, sessionId } = await createMembershipCheckout(true);
+
+      console.info("[profile] membership-checkout:redirect-current-window", {
+        sessionId,
+        url,
+      });
+
+      setOpenMembershipPayment({
+        id: `local-${Date.now()}`,
+        status: "pending",
+        created_at: new Date().toISOString(),
+        checkout_mode: "subscription",
+        stripe_checkout_session_id: sessionId,
+      });
+
+      setPartnerActionMessage("Redirecionando para o checkout da Stripe...");
+
+      window.location.assign(url);
     } catch (error) {
+      console.error("[profile] membership-checkout:error", {
+        message: error instanceof Error ? error.message : "unknown",
+      });
+
       setErrorMessage(
         error instanceof Error
           ? error.message
@@ -869,6 +943,11 @@ export default function ProfilePage() {
                   hasActivePartner={hasActivePartner}
                   partnerBadge={partnerBadge}
                   payingMonthlyFee={payingMonthlyFee}
+                  hasOpenMembershipPayment={hasOpenMembershipPayment}
+                  openMembershipPaymentStatus={
+                    openMembershipPayment?.status ?? null
+                  }
+                  loadingOpenMembershipPayment={loadingOpenMembershipPayment}
                   onPayMonthlyFeeClick={() => {
                     void handlePayMonthlyFeeClick();
                   }}
