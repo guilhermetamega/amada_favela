@@ -86,7 +86,7 @@ export default function SocialProjectsDetailsPage() {
     const phone = normalizePhoneToWhatsapp(item.contact_phone);
     const message = `Olá! Vi o projeto social "${item.title}" e gostaria de saber como posso ajudar.`;
 
-    return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    return `https://wa.me/+55${phone}?text=${encodeURIComponent(message)}`;
   }, [item]);
 
   async function handleCopyPix() {
@@ -112,9 +112,9 @@ export default function SocialProjectsDetailsPage() {
   if (loading) {
     return (
       <DashboardLayout>
-        <MainLayout className="bg-transparent">
+        <MainLayout>
           <div className="mx-auto max-w-6xl space-y-4 px-1 sm:space-y-5">
-            <section className="relative overflow-hidden rounded-[28px] border border-zinc-200 bg-gradient-to-br from-emerald-100 via-sky-100 to-pink-100 p-4 shadow-lg shadow-zinc-200/60 dark:border-zinc-800/80 dark:from-emerald-500/10 dark:via-sky-500/10 dark:to-pink-500/10 dark:shadow-black/20 sm:p-6">
+            <section className="relative overflow-hidden rounded-[28px] border border-zinc-200 bg-linear-to-br from-emerald-100 via-sky-100 to-pink-100 p-4 shadow-lg shadow-zinc-200/60 dark:border-zinc-800/80 dark:from-emerald-500/10 dark:via-sky-500/10 dark:to-pink-500/10 dark:shadow-black/20 sm:p-6">
               <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-emerald-400/25 blur-3xl dark:bg-emerald-500/20" />
               <div className="pointer-events-none absolute -bottom-12 -left-12 h-32 w-32 rounded-full bg-pink-400/25 blur-3xl dark:bg-pink-500/20" />
 
@@ -155,9 +155,9 @@ export default function SocialProjectsDetailsPage() {
   if (errorMessage || !item) {
     return (
       <DashboardLayout>
-        <MainLayout className="bg-transparent">
+        <MainLayout>
           <div className="mx-auto max-w-6xl space-y-4 px-1 sm:space-y-5">
-            <section className="relative overflow-hidden rounded-[28px] border border-red-300/60 bg-gradient-to-br from-red-100 via-rose-100 to-orange-100 p-4 shadow-lg shadow-red-100/60 dark:border-red-500/20 dark:from-red-500/10 dark:via-rose-500/10 dark:to-orange-500/10 dark:shadow-black/20 sm:p-6">
+            <section className="relative overflow-hidden rounded-[28px] border border-red-300/60 bg-linear-to-br from-red-100 via-rose-100 to-orange-100 p-4 shadow-lg shadow-red-100/60 dark:border-red-500/20 dark:from-red-500/10 dark:via-rose-500/10 dark:to-orange-500/10 dark:shadow-black/20 sm:p-6">
               <div className="relative z-10">
                 <h1 className="text-2xl font-black tracking-tight text-red-800 dark:text-red-200 sm:text-3xl">
                   Projeto não encontrado
@@ -180,35 +180,22 @@ export default function SocialProjectsDetailsPage() {
 
   return (
     <DashboardLayout>
-      <MainLayout className="bg-transparent">
+      <MainLayout>
         <div className="mx-auto max-w-6xl space-y-4 px-1 sm:space-y-5">
-          <section className="relative overflow-hidden rounded-[28px] border border-zinc-200 bg-gradient-to-br from-emerald-100 via-sky-100 to-pink-100 p-4 shadow-lg shadow-zinc-200/60 dark:border-zinc-800/80 dark:from-emerald-500/10 dark:via-sky-500/10 dark:to-pink-500/10 dark:shadow-black/20 sm:p-6">
+          <section className="relative overflow-hidden rounded-[28px] border border-zinc-200 bg-linear-to-br from-emerald-100 via-sky-100 to-pink-100 p-4 shadow-lg shadow-zinc-200/60 dark:border-zinc-800/80 dark:from-emerald-500/10 dark:via-sky-500/10 dark:to-pink-500/10 dark:shadow-black/20 sm:p-6">
             <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-emerald-400/25 blur-3xl dark:bg-emerald-500/20" />
             <div className="pointer-events-none absolute -bottom-12 -left-12 h-32 w-32 rounded-full bg-pink-400/25 blur-3xl dark:bg-pink-500/20" />
 
             <div className="relative z-10">
-              <div className="flex flex-wrap gap-2">
-                <span className="inline-flex items-center rounded-full border border-emerald-300/60 bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-200">
-                  <HeartHandshake className="mr-1.5 h-3.5 w-3.5" />
-                  Comunidade
-                </span>
+              <h1 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-white sm:text-3xl lg:text-4xl">
+                {" "}
+                {item.title}
+              </h1>
 
-                <span className="inline-flex items-center rounded-full border border-sky-300/60 bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700 shadow-sm dark:border-sky-400/20 dark:bg-sky-500/10 dark:text-sky-200">
-                  <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                  Impacto real
-                </span>
-              </div>
-
-              <div className="mt-4 max-w-3xl">
-                <h1 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-white sm:text-3xl lg:text-4xl">
-                  {item.title}
-                </h1>
-
-                <p className="mt-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300 sm:text-base">
-                  Veja as informações do projeto, entenda a proposta e descubra
-                  como apoiar essa iniciativa.
-                </p>
-              </div>
+              <p className="mt-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300 sm:text-base">
+                Veja as informações do projeto, entenda a proposta e descubra
+                como apoiar essa iniciativa.
+              </p>
             </div>
           </section>
 
@@ -218,7 +205,7 @@ export default function SocialProjectsDetailsPage() {
                 {images.length > 0 ? (
                   <>
                     <div className="relative">
-                      <div className="aspect-[4/4.5] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 sm:aspect-[4/3]">
+                      <div className="aspect-4/4.5 w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 sm:aspect-4/3">
                         <img
                           src={images[currentImageIndex]}
                           alt={item.title}
@@ -226,7 +213,7 @@ export default function SocialProjectsDetailsPage() {
                         />
                       </div>
 
-                      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent px-4 pb-4 pt-16">
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t from-black/75 via-black/20 to-transparent px-4 pb-4 pt-16">
                         <div className="flex flex-wrap items-end justify-between gap-3">
                           <div className="min-w-0">
                             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-100/90">
@@ -236,11 +223,6 @@ export default function SocialProjectsDetailsPage() {
                             <h2 className="mt-2 line-clamp-2 text-xl font-black text-white sm:text-2xl">
                               {item.title}
                             </h2>
-
-                            <p className="mt-2 flex items-center gap-2 text-xs text-zinc-100 sm:text-sm">
-                              <MapPin className="h-4 w-4 shrink-0" />
-                              <span className="line-clamp-1">{item.community}</span>
-                            </p>
                           </div>
 
                           <div className="flex flex-wrap gap-2">
@@ -318,7 +300,7 @@ export default function SocialProjectsDetailsPage() {
                     ) : null}
                   </>
                 ) : (
-                  <div className="flex aspect-[4/4.5] items-center justify-center bg-gradient-to-br from-emerald-100 via-sky-100 to-pink-100 text-zinc-500 dark:from-emerald-500/15 dark:via-sky-500/10 dark:to-pink-500/15 dark:text-zinc-300 sm:aspect-[4/3]">
+                  <div className="flex aspect-4/4.5 items-center justify-center bg-linear-to-br from-emerald-100 via-sky-100 to-pink-100 text-zinc-500 dark:from-emerald-500/15 dark:via-sky-500/10 dark:to-pink-500/15 dark:text-zinc-300 sm:aspect-4/3">
                     <div className="flex flex-col items-center gap-2">
                       <HeartHandshake className="h-8 w-8" />
                       <span className="text-sm font-medium">Sem imagens</span>
@@ -365,31 +347,14 @@ export default function SocialProjectsDetailsPage() {
                   </p>
                 </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-500/20 dark:bg-emerald-500/10">
-                    <div className="flex items-start gap-3">
-                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
-                        <HeartHandshake className="h-5 w-5" />
-                      </span>
-
-                      <div className="min-w-0">
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-700/80 dark:text-emerald-200/80">
-                          Comunidade
-                        </p>
-                        <p className="mt-1 line-clamp-2 text-sm font-semibold text-zinc-900 dark:text-white">
-                          {item.community}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
+                <div className="mt-4 grid grid-cols-[2/3] gap-3">
                   <div className="rounded-2xl border border-sky-200 bg-sky-50 p-3 dark:border-sky-500/20 dark:bg-sky-500/10">
                     <div className="flex items-start gap-3">
                       <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">
                         <CalendarDays className="h-5 w-5" />
                       </span>
 
-                      <div className="min-w-0">
+                      <div className="min-w-0 text-left">
                         <p className="text-[10px] uppercase tracking-[0.18em] text-sky-700/80 dark:text-sky-200/80">
                           Publicado
                         </p>
@@ -406,11 +371,11 @@ export default function SocialProjectsDetailsPage() {
                         <Phone className="h-5 w-5" />
                       </span>
 
-                      <div className="min-w-0">
+                      <div className="min-w-0 text-left">
                         <p className="text-[10px] uppercase tracking-[0.18em] text-green-700/80 dark:text-green-200/80">
                           Contato
                         </p>
-                        <p className="mt-1 break-words text-sm font-semibold text-zinc-900 dark:text-white">
+                        <p className="mt-1 wrap-break-word text-sm font-semibold text-zinc-900 dark:text-white">
                           {item.contact_phone}
                         </p>
                       </div>
@@ -424,11 +389,11 @@ export default function SocialProjectsDetailsPage() {
                           <MapPin className="h-5 w-5" />
                         </span>
 
-                        <div className="min-w-0">
+                        <div className="min-w-0 text-left">
                           <p className="text-[10px] uppercase tracking-[0.18em] text-amber-700/80 dark:text-amber-200/80">
                             Endereço
                           </p>
-                          <p className="mt-1 line-clamp-3 break-words text-sm font-semibold text-zinc-900 dark:text-white">
+                          <p className="mt-1 line-clamp-3 wrap-break-word text-sm font-semibold text-zinc-900 dark:text-white">
                             {item.address}
                           </p>
                         </div>
@@ -461,7 +426,7 @@ export default function SocialProjectsDetailsPage() {
                     href={whatsappLink}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex min-h-[50px] w-full items-center justify-center rounded-2xl bg-gradient-to-r from-green-500 to-emerald-500 px-4 py-3 text-center text-sm font-semibold text-white shadow-md transition hover:opacity-95"
+                    className="inline-flex min-h-12.5 w-full items-center justify-center rounded-2xl bg-linear-to-r from-green-500 to-emerald-500 px-4 py-3 text-center text-sm font-semibold text-white shadow-md transition hover:opacity-95"
                   >
                     <MessageCircle className="mr-2 h-5 w-5" />
                     Entrar em contato via WhatsApp
@@ -471,7 +436,7 @@ export default function SocialProjectsDetailsPage() {
                     <button
                       type="button"
                       onClick={handleCopyPix}
-                      className="inline-flex min-h-[50px] w-full items-center justify-center rounded-2xl border border-pink-300/60 bg-pink-50 px-4 py-3 text-center text-sm font-semibold text-pink-700 transition hover:bg-pink-100 dark:border-pink-500/20 dark:bg-pink-500/10 dark:text-pink-100 dark:hover:bg-pink-500/15"
+                      className="inline-flex min-h-12.5 w-full items-center justify-center rounded-2xl border border-pink-300/60 bg-pink-50 px-4 py-3 text-center text-sm font-semibold text-pink-700 transition hover:bg-pink-100 dark:border-pink-500/20 dark:bg-pink-500/10 dark:text-pink-100 dark:hover:bg-pink-500/15"
                     >
                       {copiedPix ? (
                         <>
