@@ -6,22 +6,9 @@ import {
   type MailItem,
 } from "@/services/supabase/mail";
 import MainLayout from "@/components/layout/MainLayout";
-import {
-  HeartHandshake,
-  Sparkles,
-  MapPin,
-  CalendarDays,
-} from "lucide-react";
-
-type CurrentUserMailProfile = {
-  id: string;
-  fullname: string;
-  address_1: string;
-  address_2: string | null;
-};
+import { HeartHandshake, CalendarDays } from "lucide-react";
 
 export default function MailsPage() {
-  const [profile, setProfile] = useState<CurrentUserMailProfile | null>(null);
   const [mailItems, setMailItems] = useState<MailItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -34,13 +21,6 @@ export default function MailsPage() {
         setErrorMessage("");
 
         const data = await getCurrentUserPendingMail();
-
-        setProfile({
-          id: data.profile.id,
-          fullname: data.profile.fullname,
-          address_1: data.profile.address_1,
-          address_2: data.profile.address_2,
-        });
 
         setMailItems(data.items);
       } catch (error) {
@@ -78,24 +58,12 @@ export default function MailsPage() {
     <DashboardLayout>
       <MainLayout className="bg-transparent">
         <div className="mx-auto max-w-5xl space-y-4 px-1 sm:space-y-5">
-
           {/* 🔥 HEADER BONITO */}
-          <section className="relative overflow-hidden rounded-[28px] border border-zinc-200 bg-gradient-to-br from-emerald-100 via-sky-100 to-pink-100 p-4 shadow-lg dark:border-zinc-800/80 dark:from-emerald-500/10 dark:via-sky-500/10 dark:to-pink-500/10 sm:p-6">
+          <section className="relative overflow-hidden rounded-[28px] border border-zinc-200 bg-linear-to-br from-emerald-100 via-sky-100 to-pink-100 p-4 shadow-lg dark:border-zinc-800/80 dark:from-emerald-500/10 dark:via-sky-500/10 dark:to-pink-500/10 sm:p-6">
             <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-emerald-400/25 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-10 -left-10 h-28 w-28 rounded-full bg-pink-400/25 blur-3xl" />
 
             <div className="relative z-10">
-              <div className="flex gap-2 flex-wrap">
-                <span className="inline-flex items-center rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-emerald-700">
-                  <HeartHandshake className="mr-1 h-3 w-3" />
-                  Comunidade
-                </span>
-                <span className="inline-flex items-center rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-sky-700">
-                  <Sparkles className="mr-1 h-3 w-3" />
-                  Cartas
-                </span>
-              </div>
-
               <h1 className="mt-4 text-2xl font-black text-zinc-900 dark:text-white sm:text-3xl">
                 💌 Minhas Cartas
               </h1>
@@ -120,37 +88,21 @@ export default function MailsPage() {
             </div>
           )}
 
-          {/* PERFIL */}
-          {!loading && profile && (
-            <section className="rounded-3xl border border-zinc-200 bg-white/95 p-5 shadow-md dark:border-zinc-800 dark:bg-zinc-900/95">
-              <h2 className="text-xl font-black text-zinc-900 dark:text-white">
-                {profile.fullname}
-              </h2>
-
-              <div className="mt-3 text-sm text-zinc-600 dark:text-zinc-300 space-y-1">
-                <p className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  {profile.address_1}
-                </p>
-                <p>{profile.address_2 || "Sem complemento"}</p>
-              </div>
-            </section>
-          )}
-
           {/* EMPTY STATE FOFO */}
           {!loading && mailItems.length === 0 && (
-            <section className="relative overflow-hidden rounded-[28px] border border-zinc-200 bg-gradient-to-br from-emerald-100 via-sky-100 to-pink-100 p-6 text-center shadow-lg dark:border-zinc-800 dark:from-emerald-500/10 dark:via-sky-500/10 dark:to-pink-500/10">
+            <section className="relative overflow-hidden rounded-[28px] border border-zinc-200 bg-linear-to-br from-emerald-100 via-sky-100 to-pink-100 p-6 text-center shadow-lg dark:border-zinc-800 dark:from-emerald-500/10 dark:via-sky-500/10 dark:to-pink-500/10">
               <div className="absolute inset-0 animate-ping bg-pink-300/20 blur-3xl" />
 
               <div className="relative z-10 flex flex-col items-center">
                 <HeartHandshake className="h-12 w-12 text-pink-500 mb-4" />
 
                 <h3 className="text-xl font-black text-zinc-900 dark:text-white">
-                  Nenhuma carta por enquanto 💌
+                  Nenhuma carta por enquanto
                 </h3>
 
                 <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
-                  Assim que novas cartas chegarem, elas vão aparecer aqui com um visual bonito e organizado.
+                  Assim que novas cartas chegarem, elas vão aparecer aqui com um
+                  visual bonito e organizado.
                 </p>
 
                 <div className="mt-4 flex gap-2">
@@ -184,12 +136,16 @@ export default function MailsPage() {
                         <p className="flex items-center gap-1">
                           <CalendarDays className="h-3 w-3" />
                           Criada em{" "}
-                          {new Date(mail.created_at).toLocaleDateString("pt-BR")}
+                          {new Date(mail.created_at).toLocaleDateString(
+                            "pt-BR",
+                          )}
                         </p>
 
                         <p>
                           Expira em{" "}
-                          {new Date(mail.expires_at).toLocaleDateString("pt-BR")}
+                          {new Date(mail.expires_at).toLocaleDateString(
+                            "pt-BR",
+                          )}
                         </p>
                       </div>
                     </div>
@@ -197,7 +153,7 @@ export default function MailsPage() {
                     <button
                       onClick={() => handleMarkAsWithdrawn(mail.id)}
                       disabled={updatingMailId === mail.id}
-                      className="rounded-2xl bg-gradient-to-r from-emerald-500 to-green-500 px-4 py-3 text-sm font-semibold text-white shadow-md hover:opacity-95"
+                      className="rounded-2xl bg-linear-to-r from-emerald-500 to-green-500 px-4 py-3 text-sm font-semibold text-white shadow-md hover:opacity-95"
                     >
                       {updatingMailId === mail.id
                         ? "Atualizando..."
