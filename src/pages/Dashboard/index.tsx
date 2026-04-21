@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/layout/Layout";
 import DashboardModuleGrid from "@/components/dashboard/ModuleGrid";
 import DashboardWarningCarousel from "@/components/dashboard/WarningCarousel";
@@ -19,9 +19,19 @@ import {
 import { SponsorWeeklyAd } from "@/types/sponsor-weekly-ad";
 import DashboardSponsorBannerCarousel from "@/components/dashboard/SponsorBannerCarousel";
 import SponsorWeeklyAdModal from "@/components/dashboard/SponsorWeeklyAdModal";
+import {
+  createMembershipCheckout,
+  getOpenMembershipPayment,
+} from "@/services/supabase/membership";
+import type { OpenMembershipPayment } from "@/types/membership";
 
 export default function DashboardPage() {
-  const { permissions, loading: permissionsLoading } = usePermissions();
+  const {
+    permissions,
+    loading: permissionsLoading,
+    isPartnerActive,
+    refreshPermissions,
+  } = usePermissions();
   const { warnings, loading: warningsLoading } = useDashboardWarnings();
 
   const [sponsorBanners, setSponsorBanners] = useState<
@@ -29,6 +39,12 @@ export default function DashboardPage() {
   >([]);
   const [selectedWeeklyAd, setSelectedWeeklyAd] =
     useState<SponsorWeeklyAd | null>(null);
+  const [payingMonthlyFee, setPayingMonthlyFee] = useState(false);
+  const [openMembershipPayment, setOpenMembershipPayment] =
+    useState<OpenMembershipPayment | null>(null);
+  const [loadingOpenMembershipPayment, setLoadingOpenMembershipPayment] =
+    useState(false);
+  const [membershipErrorMessage, setMembershipErrorMessage] = useState("");
 
   const {
     polls,
@@ -46,6 +62,11 @@ export default function DashboardPage() {
   const dashboardRoutes = useMemo(
     () => getDashboardRoutes(permissions),
     [permissions],
+  );
+
+  const hasOpenMembershipPayment = useMemo(
+    () => Boolean(openMembershipPayment),
+    [openMembershipPayment],
   );
 
   const pendingPolls = useMemo(() => {
@@ -73,6 +94,20 @@ export default function DashboardPage() {
     return pendingPolls.findIndex((poll) => poll.id === activePoll.id) + 1;
   }, [activePoll, pendingPolls]);
 
+  const refreshOpenMembershipPayment = useCallback(async () => {
+    try {
+      setLoadingOpenMembershipPayment(true);
+      const payment = await getOpenMembershipPayment();
+      setOpenMembershipPayment(payment);
+    } catch (error) {
+      console.error("[dashboard] refreshOpenMembershipPayment:error", {
+        message: error instanceof Error ? error.message : "unknown",
+      });
+    } finally {
+      setLoadingOpenMembershipPayment(false);
+    }
+  }, []);
+
   function handleOpenSponsorBanner(item: DashboardSponsorBannerItem) {
     const action = resolveDashboardSponsorBannerAction(item);
 
@@ -97,11 +132,27 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
+    void refreshOpenMembershipPayment();
+  }, [refreshOpenMembershipPayment]);
+
+  useEffect(() => {
+    function handleFocus() {
+      void refreshOpenMembershipPayment();
+      void refreshPermissions();
+    }
+
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [refreshOpenMembershipPayment, refreshPermissions]);
+
+  useEffect(() => {
     if (pollsLoading || queueDismissed) return;
 
     if (!pendingPolls.length) {
       if (activePollId !== null) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setActivePollId(null);
       }
       return;
@@ -142,6 +193,46 @@ export default function DashboardPage() {
     setActivePollId(remaining[0]?.id ?? null);
   }
 
+  async function handlePayMonthlyFeeClick() {
+    if (
+      payingMonthlyFee ||
+      isPartnerActive ||
+      hasOpenMembershipPayment ||
+      loadingOpenMembershipPayment
+    ) {
+      return;
+    }
+
+    try {
+      setPayingMonthlyFee(true);
+      setMembershipErrorMessage("");
+
+      const { url, sessionId } = await createMembershipCheckout(true);
+
+      setOpenMembershipPayment({
+        id: `local-${Date.now()}`,
+        status: "pending",
+        created_at: new Date().toISOString(),
+        checkout_mode: "subscription",
+        stripe_checkout_session_id: sessionId,
+      });
+
+      window.location.assign(url);
+    } catch (error) {
+      console.error("[dashboard] membership-checkout:error", {
+        message: error instanceof Error ? error.message : "unknown",
+      });
+
+      setMembershipErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível iniciar o pagamento da mensalidade.",
+      );
+    } finally {
+      setPayingMonthlyFee(false);
+    }
+  }
+
   return (
     <DashboardLayout hasLogo>
       <MainLayout>
@@ -153,6 +244,12 @@ export default function DashboardPage() {
           {pollsErrorMessage ? (
             <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
               {pollsErrorMessage}
+            </div>
+          ) : null}
+
+          {membershipErrorMessage ? (
+            <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
+              {membershipErrorMessage}
             </div>
           ) : null}
 
@@ -177,7 +274,17 @@ export default function DashboardPage() {
               </div>
             </>
           ) : (
-            <DashboardModuleGrid routes={dashboardRoutes} />
+            <DashboardModuleGrid
+              routes={dashboardRoutes}
+              hasActivePartner={isPartnerActive}
+              payingMonthlyFee={payingMonthlyFee}
+              hasOpenMembershipPayment={hasOpenMembershipPayment}
+              openMembershipPaymentStatus={
+                openMembershipPayment?.status ?? null
+              }
+              loadingOpenMembershipPayment={loadingOpenMembershipPayment}
+              onPayMonthlyFeeClick={handlePayMonthlyFeeClick}
+            />
           )}
         </div>
       </MainLayout>

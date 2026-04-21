@@ -37,6 +37,7 @@ export type AppRouteConfig = {
   showInDashboard?: boolean;
   showInMobileNav?: boolean;
   showInAdmin?: boolean;
+  isPremium?: boolean;
   isDetailRoute?: boolean;
   canAccess: (permissions: Permissions | null) => boolean;
 };
@@ -58,7 +59,6 @@ export const appRoutes: AppRouteConfig[] = [
     colorClass: "emerald",
     showInSidebar: true,
     showInMobileNav: true,
-    showInDashboard: false,
     canAccess: (permissions) => !!permissions,
   },
   {
@@ -69,7 +69,8 @@ export const appRoutes: AppRouteConfig[] = [
     colorClass: "violet",
     showInSidebar: true,
     showInMobileNav: true,
-    showInDashboard: false,
+    showInDashboard: true,
+    isPremium: true,
     canAccess: (permissions) => !!permissions,
   },
   {
@@ -91,6 +92,7 @@ export const appRoutes: AppRouteConfig[] = [
     showInSidebar: true,
     showInMobileNav: true,
     showInDashboard: true,
+    isPremium: true,
     canAccess: (permissions) => !!permissions,
   },
   {
@@ -112,6 +114,7 @@ export const appRoutes: AppRouteConfig[] = [
     colorClass: "violet",
     showInSidebar: true,
     showInDashboard: true,
+    isPremium: true,
     canAccess: (permissions) => !!permissions,
   },
   {
