@@ -199,7 +199,7 @@ export async function getProofEligibility(): Promise<ProofEligibility> {
     if (!isPartner) {
       return {
         allowed: false,
-        reason: "Somente sócios com partner ativo podem emitir este documento.",
+        reason: "Somente sócios ativos podem emitir este documento.",
         user,
         association: null,
       };

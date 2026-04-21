@@ -109,7 +109,7 @@ export default function ProfilePartnerSection({
           className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition sm:min-w-55 ${
             payDisabled
               ? "cursor-not-allowed border border-zinc-200 bg-zinc-100 text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-500"
-              : "bg-emerald-600 text-white hover:bg-emerald-700"
+              : "border border-amber-300/80 bg-linear-to-r from-amber-300 via-yellow-300 to-orange-300 text-amber-950 shadow-[0_12px_30px_rgba(251,191,36,0.22)] hover:-translate-y-0.2 hover:shadow-[0_18px_36px_rgba(251,191,36,0.28)] dark:border-amber-300/20 dark:from-amber-300 dark:via-yellow-200 dark:to-orange-200 dark:text-amber-950"
           }`}
         >
           {payingMonthlyFee ? (

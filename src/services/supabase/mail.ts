@@ -171,7 +171,7 @@ export async function getCurrentUserPendingMail() {
 
   if (!isPartnerActive) {
     throw new Error(
-      "Você precisa ter uma assinatura partner ativa para acessar suas cartas.",
+      "Você precisa ter uma assinatura de sócio ativa para acessar suas cartas.",
     );
   }
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/layout/Layout";
 import DashboardHeader from "@/components/layout/DashboardHeader";
 import type { ProofEligibility } from "@/types/proof_of_residence";
@@ -6,12 +6,7 @@ import {
   createResidenceProofRecord,
   getProofEligibility,
 } from "@/services/supabase/proof_of_residence";
-import {
-  addDays,
-  formatDate,
-  formatDateTime,
-  maskCpf,
-} from "@/utils/proof_of_residence";
+import { addDays, maskCpf } from "@/utils/proof_of_residence";
 import {
   buildResidenceProofHash,
   generateValidationCode,
@@ -47,18 +42,6 @@ export default function ProofOfResidencePage() {
 
     void load();
   }, []);
-
-  const previewData = useMemo(() => {
-    if (!eligibility?.user || !eligibility.association) return null;
-
-    const issuedAt = new Date();
-    const expiresAt = addDays(issuedAt, 30);
-
-    return {
-      issuedAt,
-      expiresAt,
-    };
-  }, [eligibility]);
 
   async function handleGeneratePdf() {
     if (
@@ -194,14 +177,6 @@ export default function ProofOfResidencePage() {
                     <span className="font-medium">CPF:</span>{" "}
                     {eligibility.user ? maskCpf(eligibility.user.cpf) : "-"}
                   </div>
-                  <div>
-                    <span className="font-medium">Comunidade:</span>{" "}
-                    {eligibility.user?.community || "-"}
-                  </div>
-                  <div>
-                    <span className="font-medium">Associação:</span>{" "}
-                    {eligibility.association?.name || "-"}
-                  </div>
                 </div>
 
                 {!eligibility.allowed && eligibility.reason ? (
@@ -219,123 +194,6 @@ export default function ProofOfResidencePage() {
                   {generating ? "Gerando PDF..." : "Baixar PDF"}
                 </button>
               </aside>
-
-              <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-950">
-                  <div className="border-b border-zinc-200 pb-5 dark:border-zinc-800">
-                    <div className="flex items-start gap-4">
-                      {eligibility.association?.logo_url ? (
-                        <img
-                          src={eligibility.association.logo_url}
-                          alt="Logo da associação"
-                          className="h-16 w-16 rounded-xl object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-zinc-100 text-xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                          Logo
-                        </div>
-                      )}
-
-                      <div>
-                        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                          {eligibility.association?.name || "Associação"}
-                        </h2>
-                        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                          Documento institucional de comprovação de residência
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="py-6">
-                    <h3 className="text-center text-xl font-bold tracking-wide text-zinc-900 dark:text-zinc-100">
-                      DECLARAÇÃO DE RESIDÊNCIA
-                    </h3>
-
-                    <p className="mt-6 text-sm leading-7 text-zinc-700 dark:text-zinc-300">
-                      A{" "}
-                      <span className="font-semibold">
-                        {eligibility.association?.name || "associação"}
-                      </span>{" "}
-                      declara, para os devidos fins, que o(a) associado(a){" "}
-                      <span className="font-semibold">
-                        {eligibility.user?.fullname || "-"}
-                      </span>
-                      , inscrito(a) no CPF sob o nº{" "}
-                      <span className="font-semibold">
-                        {eligibility.user ? maskCpf(eligibility.user.cpf) : "-"}
-                      </span>
-                      , encontra-se cadastrado(a) como residente no endereço
-                      informado em sua comunidade.
-                    </p>
-
-                    <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
-                        <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                          Nome
-                        </p>
-                        <p className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                          {eligibility.user?.fullname || "-"}
-                        </p>
-                      </div>
-
-                      <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
-                        <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                          CPF
-                        </p>
-                        <p className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                          {eligibility.user
-                            ? maskCpf(eligibility.user.cpf)
-                            : "-"}
-                        </p>
-                      </div>
-
-                      <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:col-span-2">
-                        <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                          Endereço completo
-                        </p>
-                        <p className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                          {eligibility.user?.address_1 || "-"}
-                          {eligibility.user?.address_2
-                            ? `, ${eligibility.user.address_2}`
-                            : ""}
-                          {eligibility.user?.zipcode
-                            ? `, CEP ${eligibility.user.zipcode}`
-                            : ""}
-                        </p>
-                      </div>
-                    </div>
-
-                    {previewData ? (
-                      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
-                          <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                            Data de emissão
-                          </p>
-                          <p className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                            {formatDateTime(previewData.issuedAt.toISOString())}
-                          </p>
-                        </div>
-
-                        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
-                          <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                            Validade
-                          </p>
-                          <p className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                            {formatDate(previewData.expiresAt.toISOString())}
-                          </p>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    <div className="mt-8 rounded-2xl border border-dashed border-zinc-300 p-4 text-xs leading-6 text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                      O PDF final será gerado em tema claro, com QR code, hash
-                      de integridade, assinatura institucional escaneada e nome
-                      da presidência da associação.
-                    </div>
-                  </div>
-                </div>
-              </section>
             </div>
           ) : null}
         </div>

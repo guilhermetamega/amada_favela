@@ -199,7 +199,7 @@ function getPartnerBadge(history: PartnerHistoryItem[]) {
 
   if (!latest) {
     return {
-      label: "Sem parceria",
+      label: "Ainda não é sócio",
       className:
         "border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300",
     };

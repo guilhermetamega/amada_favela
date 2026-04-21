@@ -13,9 +13,19 @@ export type AssociationContactData = {
 
 const CACHE_PREFIX = "association-contact";
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24h
+const DEFAULT_ASSOCIATION_WHATSAPP_MESSAGE =
+  "Olá, vim pelo aplicativo AMA da Favela. Gostaria de obter mais informações sobre o anúncio do banner.";
 
 function onlyDigits(value: string) {
   return value.replace(/\D/g, "");
+}
+
+export function normalizeAssociationPhone(phone: string | null) {
+  const raw = onlyDigits(phone ?? "");
+
+  if (!raw) return null;
+
+  return raw.startsWith("55") ? raw : `55${raw}`;
 }
 
 function buildCacheKey(community: string) {
@@ -84,12 +94,25 @@ async function getCurrentProfileRow(): Promise<CurrentProfileRow> {
   return data as CurrentProfileRow;
 }
 
-export function buildAssociationWhatsAppUrl(phone: string | null) {
-  const digits = onlyDigits(phone ?? "");
+export function buildAssociationWhatsAppMessage(name?: string | null) {
+  const safeName = name?.trim();
 
-  if (!digits) return null;
+  if (!safeName) {
+    return DEFAULT_ASSOCIATION_WHATSAPP_MESSAGE;
+  }
 
-  return `https://wa.me/+55${digits}`;
+  return `Olá! Vim pelo aplicativo AMA da Favela e gostaria de obter mais informações com ${safeName}.`;
+}
+
+export function buildAssociationWhatsAppUrl(
+  phone: string | null,
+  message = DEFAULT_ASSOCIATION_WHATSAPP_MESSAGE,
+) {
+  const normalizedPhone = normalizeAssociationPhone(phone);
+
+  if (!normalizedPhone) return null;
+
+  return `https://api.whatsapp.com/send/?phone=${normalizedPhone}&text=${encodeURIComponent(message)}&type=phone_number&app_absent=0`;
 }
 
 export async function getAssociationContactData() {
@@ -122,6 +145,22 @@ export async function getAssociationContactData() {
   writeCache(profile.comunity, value);
 
   return value;
+}
+
+export async function getAssociationWhatsAppLink() {
+  const contact = await getAssociationContactData();
+  const message = buildAssociationWhatsAppMessage(contact.name);
+  const url = buildAssociationWhatsAppUrl(contact.phone, message);
+
+  if (!url) {
+    throw new Error("WhatsApp da associação não disponível.");
+  }
+
+  return {
+    contact,
+    message,
+    url,
+  };
 }
 
 export function invalidateAssociationContactCache(community: string) {

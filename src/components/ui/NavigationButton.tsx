@@ -11,9 +11,13 @@ export type NavigationButtonTheme = {
 type NavigationButtonProps = {
   label: string;
   description?: string;
-  onClick: () => void;
+  onClick?: () => void;
   icon: LucideIcon;
   color: NavigationButtonTheme;
+  href?: string;
+  target?: string;
+  rel?: string;
+  disabled?: boolean;
 };
 
 export default function NavigationButton({
@@ -22,13 +26,15 @@ export default function NavigationButton({
   onClick,
   icon: Icon,
   color,
+  href,
+  target,
+  rel,
+  disabled = false,
 }: NavigationButtonProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`group relative overflow-hidden rounded-2xl border border-zinc-200 bg-white/95 p-3 text-left shadow-lg transition duration-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 sm:min-h-37 sm:p-5 dark:border-zinc-800 dark:bg-zinc-900/95 ${color.borderHover} ${color.hoverGlow}`}
-    >
+  const className = `group relative overflow-hidden rounded-2xl border border-zinc-200 bg-white/95 p-3 text-left shadow-lg transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 sm:min-h-37 sm:p-5 dark:border-zinc-800 dark:bg-zinc-900/95 ${disabled ? "cursor-not-allowed opacity-60" : `active:scale-[0.98] ${color.borderHover} ${color.hoverGlow}`}`;
+
+  const content = (
+    <>
       <div
         className={`absolute inset-x-0 top-0 h-1.5 bg-linear-to-r md:h-3 ${color.topBar}`}
       />
@@ -62,10 +68,35 @@ export default function NavigationButton({
 
         <div className="hidden items-center justify-between sm:flex">
           <span className="text-xs text-zinc-500 transition group-hover:text-zinc-700 dark:text-zinc-400 dark:group-hover:text-zinc-300">
-            Toque para abrir
+            {disabled ? "Indisponível no momento" : "Toque para abrir"}
           </span>
         </div>
       </div>
+    </>
+  );
+
+  if (href && !disabled) {
+    return (
+      <a
+        href={href}
+        target={target}
+        rel={rel}
+        className={className}
+        onClick={onClick}
+      >
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={className}
+      disabled={disabled}
+    >
+      {content}
     </button>
   );
 }

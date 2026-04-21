@@ -3,14 +3,24 @@ import { MessageCircle } from "lucide-react";
 import NavigationButton from "@/components/ui/NavigationButton";
 import { getDashboardRouteTheme } from "@/lib/route-theme";
 import {
-  buildAssociationWhatsAppUrl,
-  getAssociationContactData,
+  getAssociationWhatsAppLink,
+  type AssociationContactData,
 } from "@/services/supabase/association_public";
 
+type LoadState = {
+  loading: boolean;
+  contact: AssociationContactData | null;
+  url: string | null;
+  error: string | null;
+};
+
 export default function AssociationWhatsAppButton() {
-  const [loading, setLoading] = useState(true);
-  const [associationName, setAssociationName] = useState("Associação");
-  const [whatsAppUrl, setWhatsAppUrl] = useState<string | null>(null);
+  const [state, setState] = useState<LoadState>({
+    loading: true,
+    contact: null,
+    url: null,
+    error: null,
+  });
 
   const theme = getDashboardRouteTheme("emerald");
 
@@ -19,20 +29,30 @@ export default function AssociationWhatsAppButton() {
 
     async function load() {
       try {
-        setLoading(true);
+        setState((current) => ({ ...current, loading: true, error: null }));
 
-        const data = await getAssociationContactData();
+        const { contact, url } = await getAssociationWhatsAppLink();
 
         if (!active) return;
 
-        setAssociationName(data.name || "Associação");
-        setWhatsAppUrl(buildAssociationWhatsAppUrl(data.phone));
-      } catch {
+        setState({
+          loading: false,
+          contact,
+          url,
+          error: null,
+        });
+      } catch (error) {
         if (!active) return;
 
-        setWhatsAppUrl(null);
-      } finally {
-        if (active) setLoading(false);
+        setState({
+          loading: false,
+          contact: null,
+          url: null,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Não foi possível carregar o WhatsApp da associação.",
+        });
       }
     }
 
@@ -43,24 +63,26 @@ export default function AssociationWhatsAppButton() {
     };
   }, []);
 
-  function handleClick() {
-    if (!whatsAppUrl) return;
-    window.open(whatsAppUrl, "_blank", "noopener,noreferrer");
-  }
+  const label = "WhatsApp da Associação";
+  const description = state.loading
+    ? "Carregando contato da associação..."
+    : state.url && state.contact
+      ? `Fale com ${state.contact.name || "a associação"}`
+      : "WhatsApp não disponível";
 
   return (
     <NavigationButton
-      label="WhatsApp"
-      description={
-        loading
-          ? "Carregando contato da associação..."
-          : whatsAppUrl
-            ? `Fale com ${associationName}`
-            : "WhatsApp não disponível"
-      }
-      onClick={handleClick}
+      label={label}
+      description={description}
       icon={MessageCircle}
       color={theme}
+      href={state.url ?? undefined}
+      target="_blank"
+      rel="noopener noreferrer"
+      disabled={state.loading || !state.url}
+      onClick={() => {
+        console.log("[AssociationWhatsAppButton] state", state);
+      }}
     />
   );
 }
