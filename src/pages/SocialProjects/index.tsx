@@ -78,12 +78,12 @@ export default function SocialProjectsPage() {
               {items.map((item) => (
                 <article
                   key={item.id}
-                  className="group overflow-hidden rounded-[26px] border border-zinc-200 bg-white/95 shadow-md transition duration-200 hover:-translate-y-1 hover:shadow-xl dark:border-zinc-800/80 dark:bg-zinc-900/95 dark:hover:border-emerald-500/20 dark:hover:shadow-emerald-500/5"
+                  className="group h-full overflow-hidden rounded-[26px] border border-zinc-200 bg-white/95 shadow-md transition duration-200 hover:-translate-y-1 hover:shadow-xl dark:border-zinc-800/80 dark:bg-zinc-900/95 dark:hover:border-emerald-500/20 dark:hover:shadow-emerald-500/5"
                 >
                   <button
                     type="button"
                     onClick={() => navigate(`/social-projects/${item.id}`)}
-                    className="block w-full text-left"
+                    className="flex h-full w-full flex-col text-left"
                   >
                     <div className="relative">
                       <div className="aspect-square w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
@@ -115,9 +115,9 @@ export default function SocialProjectsPage() {
                       </div>
                     </div>
 
-                    <div className="flex-col space-y-3 p-3 sm:p-4">
+                    <div className="flex flex-1 flex-col space-y-3 p-3 sm:p-4">
                       <div className="space-y-3">
-                        <h2 className="line-clamp-2 pb-2 text-sm font-black leading-5 text-zinc-900 dark:text-white sm:text-base">
+                        <h2 className="line-clamp-2 text-sm font-black leading-5 text-zinc-900 dark:text-white sm:text-base">
                           {item.title}
                         </h2>
 
@@ -145,7 +145,7 @@ export default function SocialProjectsPage() {
                         </p>
                       </div>
 
-                      <div className="pt-1">
+                      <div className="mt-auto pt-1">
                         <span className="inline-flex w-full items-center justify-center rounded-2xl bg-linear-to-r from-emerald-500 to-green-500 px-3 py-2.5 text-xs font-semibold text-white shadow-md transition group-hover:opacity-95 sm:text-sm">
                           Ver detalhes
                           <ArrowRight className="ml-2 h-4 w-4" />
