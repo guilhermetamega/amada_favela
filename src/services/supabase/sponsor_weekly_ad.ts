@@ -80,7 +80,7 @@ export function buildWhatsappUrl(phone: string | null) {
 
   const digits = rawDigits.startsWith("55") ? rawDigits : `55${rawDigits}`;
   const message =
-    "Olá, vim pelo aplicativo AMA da Favela. Gostaria de obter mais informações sobre o anúncio do banner.";
+    "Olá, vim pelo aplicativo da associação de moradores. Gostaria de obter mais informações sobre o anúncio do banner.";
 
   return `https://api.whatsapp.com/send?phone=${digits}&text=${encodeURIComponent(message)}`;
 }
