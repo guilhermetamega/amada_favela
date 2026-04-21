@@ -96,7 +96,7 @@ function DashboardModuleGridComponent({
             {shouldHighlightPremium ? (
               <Sparkles size={13} className="animate-pulse" />
             ) : null}
-            Premium
+            Para Sócios
           </span>
 
           {shouldHighlightPremium ? (
