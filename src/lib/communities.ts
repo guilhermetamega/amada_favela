@@ -1,6 +1,7 @@
-import type { CommunityData } from "@/types/community";
+import { supabase } from "@/services/supabase/client";
+import type { CommunityAddressItem, CommunityData } from "@/types/community";
 
-export const COMMUNITIES: CommunityData[] = [
+const DEFAULT_COMMUNITIES: CommunityData[] = [
   {
     key: "andarai",
     label: "Andaraí",
@@ -289,3 +290,46 @@ export const COMMUNITIES: CommunityData[] = [
     addressItems: [],
   },
 ];
+
+type CommunityRow = {
+  key: string;
+  label: string;
+  active: boolean;
+  zipcodes: string[] | null;
+  address_items: CommunityAddressItem[] | null;
+};
+
+export let COMMUNITIES: CommunityData[] = [...DEFAULT_COMMUNITIES];
+
+function mapRowToCommunity(row: CommunityRow): CommunityData {
+  return {
+    key: row.key,
+    label: row.label,
+    active: Boolean(row.active),
+    zipcodes: Array.isArray(row.zipcodes) ? row.zipcodes : [],
+    addressItems: Array.isArray(row.address_items) ? row.address_items : [],
+  };
+}
+
+export async function loadCommunitiesFromSupabase() {
+  const { data, error } = await supabase
+    .from("communities")
+    .select("key, label, active, zipcodes, address_items")
+    .order("label", { ascending: true });
+
+  if (error) {
+    console.error("Erro ao carregar communities do Supabase:", error);
+    return;
+  }
+
+  if (!data?.length) {
+    COMMUNITIES = [...DEFAULT_COMMUNITIES];
+    return;
+  }
+
+  COMMUNITIES = data.map((row) => mapRowToCommunity(row as CommunityRow));
+}
+
+export function getDefaultCommunities(): CommunityData[] {
+  return [...DEFAULT_COMMUNITIES];
+}
