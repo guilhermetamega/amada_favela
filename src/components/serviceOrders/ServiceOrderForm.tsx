@@ -4,7 +4,7 @@ type Props = {
   categories: ServiceOrderCategory[];
   selectedCategory: string;
   customIssue: string;
-  address1: string;
+  address: string;
   loading: boolean;
   onCategoryChange: (value: string) => void;
   onCustomIssueChange: (value: string) => void;
@@ -15,7 +15,7 @@ export default function ServiceOrderForm({
   categories,
   selectedCategory,
   customIssue,
-  address1,
+  address,
   loading,
   onCategoryChange,
   onCustomIssueChange,
@@ -40,7 +40,7 @@ export default function ServiceOrderForm({
             Endereço
           </label>
           <input
-            value={address1}
+            value={address}
             disabled
             className="w-full rounded-2xl border border-zinc-200 bg-zinc-100 px-4 py-3 text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
           />

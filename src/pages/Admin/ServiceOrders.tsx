@@ -41,6 +41,8 @@ export default function AdminServiceOrdersPage() {
   async function load() {
     try {
       setLoading(true);
+      setErrorMessage("");
+
       const data = await getAdminGroupedServiceOrders();
       setItems(data);
     } catch (error) {
@@ -70,9 +72,11 @@ export default function AdminServiceOrdersPage() {
     return items.filter((item) => {
       const matchesSearch =
         !normalizedSearch ||
-        item.address_1.toLowerCase().includes(normalizedSearch) ||
+        item.address_label.toLowerCase().includes(normalizedSearch) ||
         item.display_issue.toLowerCase().includes(normalizedSearch) ||
-        item.category_label.toLowerCase().includes(normalizedSearch);
+        item.category_label.toLowerCase().includes(normalizedSearch) ||
+        item.address_1.toLowerCase().includes(normalizedSearch) ||
+        (item.address_number ?? "").toLowerCase().includes(normalizedSearch);
 
       const matchesTopic =
         !selectedTopic || item.category_label === selectedTopic;
@@ -93,10 +97,11 @@ export default function AdminServiceOrdersPage() {
       setErrorMessage("");
       setSuccessMessage("");
 
-      await resolveServiceOrderGroup(
-        pendingResolve.address_1,
-        pendingResolve.normalized_issue_key,
-      );
+      await resolveServiceOrderGroup({
+        address_1: pendingResolve.address_1,
+        address_number: pendingResolve.address_number,
+        normalized_issue_key: pendingResolve.normalized_issue_key,
+      });
 
       const next = await getAdminGroupedServiceOrders();
       setItems(next);

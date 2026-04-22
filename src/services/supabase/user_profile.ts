@@ -195,7 +195,7 @@ export async function getMyProfile() {
   const { data, error } = await supabase
     .from("users")
     .select(
-      "id, fullname, cpf, birth, address_1, address_2, zipcode, comunity, email, phone, role, picture_path, created_at",
+      "id, fullname, cpf, birth, address_1, address_number, address_2, zipcode, comunity, email, phone, role, picture_path, created_at",
     )
     .eq("id", userId)
     .single<ProfileUser>();
@@ -213,6 +213,7 @@ export async function updateMyProfile(input: UpdateProfileInput) {
   const payload = {
     fullname: input.fullname.trim(),
     address_1: input.address_1.trim() || null,
+    address_number: input.address_number?.trim() || null,
     address_2: input.address_2.trim() || null,
     zipcode: input.zipcode.trim() || null,
     phone: input.phone.trim() || null,
@@ -227,7 +228,7 @@ export async function updateMyProfile(input: UpdateProfileInput) {
     .update(payload)
     .eq("id", userId)
     .select(
-      "id, fullname, cpf, birth, address_1, address_2, zipcode, comunity, email, phone, role, picture_path, created_at",
+      "id, fullname, cpf, birth, address_1, address_number, address_2, zipcode, comunity, email, phone, role, picture_path, created_at",
     )
     .single<ProfileUser>();
 
@@ -300,7 +301,7 @@ export async function uploadMyAvatar(file: File) {
     .update({ picture_path: filePath })
     .eq("id", userId)
     .select(
-      "id, fullname, cpf, birth, address_1, address_2, zipcode, comunity, email, phone, role, picture_path, created_at",
+      "id, fullname, cpf, birth, address_1, address_number, address_2, zipcode, comunity, email, phone, role, picture_path, created_at",
     )
     .single<ProfileUser>();
 
@@ -330,7 +331,7 @@ export async function deleteMyAvatar() {
     .update({ picture_path: null })
     .eq("id", userId)
     .select(
-      "id, fullname, cpf, birth, address_1, address_2, zipcode, comunity, email, phone, role, picture_path, created_at",
+      "id, fullname, cpf, birth, address_1, address_number, address_2, zipcode, comunity, email, phone, role, picture_path, created_at",
     )
     .single<ProfileUser>();
 

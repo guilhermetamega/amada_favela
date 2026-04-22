@@ -12,6 +12,7 @@ import {
   generateValidationCode,
 } from "@/utils/proof_of_residence_crypto";
 import { generateResidenceProofPdf } from "@/utils/proof_of_residence_pdf";
+import { buildAddressLine } from "@/utils/address";
 import MainLayout from "@/components/layout/MainLayout";
 
 export default function ProofOfResidencePage() {
@@ -67,7 +68,10 @@ export default function ProofOfResidencePage() {
         userId: eligibility.user.id,
         associationId: eligibility.association.id,
         cpf: eligibility.user.cpf,
-        address: eligibility.user.address_1,
+        address: buildAddressLine(
+          eligibility.user.address_1,
+          eligibility.user.address_number,
+        ),
         issuedAt,
         expiresAt,
         validationCode,

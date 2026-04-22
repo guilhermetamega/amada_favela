@@ -16,11 +16,12 @@ import type {
 } from "@/types/service_orders";
 import { supabase } from "@/services/supabase/client";
 import MainLayout from "@/components/layout/MainLayout";
+import { buildFullAddressLine } from "@/utils/address";
 
 export default function ServiceOrdersPage() {
   const [categories, setCategories] = useState<ServiceOrderCategory[]>([]);
   const [myOrders, setMyOrders] = useState<ServiceOrder[]>([]);
-  const [address1, setAddress1] = useState("");
+  const [addressLoaded, setAddressLoaded] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [customIssue, setCustomIssue] = useState("");
   const [loading, setLoading] = useState(true);
@@ -35,33 +36,62 @@ export default function ServiceOrdersPage() {
     async function load() {
       try {
         setLoading(true);
+        setErrorMessage("");
 
         const {
           data: { user },
+          error: authError,
         } = await supabase.auth.getUser();
 
-        if (!user) throw new Error("Usuário não autenticado.");
+        if (authError) {
+          throw new Error(authError.message);
+        }
 
-        const [categoriesData, ordersData, profileData] = await Promise.all([
-          getServiceOrderCategories(),
-          getMyServiceOrders(),
-          supabase.from("users").select("address_1").eq("id", user.id).single(),
-        ]);
+        if (!user) {
+          throw new Error("Usuário não autenticado.");
+        }
+
+        const [categoriesData, ordersData, profileResponse] = await Promise.all(
+          [
+            getServiceOrderCategories(),
+            getMyServiceOrders(),
+            supabase
+              .from("users")
+              .select("address_1, address_number, address_2")
+              .eq("id", user.id)
+              .single(),
+          ],
+        );
+
+        if (profileResponse.error) {
+          throw new Error(profileResponse.error.message);
+        }
 
         if (!active) return;
+
+        const profile = profileResponse.data;
 
         setCategories(categoriesData);
         setMyOrders(ordersData);
-        setAddress1(profileData.data?.address_1 ?? "");
+        setAddressLoaded(
+          buildFullAddressLine(
+            profile?.address_1 ?? "",
+            profile?.address_number ?? "",
+            profile?.address_2 ?? "",
+          ),
+        );
       } catch (error) {
         if (!active) return;
+
         setErrorMessage(
           error instanceof Error
             ? error.message
             : "Erro ao carregar ordens de serviço.",
         );
       } finally {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     }
 
@@ -125,7 +155,7 @@ export default function ServiceOrdersPage() {
                 categories={categories}
                 selectedCategory={selectedCategory}
                 customIssue={customIssue}
-                address1={address1}
+                address={addressLoaded}
                 loading={submitLoading}
                 onCategoryChange={setSelectedCategory}
                 onCustomIssueChange={setCustomIssue}
