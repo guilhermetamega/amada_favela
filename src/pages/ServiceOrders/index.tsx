@@ -9,7 +9,7 @@ import {
   createServiceOrder,
   getMyServiceOrders,
   getServiceOrderCategories,
-} from "@/services/supabase/sevice_orders";
+} from "@/services/supabase/service_orders";
 import type {
   ServiceOrder,
   ServiceOrderCategory,

@@ -1,73 +1,109 @@
-# React + TypeScript + Vite
+# Amada Favela — Plataforma Comunitária
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> Aplicação web/mobile (React + Vite + Supabase) para gestão de comunidade, comunicação com moradores, serviços locais e integrações de pagamento (Stripe).
 
-Currently, two official plugins are available:
+## Etapa 1 — Documento para tela inicial do GitHub
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Este README foi desenhado como visão executiva para **produto, engenharia, operações e negócio**.
 
-## React Compiler
+## Visão do Produto
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+O sistema centraliza os principais fluxos de uma associação comunitária:
 
-## Expanding the ESLint configuration
+- **Acesso e identidade**: cadastro/login de moradores, perfis e permissões por papel.
+- **Portal do morador**: dashboard, perfil, enquetes, avisos e conteúdos públicos.
+- **Serviços da comunidade**: ordens de serviço, achados e perdidos, animais desaparecidos, aluguel e projetos sociais.
+- **Gestão administrativa**: administração por papéis (employee/admin/president/super-admin).
+- **Módulo de parceiros/patrocinadores**: autenticação própria e gestão de banners/anúncios.
+- **Financeiro**: checkout de mensalidade, webhook Stripe e sincronização de estados de pagamento.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Arquitetura em alto nível
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- **Frontend**: React 19 + TypeScript + Vite + Tailwind.
+- **Backend BaaS**: Supabase (Auth, Postgres, Storage, Edge Functions).
+- **Pagamentos**: Stripe (Checkout, assinatura, onboarding de conta conectada, webhook).
+- **Aplicativo móvel**: Capacitor (Android configurado no projeto).
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Mapa de telas (rotas principais)
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Acesso público
+
+- `/` e `/auth` — autenticação.
+- `/privacy`, `/terms`, `/child-policy` — páginas legais.
+- `/delete-account` — instrução/fluxo de exclusão de conta.
+- `/payment/result` — retorno de pagamento.
+- `/validate-proof/:validationCode` — validação de comprovante.
+
+### Morador (autenticado)
+
+- `/dashboard`
+- `/profile`
+- `/lost-and-found`
+- `/missing`
+- `/home-rent`
+- `/polls`
+- `/service-orders`
+- `/mails`
+- `/member-card`
+- `/proof-of-residence`
+- `/social-projects` e `/social-projects/:id`
+
+### Administrativo (employee/admin/president)
+
+- `/admin`
+- `/admin/service-orders`
+- `/admin/polls`
+- `/admin/mail`
+- `/admin/association`
+- `/admin/create-warnings`
+- `/admin/social-projects`
+- `/admin/welcome-banner`
+
+### Superadmin
+
+- `/super-admin`
+
+### Patrocinador
+
+- `/sponsor/login`
+- `/sponsor`
+- `/sponsor/weekly-ad`
+- `/sponsor/banner`
+
+## Organização técnica (resumo)
+
+- `src/pages/` → telas/rotas.
+- `src/components/` → componentes por domínio.
+- `src/services/supabase/` → acesso a dados e regras de integração com Supabase.
+- `src/routes/` → roteamento e guards de segurança.
+- `supabase/functions/` → Edge Functions (Stripe, sponsor auth e mídia, onboarding).
+- `supabase/migrations/` → evolução de schema.
+
+## Principais capacidades por área
+
+- **Produto**: app único para ciclo completo do morador e operação da associação.
+- **Engenharia**: separação clara entre UI, domínio e integração com backend.
+- **Operação**: fluxos administrativos e de atendimento centralizados.
+- **Receita/financeiro**: integração de pagamentos com rastreabilidade por eventos.
+
+## Etapa 2 — Documento completo
+
+A documentação completa (dados, telas e funções importantes) está em:
+
+- [`docs/PLATAFORMA_AMADA_FAVELA.md`](docs/PLATAFORMA_AMADA_FAVELA.md)
+
+## Como rodar localmente
+
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Scripts úteis
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
+npm run build
+npm run lint
+npm run preview
 ```

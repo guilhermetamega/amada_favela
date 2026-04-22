@@ -8,7 +8,7 @@ import FinalizeOrderModal from "@/components/adminServiceOrders/FinalizeOrderMod
 import {
   getAdminGroupedServiceOrders,
   resolveServiceOrderGroup,
-} from "@/services/supabase/sevice_orders";
+} from "@/services/supabase/service_orders";
 import type { GroupedServiceOrder } from "@/types/service_orders";
 import MainLayout from "@/components/layout/MainLayout";
 
