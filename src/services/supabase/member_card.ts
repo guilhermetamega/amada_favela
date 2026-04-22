@@ -6,7 +6,7 @@ import {
   getMyProfile,
 } from "@/services/supabase/user_profile";
 import { MemberCardData } from "@/types/member_card";
-import { buildFullAddress } from "@/utils/address";
+import { buildFullAddressLine } from "@/utils/address";
 
 type PartnerRow = {
   expires_at: string;
@@ -83,9 +83,9 @@ export async function getMyMemberCardData(): Promise<MemberCardData> {
   }
 
   const isPartnerActive =
-    !!partner && new Date(partner.expires_at) >= new Date();
+    !!partner && new Date(partner.expires_at).getTime() >= Date.now();
 
-  if (!isPartnerActive) {
+  if (!isPartnerActive || !partner) {
     throw new Error(
       "Você precisa ter uma assinatura de sócio ativa para acessar sua carteirinha.",
     );
@@ -105,11 +105,11 @@ export async function getMyMemberCardData(): Promise<MemberCardData> {
     address_number: profile.address_number,
     address_2: profile.address_2,
     fullAddress:
-      buildFullAddress({
-        address1: profile.address_1,
-        addressNumber: profile.address_number,
-        address2: profile.address_2,
-      }) || "Endereço não informado.",
+      buildFullAddressLine(
+        profile.address_1,
+        profile.address_number,
+        profile.address_2,
+      ) || "Endereço não informado.",
     community: getCommunityLabel(profile.comunity),
     picturePath: profile.picture_path,
     avatarUrl,
