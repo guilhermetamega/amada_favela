@@ -70,7 +70,7 @@ export default function AdminServiceOrdersPage() {
     return items.filter((item) => {
       const matchesSearch =
         !normalizedSearch ||
-        item.address_1.toLowerCase().includes(normalizedSearch) ||
+        item.address_label.toLowerCase().includes(normalizedSearch) ||
         item.display_issue.toLowerCase().includes(normalizedSearch) ||
         item.category_label.toLowerCase().includes(normalizedSearch);
 

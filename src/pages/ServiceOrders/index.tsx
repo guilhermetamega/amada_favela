@@ -16,6 +16,7 @@ import type {
 } from "@/types/service_orders";
 import { supabase } from "@/services/supabase/client";
 import MainLayout from "@/components/layout/MainLayout";
+import { buildAddressLine } from "@/utils/address";
 
 export default function ServiceOrdersPage() {
   const [categories, setCategories] = useState<ServiceOrderCategory[]>([]);
@@ -45,14 +46,23 @@ export default function ServiceOrdersPage() {
         const [categoriesData, ordersData, profileData] = await Promise.all([
           getServiceOrderCategories(),
           getMyServiceOrders(),
-          supabase.from("users").select("address_1").eq("id", user.id).single(),
+          supabase
+            .from("users")
+            .select("address_1, address_number")
+            .eq("id", user.id)
+            .single(),
         ]);
 
         if (!active) return;
 
         setCategories(categoriesData);
         setMyOrders(ordersData);
-        setAddress1(profileData.data?.address_1 ?? "");
+        setAddress1(
+          buildAddressLine(
+            profileData.data?.address_1 ?? "",
+            profileData.data?.address_number ?? "",
+          ),
+        );
       } catch (error) {
         if (!active) return;
         setErrorMessage(

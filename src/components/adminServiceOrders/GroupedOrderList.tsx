@@ -42,7 +42,7 @@ export default function GroupedOrdersList({ items, onResolve }: Props) {
                   </h2>
 
                   <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                    Endereço: {item.address_1}
+                    Endereço: {item.address_label}
                   </p>
 
                   <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">

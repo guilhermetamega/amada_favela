@@ -38,7 +38,9 @@ export async function getCurrentProofUserProfile(): Promise<ProofUserProfile> {
 
   const { data, error } = await supabase
     .from("users")
-    .select("id, fullname, cpf, zipcode, address_1, address_2, comunity, role")
+    .select(
+      "id, fullname, cpf, zipcode, address_1, address_number, address_2, comunity, role",
+    )
     .eq("id", userId)
     .single();
 
@@ -54,6 +56,7 @@ export async function getCurrentProofUserProfile(): Promise<ProofUserProfile> {
     cpf: row.cpf,
     zipcode: row.zipcode,
     address_1: row.address_1,
+    address_number: row.address_number,
     address_2: row.address_2,
     community: row.comunity,
     role: row.role,

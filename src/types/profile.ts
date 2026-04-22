@@ -9,6 +9,7 @@ export type ProfileUser = {
   cpf: string | null;
   birth: string | null;
   address_1: string | null;
+  address_number: string | null;
   address_2: string | null;
   zipcode: string | null;
   comunity: string | null;
@@ -22,6 +23,7 @@ export type ProfileUser = {
 export type UpdateProfileInput = {
   fullname: string;
   address_1: string;
+  address_number?: string;
   address_2: string;
   zipcode: string;
   phone: string;

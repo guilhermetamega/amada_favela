@@ -14,12 +14,14 @@ import {
   writeServiceOrderCategoriesCache,
   writeUserServiceOrdersCache,
 } from "@/lib/cache/serviceOrders";
+import { buildAddressLine } from "@/utils/address";
 
 type ProfileRow = {
   id: string;
   role: string;
   comunity: string;
   address_1: string | null;
+  address_number: string | null;
 };
 
 async function getCurrentProfile(): Promise<ProfileRow> {
@@ -33,7 +35,7 @@ async function getCurrentProfile(): Promise<ProfileRow> {
 
   const { data, error } = await supabase
     .from("users")
-    .select("id, role, comunity, address_1")
+    .select("id, role, comunity, address_1, address_number")
     .eq("id", user.id)
     .single();
 
@@ -97,6 +99,10 @@ function groupServiceOrders(items: ServiceOrder[]): GroupedServiceOrder[] {
 
   for (const item of items) {
     const key = `${item.address_1}::${item.normalized_issue_key}`;
+    const addressLabel = buildAddressLine(
+      item.address_1,
+      item.address_number ?? null,
+    );
 
     const displayIssue =
       item.category_slug === "outros"
@@ -108,6 +114,7 @@ function groupServiceOrders(items: ServiceOrder[]): GroupedServiceOrder[] {
     if (!current) {
       map.set(key, {
         address_1: item.address_1,
+        address_label: addressLabel,
         normalized_issue_key: item.normalized_issue_key,
         category_label: item.category_label,
         display_issue: displayIssue,

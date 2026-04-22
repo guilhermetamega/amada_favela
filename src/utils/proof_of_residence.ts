@@ -1,3 +1,5 @@
+import { buildAddressLine } from "@/utils/address";
+
 export function onlyDigits(value: string) {
   return value.replace(/\D/g, "");
 }
@@ -81,11 +83,12 @@ export function buildAssociationAddress(input: {
 
 export function buildUserAddress(input: {
   address_1: string;
+  address_number: string | null;
   address_2: string | null;
   zipcode: string;
 }) {
   return [
-    input.address_1,
+    buildAddressLine(input.address_1, input.address_number),
     input.address_2 || null,
     `CEP ${maskZipcode(input.zipcode)}`,
   ]

@@ -25,6 +25,7 @@ export type ProofUserProfile = {
   cpf: string;
   zipcode: string;
   address_1: string;
+  address_number: string | null;
   address_2: string | null;
   community: string;
   role?: string | null;
@@ -85,6 +86,7 @@ export type ProofUserProfileRow = {
   cpf: string;
   zipcode: string;
   address_1: string;
+  address_number: string | null;
   address_2: string | null;
   comunity: string;
   role: string | null;

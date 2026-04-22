@@ -4,6 +4,7 @@ export type MailRecipient = {
   id: string;
   fullname: string;
   address_1: string;
+  address_number: string | null;
   address_2: string | null;
   comunity: string | null;
 };
@@ -36,7 +37,7 @@ async function getCurrentProfile() {
 
   const { data: profile, error: profileError } = await supabase
     .from("users")
-    .select("id, role, comunity, fullname, address_1, address_2")
+    .select("id, role, comunity, fullname, address_1, address_number, address_2")
     .eq("id", user.id)
     .single();
 
@@ -56,7 +57,7 @@ export async function getEligibleMailRecipients(search = "") {
 
   let query = supabase
     .from("users")
-    .select("id, fullname, address_1, address_2, comunity")
+    .select("id, fullname, address_1, address_number, address_2, comunity")
     .order("fullname", { ascending: true });
 
   if (profile.role !== "admin") {

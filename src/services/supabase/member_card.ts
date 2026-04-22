@@ -6,6 +6,7 @@ import {
   getMyProfile,
 } from "@/services/supabase/user_profile";
 import { MemberCardData } from "@/types/member_card";
+import { buildFullAddress } from "@/utils/address";
 
 type PartnerRow = {
   expires_at: string;
@@ -32,13 +33,6 @@ function calculateAge(birth: string | null) {
   }
 
   return age;
-}
-
-function buildFullAddress(
-  address1: string | null | undefined,
-  address2: string | null | undefined,
-) {
-  return [address1?.trim(), address2?.trim()].filter(Boolean).join(", ");
 }
 
 function getCommunityLabel(comunity: string | null | undefined) {
@@ -108,9 +102,14 @@ export async function getMyMemberCardData(): Promise<MemberCardData> {
     birth: profile.birth,
     age: calculateAge(profile.birth),
     address_1: profile.address_1,
+    address_number: profile.address_number,
     address_2: profile.address_2,
     fullAddress:
-      buildFullAddress(profile.address_1, profile.address_2) ||
+      buildFullAddress({
+        address1: profile.address_1,
+        addressNumber: profile.address_number,
+        address2: profile.address_2,
+      }) ||
       "Endereço não informado.",
     community: getCommunityLabel(profile.comunity),
     picturePath: profile.picture_path,
