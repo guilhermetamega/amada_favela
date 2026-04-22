@@ -31,6 +31,7 @@ import { supabase } from "@/services/supabase/client";
 import { COMMUNITIES } from "@/lib/communities";
 import { prefetchDashboard } from "@/lib/prefetch/prefetch-dashboard";
 import LegalModal from "@/components/legal/LegalModal";
+import type { CommunityAddressItem } from "@/types/community";
 
 const initialLoginForm: LoginFormData = {
   identifier: "",
@@ -42,6 +43,7 @@ const initialRegisterForm: RegisterFormData = {
   cpf: "",
   birth: "",
   address_1: "",
+  address_number: "",
   address_2: "",
   comunity: "",
   zipcode: "",
@@ -89,6 +91,31 @@ function formatZipcode(value: string) {
   }
 
   return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+}
+
+type AddressCategory = {
+  key: string;
+  label: string;
+  matches: (item: CommunityAddressItem) => boolean;
+};
+
+const ADDRESS_CATEGORIES: AddressCategory[] = [
+  { key: "block", label: "Quadra", matches: (item) => item.type === "block" },
+  { key: "lane", label: "Viela", matches: (item) => item.type === "lane" },
+  {
+    key: "terreninho",
+    label: "Terreninho",
+    matches: (item) =>
+      item.type === "village" || item.label.toLowerCase().includes("terreninho"),
+  },
+  { key: "street", label: "Rua", matches: (item) => item.type === "street" },
+];
+
+function normalizeAddressNumber(label: string, value: string) {
+  const source = `${value} ${label}`;
+  const match = source.match(/(\d+)\s*$/);
+  if (match) return match[1];
+  return label.trim();
 }
 
 export default function AuthPage() {
@@ -149,29 +176,38 @@ export default function AuthPage() {
     [selectedCommunity],
   );
 
-  const hasPresetAddressItems = communityAddressItems.length > 0;
   const hasPresetZipcodes = communityZipcodes.length > 0;
+  const [selectedAddressCategory, setSelectedAddressCategory] = useState("");
 
-  const address1Label = "Endereço";
+  const availableAddressCategories = useMemo(
+    () =>
+      ADDRESS_CATEGORIES.filter((category) =>
+        communityAddressItems.some((item) => category.matches(item)),
+      ),
+    [communityAddressItems],
+  );
 
-  const address1Placeholder = useMemo(() => {
-    if (!selectedCommunity) {
-      return "Digite sua rua ou quadra";
+  const availableAddressNumbers = useMemo(() => {
+    const selectedCategory = ADDRESS_CATEGORIES.find(
+      (category) => category.key === selectedAddressCategory,
+    );
+
+    if (!selectedCategory) return [];
+
+    const uniqueNumbers = new Map<string, string>();
+
+    for (const item of communityAddressItems) {
+      if (!selectedCategory.matches(item)) continue;
+      const numberValue = normalizeAddressNumber(item.label, item.value);
+      if (!uniqueNumbers.has(numberValue)) {
+        uniqueNumbers.set(numberValue, numberValue);
+      }
     }
 
-    const hasStreet = communityAddressItems.some(
-      (item) => item.type === "street",
+    return Array.from(uniqueNumbers.values()).sort((a, b) =>
+      a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" }),
     );
-    const hasBlock = communityAddressItems.some(
-      (item) => item.type === "block",
-    );
-
-    if (hasStreet && hasBlock) return "Selecione ou digite sua rua/quadra";
-    if (hasStreet) return "Digite sua rua";
-    if (hasBlock) return "Digite sua quadra";
-
-    return "Digite sua rua ou quadra";
-  }, [selectedCommunity, communityAddressItems]);
+  }, [communityAddressItems, selectedAddressCategory]);
 
   const cardGridClassName =
     mode === "register"
@@ -290,14 +326,6 @@ export default function AuthPage() {
       return;
     }
 
-    if (name === "zipcode") {
-      setRegisterForm((prev) => ({
-        ...prev,
-        zipcode: formatZipcode(value),
-      }));
-      return;
-    }
-
     if (name === "birth") {
       const formatted = formatBirthInput(value);
 
@@ -322,6 +350,42 @@ export default function AuthPage() {
         comunity: value,
         zipcode: nextZipcode,
         address_1: "",
+        address_number: "",
+      }));
+      setSelectedAddressCategory("");
+      return;
+    }
+
+    if (name === "zipcode") {
+      setRegisterForm((prev) => ({
+        ...prev,
+        zipcode: formatZipcode(value),
+        address_1: "",
+        address_number: "",
+      }));
+      setSelectedAddressCategory("");
+      return;
+    }
+
+    if (name === "address_1") {
+      const selectedCategory = ADDRESS_CATEGORIES.find(
+        (category) => category.key === value,
+      );
+      if (!selectedCategory) return;
+
+      setSelectedAddressCategory(selectedCategory.key);
+      setRegisterForm((prev) => ({
+        ...prev,
+        address_1: selectedCategory.label,
+        address_number: "",
+      }));
+      return;
+    }
+
+    if (name === "address_number") {
+      setRegisterForm((prev) => ({
+        ...prev,
+        address_number: value,
       }));
       return;
     }
@@ -422,26 +486,30 @@ export default function AuthPage() {
     }
 
     if (!registerForm.address_1) {
-      setErrorMessage(`Informe ${address1Label.toLowerCase()}.`);
+      setErrorMessage("Selecione o tipo de endereço.");
       return;
     }
 
-    await signUpWithEmail(
-      {
-        ...registerForm,
-        birth: convertBirthToIso(registerForm.birth),
-      },
-      profilePictureFile,
-    );
+    if (!registerForm.address_number) {
+      setErrorMessage("Selecione o Endereço 2.");
+      return;
+    }
 
     setLoading(true);
     setIsRegisterFlow(true);
 
     try {
-      await signUpWithEmail(registerForm, profilePictureFile);
+      await signUpWithEmail(
+        {
+          ...registerForm,
+          birth: convertBirthToIso(registerForm.birth),
+        },
+        profilePictureFile,
+      );
       void prefetchDashboard();
 
       setRegisterForm(initialRegisterForm);
+      setSelectedAddressCategory("");
       setLoginForm(initialLoginForm);
       setProfilePictureFile(null);
       setProfilePicturePreview("");
@@ -934,7 +1002,7 @@ export default function AuthPage() {
 
                     <div>
                       <label className={labelClassName()} htmlFor="address_1">
-                        {address1Label}
+                        Endereço
                       </label>
                       <div className="relative">
                         <span
@@ -945,44 +1013,66 @@ export default function AuthPage() {
                           <MapPin size={16} />
                         </span>
 
-                        {hasPresetAddressItems ? (
-                          <select
-                            id="address_1"
-                            name="address_1"
-                            value={registerForm.address_1}
-                            onChange={handleRegisterChange}
-                            className={`${inputClassName()} pl-11 pr-10`}
-                            required
-                            disabled={!registerForm.comunity}
-                          >
-                            <option value="">
-                              Selecione {address1Label.toLowerCase()}
+                        <select
+                          id="address_1"
+                          name="address_1"
+                          value={selectedAddressCategory}
+                          onChange={handleRegisterChange}
+                          className={`${inputClassName()} pl-11 pr-10`}
+                          required
+                          disabled={!registerForm.comunity || !registerForm.zipcode}
+                        >
+                          <option value="">Selecione o tipo de endereço</option>
+                          {availableAddressCategories.map((category) => (
+                            <option key={category.key} value={category.key}>
+                              {category.label}
                             </option>
-                            {communityAddressItems.map((item) => (
-                              <option key={item.value} value={item.label}>
-                                {item.label}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <input
-                            id="address_1"
-                            name="address_1"
-                            type="text"
-                            value={registerForm.address_1}
-                            onChange={handleRegisterChange}
-                            className={`${inputClassName()} pl-11`}
-                            placeholder={address1Placeholder}
-                            required
-                            disabled={!registerForm.comunity}
-                          />
-                        )}
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label
+                        className={labelClassName()}
+                        htmlFor="address_number"
+                      >
+                        Endereço 2
+                      </label>
+                      <div className="relative">
+                        <span
+                          className={fieldIconClassName(
+                            "text-cyan-600 dark:text-cyan-300",
+                          )}
+                        >
+                          <MapPin size={16} />
+                        </span>
+                        <select
+                          id="address_number"
+                          name="address_number"
+                          value={registerForm.address_number}
+                          onChange={handleRegisterChange}
+                          className={`${inputClassName()} pl-11 pr-10`}
+                          required
+                          disabled={
+                            !registerForm.comunity ||
+                            !registerForm.zipcode ||
+                            !registerForm.address_1
+                          }
+                        >
+                          <option value="">Selecione o número</option>
+                          {availableAddressNumbers.map((numberValue) => (
+                            <option key={numberValue} value={numberValue}>
+                              {numberValue}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
 
                     <div>
                       <label className={labelClassName()} htmlFor="address_2">
-                        Número e complemento
+                        Complemento
                       </label>
                       <div className="relative">
                         <span
@@ -999,8 +1089,7 @@ export default function AuthPage() {
                           value={registerForm.address_2}
                           onChange={handleRegisterChange}
                           className={`${inputClassName()} pl-11`}
-                          placeholder="Ex.: 12, casa 2, fundos, bloco B"
-                          required
+                          placeholder="Ex.: casa 2, fundos, bloco B"
                         />
                       </div>
                     </div>

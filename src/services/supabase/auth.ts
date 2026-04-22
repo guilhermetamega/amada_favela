@@ -185,6 +185,7 @@ export async function signUpWithEmail(
     cpf,
     birth,
     address_1,
+    address_number,
     address_2,
     zipcode,
     comunity,
@@ -198,6 +199,7 @@ export async function signUpWithEmail(
   const sanitizedCpf = sanitizeCpf(cpf);
   const sanitizedBirth = birth;
   const sanitizedAddress1 = address_1.trim();
+  const sanitizedAddressNumber = address_number.trim();
   const sanitizedAddress2 = address_2.trim();
   const sanitizedZipcode = zipcode.trim();
   const sanitizedComunity = comunity.trim();
@@ -261,6 +263,7 @@ export async function signUpWithEmail(
       cpf: sanitizedCpf || null,
       birth: sanitizedBirth,
       address_1: sanitizedAddress1,
+      address_number: sanitizedAddressNumber || null,
       address_2: sanitizedAddress2 || null,
       zipcode: sanitizedZipcode || null,
       comunity: sanitizedComunity || null,
