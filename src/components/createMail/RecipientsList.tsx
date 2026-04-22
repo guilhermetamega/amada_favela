@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, Crown, MapPin, Search } from "lucide-react";
 import type { MailRecipient } from "@/services/supabase/mail";
-import { buildAddressLine } from "@/utils/address";
+import { buildFullAddressLine } from "@/utils/address";
 
 type RecipientWithPriority = MailRecipient & {
   isPartnerActive?: boolean;
@@ -56,16 +56,16 @@ function RecipientCard({
             {recipient.fullname}
           </h3>
 
-          <div className="mt-2 flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-            <MapPin size={14} />
-            <span className="truncate">
-              {buildAddressLine(recipient.address_1, recipient.address_number)}
+          <div className="mt-2 flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+            <MapPin size={14} className="mt-0.5 shrink-0" />
+            <span className="line-clamp-2">
+              {buildFullAddressLine(
+                recipient.address_1,
+                recipient.address_number,
+                recipient.address_2,
+              ) || "Endereço não informado"}
             </span>
           </div>
-
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            {recipient.address_2 || "Sem complemento"}
-          </p>
         </div>
 
         <RecipientTag active={recipient.isPartnerActive} />
@@ -139,10 +139,11 @@ export default function RecipientsSelector({
 
                   <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                     {selectedRecipient
-                      ? buildAddressLine(
+                      ? buildFullAddressLine(
                           selectedRecipient.address_1,
                           selectedRecipient.address_number,
-                        )
+                          selectedRecipient.address_2,
+                        ) || "Endereço não informado"
                       : recipients.length > 0
                         ? `${recipients.length} usuários disponíveis`
                         : "Nenhum usuário encontrado"}
