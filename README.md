@@ -71,3 +71,11 @@ export default defineConfig([
   },
 ])
 ```
+
+## Address model migration
+
+The project now supports the user address model split into `address_1` + `address_number`.
+
+Detailed implementation notes are documented at:
+
+- `docs/address-model-migration.md`

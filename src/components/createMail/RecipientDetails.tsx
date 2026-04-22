@@ -1,5 +1,6 @@
 import { MailPlus, MapPin } from "lucide-react";
 import type { MailItem, MailRecipient } from "@/services/supabase/mail";
+import { buildAddressLine } from "@/utils/address";
 
 type RecipientWithPriority = MailRecipient & {
   isPartnerActive?: boolean;
@@ -47,7 +48,12 @@ export default function RecipientDetails({
 
                 <div className="mt-2 flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
                   <MapPin size={14} />
-                  <span>{recipient.address_1}</span>
+                  <span>
+                    {buildAddressLine(
+                      recipient.address_1,
+                      recipient.address_number,
+                    )}
+                  </span>
                 </div>
 
                 <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">

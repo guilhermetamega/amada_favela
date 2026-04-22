@@ -14,6 +14,7 @@ export type ServiceOrder = {
   custom_issue: string | null;
   normalized_issue_key: string;
   address_1: string;
+  address_number?: string | null;
   address_2: string | null;
   status: "open" | "resolved";
   created_at: string;
@@ -25,6 +26,7 @@ export type ServiceOrder = {
 
 export type GroupedServiceOrder = {
   address_1: string;
+  address_label: string;
   normalized_issue_key: string;
   category_label: string;
   display_issue: string;

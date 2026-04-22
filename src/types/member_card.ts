@@ -4,6 +4,7 @@ export type MemberCardData = {
   birth: string | null;
   age: number | null;
   address_1: string | null;
+  address_number: string | null;
   address_2: string | null;
   fullAddress: string;
   community: string | null;
