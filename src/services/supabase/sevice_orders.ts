@@ -19,8 +19,36 @@ type CachePayload<T> = {
 };
 
 const CACHE_TTL_MS = 60_000;
-const MY_SERVICE_ORDERS_CACHE_KEY = "my_service_orders_v2";
-const ADMIN_SERVICE_ORDERS_CACHE_KEY = "admin_service_orders_v2";
+const CACHE_KEY_PREFIX = "service_orders_v3";
+const LEGACY_CACHE_KEYS = [
+  "my_service_orders_v2",
+  "admin_service_orders_v2",
+] as const;
+const ACTIVE_CACHE_CONTEXT_KEY = `${CACHE_KEY_PREFIX}:active_context`;
+
+type ServiceOrdersCacheContext = {
+  userId: string;
+  community?: string | null;
+};
+
+function buildMyServiceOrdersCacheKey({ userId }: ServiceOrdersCacheContext) {
+  return `${CACHE_KEY_PREFIX}:my:${userId}`;
+}
+
+function buildAdminServiceOrdersCacheKey({
+  userId,
+  community,
+}: ServiceOrdersCacheContext) {
+  if (!community) return null;
+  return `${CACHE_KEY_PREFIX}:admin:${community}:${userId}`;
+}
+
+function buildServiceOrdersCacheKeys(context: ServiceOrdersCacheContext) {
+  return {
+    my: buildMyServiceOrdersCacheKey(context),
+    admin: buildAdminServiceOrdersCacheKey(context),
+  };
+}
 
 function readCache<T>(key: string): T | null {
   if (typeof window === "undefined") return null;
@@ -57,11 +85,59 @@ function writeCache<T>(key: string, data: T) {
   }
 }
 
-function clearServiceOrdersCache() {
+function clearServiceOrdersCache(context?: ServiceOrdersCacheContext) {
   if (typeof window === "undefined") return;
 
-  window.sessionStorage.removeItem(MY_SERVICE_ORDERS_CACHE_KEY);
-  window.sessionStorage.removeItem(ADMIN_SERVICE_ORDERS_CACHE_KEY);
+  if (context) {
+    const keys = buildServiceOrdersCacheKeys(context);
+    window.sessionStorage.removeItem(keys.my);
+    if (keys.admin) {
+      window.sessionStorage.removeItem(keys.admin);
+    }
+    return;
+  }
+
+  const keysToRemove: string[] = [...LEGACY_CACHE_KEYS];
+
+  for (let index = 0; index < window.sessionStorage.length; index += 1) {
+    const key = window.sessionStorage.key(index);
+    if (key?.startsWith(CACHE_KEY_PREFIX)) {
+      keysToRemove.push(key);
+    }
+  }
+
+  keysToRemove.forEach((key) => window.sessionStorage.removeItem(key));
+}
+
+function syncCacheContext(next: ServiceOrdersCacheContext) {
+  if (typeof window === "undefined") return;
+
+  try {
+    const raw = window.sessionStorage.getItem(ACTIVE_CACHE_CONTEXT_KEY);
+    const previous = raw ? (JSON.parse(raw) as ServiceOrdersCacheContext) : null;
+
+    const userChanged = !!previous?.userId && previous.userId !== next.userId;
+    const communityChanged =
+      typeof next.community === "string" &&
+      !!previous?.community &&
+      previous.community !== next.community;
+
+    if (userChanged || communityChanged) {
+      clearServiceOrdersCache();
+    }
+
+    const mergedContext: ServiceOrdersCacheContext = {
+      userId: next.userId,
+      community: next.community ?? previous?.community ?? null,
+    };
+
+    window.sessionStorage.setItem(
+      ACTIVE_CACHE_CONTEXT_KEY,
+      JSON.stringify(mergedContext),
+    );
+  } catch {
+    clearServiceOrdersCache();
+  }
 }
 
 async function getCurrentProfile(): Promise<CurrentProfile> {
@@ -89,6 +165,23 @@ async function getCurrentProfile(): Promise<CurrentProfile> {
   }
 
   return data as CurrentProfile;
+}
+
+async function getCurrentUserId() {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError) {
+    throw new Error(authError.message);
+  }
+
+  if (!user) {
+    throw new Error("Usuário não autenticado.");
+  }
+
+  return user.id;
 }
 
 function groupServiceOrders(orders: ServiceOrder[]): GroupedServiceOrder[] {
@@ -158,7 +251,12 @@ export async function getServiceOrderCategories() {
 }
 
 export async function getMyServiceOrders() {
-  const cached = readCache<ServiceOrder[]>(MY_SERVICE_ORDERS_CACHE_KEY);
+  const userId = await getCurrentUserId();
+  const context: ServiceOrdersCacheContext = { userId };
+  syncCacheContext(context);
+
+  const cacheKeys = buildServiceOrdersCacheKeys(context);
+  const cached = readCache<ServiceOrder[]>(cacheKeys.my);
   if (cached) return cached;
 
   const { data, error } = await supabase
@@ -171,7 +269,7 @@ export async function getMyServiceOrders() {
   }
 
   const orders = (data ?? []) as ServiceOrder[];
-  writeCache(MY_SERVICE_ORDERS_CACHE_KEY, orders);
+  writeCache(cacheKeys.my, orders);
   return orders;
 }
 
@@ -188,17 +286,25 @@ export async function createServiceOrder(input: CreateServiceOrderInput) {
     throw new Error(error.message);
   }
 
+  const userId = await getCurrentUserId();
+  clearServiceOrdersCache({ userId });
   clearServiceOrdersCache();
   return data as string;
 }
 
 export async function getAdminGroupedServiceOrders() {
-  const cached = readCache<GroupedServiceOrder[]>(
-    ADMIN_SERVICE_ORDERS_CACHE_KEY,
-  );
-  if (cached) return cached;
-
   const profile = await getCurrentProfile();
+  const context: ServiceOrdersCacheContext = {
+    userId: profile.id,
+    community: profile.comunity,
+  };
+  syncCacheContext(context);
+  const cacheKeys = buildServiceOrdersCacheKeys(context);
+
+  const cached = cacheKeys.admin
+    ? readCache<GroupedServiceOrder[]>(cacheKeys.admin)
+    : null;
+  if (cached) return cached;
 
   if (!["admin", "employee", "president"].includes(profile.role)) {
     throw new Error("Acesso não autorizado.");
@@ -216,7 +322,9 @@ export async function getAdminGroupedServiceOrders() {
   }
 
   const grouped = groupServiceOrders((data ?? []) as ServiceOrder[]);
-  writeCache(ADMIN_SERVICE_ORDERS_CACHE_KEY, grouped);
+  if (cacheKeys.admin) {
+    writeCache(cacheKeys.admin, grouped);
+  }
   return grouped;
 }
 
@@ -239,6 +347,8 @@ export async function resolveServiceOrderGroup(input: {
     throw new Error(error.message);
   }
 
+  const profile = await getCurrentProfile();
+  clearServiceOrdersCache({ userId: profile.id, community: profile.comunity });
   clearServiceOrdersCache();
   return Number(data ?? 0);
 }
