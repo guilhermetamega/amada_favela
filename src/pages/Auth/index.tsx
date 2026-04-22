@@ -31,7 +31,6 @@ import { supabase } from "@/services/supabase/client";
 import { COMMUNITIES } from "@/lib/communities";
 import { prefetchDashboard } from "@/lib/prefetch/prefetch-dashboard";
 import LegalModal from "@/components/legal/LegalModal";
-import type { CommunityAddressItem } from "@/types/community";
 
 const initialLoginForm: LoginFormData = {
   identifier: "",
@@ -93,31 +92,6 @@ function formatZipcode(value: string) {
   return `${digits.slice(0, 5)}-${digits.slice(5)}`;
 }
 
-type AddressCategory = {
-  key: string;
-  label: string;
-  matches: (item: CommunityAddressItem) => boolean;
-};
-
-const ADDRESS_CATEGORIES: AddressCategory[] = [
-  { key: "block", label: "Quadra", matches: (item) => item.type === "block" },
-  { key: "lane", label: "Viela", matches: (item) => item.type === "lane" },
-  {
-    key: "terreninho",
-    label: "Terreninho",
-    matches: (item) =>
-      item.type === "village" || item.label.toLowerCase().includes("terreninho"),
-  },
-  { key: "street", label: "Rua", matches: (item) => item.type === "street" },
-];
-
-function normalizeAddressNumber(label: string, value: string) {
-  const source = `${value} ${label}`;
-  const match = source.match(/(\d+)\s*$/);
-  if (match) return match[1];
-  return label.trim();
-}
-
 export default function AuthPage() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -177,28 +151,36 @@ export default function AuthPage() {
   );
 
   const hasPresetZipcodes = communityZipcodes.length > 0;
-  const [selectedAddressCategory, setSelectedAddressCategory] = useState("");
+  const [selectedAddressGroup, setSelectedAddressGroup] = useState("");
 
-  const availableAddressCategories = useMemo(
-    () =>
-      ADDRESS_CATEGORIES.filter((category) =>
-        communityAddressItems.some((item) => category.matches(item)),
-      ),
-    [communityAddressItems],
-  );
+  const availableAddressGroups = useMemo(() => {
+    const groups = new Map<string, string>();
+
+    for (const item of communityAddressItems) {
+      const key = `${item.type}::${item.label}`;
+      if (!groups.has(key)) {
+        groups.set(key, item.label);
+      }
+    }
+
+    return Array.from(groups.entries())
+      .map(([key, label]) => ({ key, label }))
+      .sort((a, b) =>
+        a.label.localeCompare(b.label, "pt-BR", { sensitivity: "base" }),
+      );
+  }, [communityAddressItems]);
 
   const availableAddressNumbers = useMemo(() => {
-    const selectedCategory = ADDRESS_CATEGORIES.find(
-      (category) => category.key === selectedAddressCategory,
-    );
+    if (!selectedAddressGroup) return [];
 
-    if (!selectedCategory) return [];
+    const [selectedType, selectedLabel] = selectedAddressGroup.split("::");
 
     const uniqueNumbers = new Map<string, string>();
 
     for (const item of communityAddressItems) {
-      if (!selectedCategory.matches(item)) continue;
-      const numberValue = normalizeAddressNumber(item.label, item.value);
+      if (item.type !== selectedType || item.label !== selectedLabel) continue;
+      const numberValue = item.address_number?.trim();
+      if (!numberValue) continue;
       if (!uniqueNumbers.has(numberValue)) {
         uniqueNumbers.set(numberValue, numberValue);
       }
@@ -207,7 +189,7 @@ export default function AuthPage() {
     return Array.from(uniqueNumbers.values()).sort((a, b) =>
       a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" }),
     );
-  }, [communityAddressItems, selectedAddressCategory]);
+  }, [communityAddressItems, selectedAddressGroup]);
 
   const cardGridClassName =
     mode === "register"
@@ -352,7 +334,7 @@ export default function AuthPage() {
         address_1: "",
         address_number: "",
       }));
-      setSelectedAddressCategory("");
+      setSelectedAddressGroup("");
       return;
     }
 
@@ -363,20 +345,20 @@ export default function AuthPage() {
         address_1: "",
         address_number: "",
       }));
-      setSelectedAddressCategory("");
+      setSelectedAddressGroup("");
       return;
     }
 
     if (name === "address_1") {
-      const selectedCategory = ADDRESS_CATEGORIES.find(
-        (category) => category.key === value,
+      const selectedGroup = availableAddressGroups.find(
+        (group) => group.key === value,
       );
-      if (!selectedCategory) return;
+      if (!selectedGroup) return;
 
-      setSelectedAddressCategory(selectedCategory.key);
+      setSelectedAddressGroup(selectedGroup.key);
       setRegisterForm((prev) => ({
         ...prev,
-        address_1: selectedCategory.label,
+        address_1: selectedGroup.label,
         address_number: "",
       }));
       return;
@@ -509,7 +491,7 @@ export default function AuthPage() {
       void prefetchDashboard();
 
       setRegisterForm(initialRegisterForm);
-      setSelectedAddressCategory("");
+      setSelectedAddressGroup("");
       setLoginForm(initialLoginForm);
       setProfilePictureFile(null);
       setProfilePicturePreview("");
@@ -1016,16 +998,16 @@ export default function AuthPage() {
                         <select
                           id="address_1"
                           name="address_1"
-                          value={selectedAddressCategory}
+                          value={selectedAddressGroup}
                           onChange={handleRegisterChange}
                           className={`${inputClassName()} pl-11 pr-10`}
                           required
                           disabled={!registerForm.comunity || !registerForm.zipcode}
                         >
                           <option value="">Selecione o tipo de endereço</option>
-                          {availableAddressCategories.map((category) => (
-                            <option key={category.key} value={category.key}>
-                              {category.label}
+                          {availableAddressGroups.map((group) => (
+                            <option key={group.key} value={group.key}>
+                              {group.label}
                             </option>
                           ))}
                         </select>
