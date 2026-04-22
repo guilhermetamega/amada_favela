@@ -4,6 +4,7 @@ import App from "./App";
 import "./index.css";
 import "@/styles/globals.css";
 import { AppProviders } from "@/providers/AppProviders";
+import { loadCommunitiesFromSupabase } from "@/lib/communities";
 
 function applySystemTheme() {
   const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -24,13 +25,18 @@ function listenSystemThemeChanges() {
   }
 }
 
-applySystemTheme();
-listenSystemThemeChanges();
+async function bootstrap() {
+  applySystemTheme();
+  listenSystemThemeChanges();
+  await loadCommunitiesFromSupabase();
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <AppProviders>
-      <App />
-    </AppProviders>
-  </React.StrictMode>,
-);
+  ReactDOM.createRoot(document.getElementById("root")!).render(
+    <React.StrictMode>
+      <AppProviders>
+        <App />
+      </AppProviders>
+    </React.StrictMode>,
+  );
+}
+
+void bootstrap();

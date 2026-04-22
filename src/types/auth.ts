@@ -10,6 +10,7 @@ export type RegisterFormData = {
   cpf: string;
   birth: string;
   address_1: string;
+  address_number: string;
   address_2: string;
   zipcode: string;
   comunity: string;

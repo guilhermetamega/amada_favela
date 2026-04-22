@@ -1,6 +1,7 @@
-import type { CommunityData } from "@/types/community";
+import { supabase } from "@/services/supabase/client";
+import type { CommunityAddressItem, CommunityData } from "@/types/community";
 
-export const COMMUNITIES: CommunityData[] = [
+const DEFAULT_COMMUNITIES: CommunityData[] = [
   {
     key: "andarai",
     label: "Andaraí",
@@ -289,3 +290,106 @@ export const COMMUNITIES: CommunityData[] = [
     addressItems: [],
   },
 ];
+
+type CommunityRow = {
+  key: string;
+  label: string;
+  active: boolean;
+  zipcodes: string[] | null;
+  address_items: Array<
+    Partial<CommunityAddressItem> & {
+      value: string;
+      label: string;
+      type?: string | null;
+      address_number?: string | number | null;
+    }
+  > | null;
+};
+
+function parseAddressNumberFromItem(input: { value: string; label: string }) {
+  const fromValue = input.value.match(/(\d+)\s*$/)?.[1];
+  if (fromValue) return fromValue;
+
+  const fromLabel = input.label.match(/(\d+)\s*$/)?.[1];
+  if (fromLabel) return fromLabel;
+
+  return "";
+}
+
+function normalizeAddressLabel(input: {
+  label: string;
+  addressNumber: string;
+}) {
+  if (!input.addressNumber) return input.label.trim();
+
+  const suffixPattern = new RegExp(`\\s*[-]?\\s*${input.addressNumber}\\s*$`);
+  return input.label.replace(suffixPattern, "").trim();
+}
+
+function normalizeAddressItem(
+  item: Partial<CommunityAddressItem> & {
+    value: string;
+    label: string;
+    type?: string | null;
+    address_number?: string | number | null;
+  },
+): CommunityAddressItem {
+  const rawAddressNumber =
+    typeof item.address_number === "number"
+      ? String(item.address_number)
+      : (item.address_number ?? "").toString().trim();
+  const addressNumber = rawAddressNumber || parseAddressNumberFromItem(item);
+
+  return {
+    value: item.value,
+    label: normalizeAddressLabel({ label: item.label, addressNumber }),
+    address_number: addressNumber,
+    type: (item.type ?? "others").toString(),
+  };
+}
+
+function normalizeCommunityData(input: CommunityData): CommunityData {
+  return {
+    ...input,
+    addressItems: input.addressItems.map((item) => normalizeAddressItem(item)),
+  };
+}
+
+export let COMMUNITIES: CommunityData[] = DEFAULT_COMMUNITIES.map(
+  normalizeCommunityData,
+);
+
+function mapRowToCommunity(row: CommunityRow): CommunityData {
+  return {
+    key: row.key,
+    label: row.label,
+    active: Boolean(row.active),
+    zipcodes: Array.isArray(row.zipcodes) ? row.zipcodes : [],
+    addressItems: Array.isArray(row.address_items)
+      ? row.address_items.map((item) => normalizeAddressItem(item))
+      : [],
+  };
+}
+
+export async function loadCommunitiesFromSupabase() {
+  const { data, error } = await supabase
+    .from("communities")
+    .select("key, label, active, zipcodes, address_items")
+    .order("label", { ascending: true });
+
+  if (error) {
+    console.error("Erro ao carregar communities do Supabase:", error);
+    return;
+  }
+
+  if (!data?.length) {
+    COMMUNITIES = DEFAULT_COMMUNITIES.map(normalizeCommunityData);
+    return;
+  }
+
+  COMMUNITIES = data.map((row) => mapRowToCommunity(row as CommunityRow));
+}
+
+export function getDefaultCommunities(): CommunityData[] {
+  return DEFAULT_COMMUNITIES.map(normalizeCommunityData);
+}
