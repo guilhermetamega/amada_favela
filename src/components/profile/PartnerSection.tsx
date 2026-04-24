@@ -16,7 +16,6 @@ type Props = {
   loadingOpenMembershipPayment: boolean;
   onPayMonthlyFeeClick: () => void;
   onOpenHistory: () => void;
-
   loadingPixPayment: boolean;
   hasOpenPixPayment: boolean;
   onOpenPixModal: () => void;
@@ -52,6 +51,8 @@ export default function ProfilePartnerSection({
     hasOpenMembershipPayment ||
     loadingOpenMembershipPayment;
 
+  const pixDisabled = hasActivePartner || loadingPixPayment;
+
   const buttonLabel = payingMonthlyFee
     ? "Abrindo checkout..."
     : hasOpenMembershipPayment
@@ -64,7 +65,9 @@ export default function ProfilePartnerSection({
     ? openMembershipPaymentStatus === "requires_action"
       ? "Existe uma cobrança que ainda requer ação ou confirmação."
       : "Existe uma cobrança em aberto. Aguarde a confirmação antes de tentar novamente."
-    : null;
+    : hasActivePartner
+      ? "Você já possui uma mensalidade ativa."
+      : null;
 
   return (
     <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
@@ -134,6 +137,7 @@ export default function ProfilePartnerSection({
         <PartnerPixButton
           loading={loadingPixPayment}
           hasOpenPix={hasOpenPixPayment}
+          disabled={pixDisabled}
           onClick={onOpenPixModal}
         />
 

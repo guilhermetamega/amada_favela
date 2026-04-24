@@ -4,6 +4,7 @@ import { handleCors, json } from "../_shared/http.ts";
 import {
   addMinutesIso,
   createPixPayment,
+  fetchPayment,
   getMercadoPagoConfig,
   normalizeInternalPaymentStatus,
   refreshAuthorization,
@@ -68,6 +69,35 @@ function getPixTransactionData(source: unknown) {
   };
 }
 
+function buildWebhookOnlyNotificationUrl(baseUrl: string) {
+  const url = new URL(baseUrl);
+  url.searchParams.set("source_news", "webhooks");
+  return url.toString();
+}
+
+function isOpenProviderStatus(value: unknown) {
+  const status = String(value ?? "").toLowerCase();
+
+  return (
+    status === "" ||
+    status === "pending" ||
+    status === "in_process" ||
+    status === "authorized"
+  );
+}
+
+function isTerminalProviderStatus(value: unknown) {
+  const status = String(value ?? "").toLowerCase();
+
+  return (
+    status === "approved" ||
+    status === "cancelled" ||
+    status === "rejected" ||
+    status === "refunded" ||
+    status === "charged_back"
+  );
+}
+
 async function refreshSellerIfNeeded(params: {
   admin: ReturnType<typeof createClient>;
   seller: Record<string, unknown>;
@@ -118,6 +148,32 @@ async function refreshSellerIfNeeded(params: {
   return data as Record<string, unknown>;
 }
 
+function buildExistingPixResponse(paymentRow: {
+  id: string;
+  provider_payment_id: string | null;
+  status: string;
+  provider_status?: string | null;
+  provider_status_detail?: string | null;
+  expires_at: string | null;
+  checkout_url?: string | null;
+  gateway_response?: unknown;
+}) {
+  const transactionData = getPixTransactionData(paymentRow.gateway_response);
+
+  return {
+    existing: true,
+    paymentId: paymentRow.provider_payment_id,
+    internalPaymentId: paymentRow.id,
+    qrCode: transactionData.qrCode,
+    qrCodeBase64: transactionData.qrCodeBase64,
+    ticketUrl: transactionData.ticketUrl ?? paymentRow.checkout_url ?? null,
+    expiresAt: paymentRow.expires_at,
+    status: paymentRow.status,
+    providerStatus: paymentRow.provider_status ?? null,
+    providerStatusDetail: paymentRow.provider_status_detail ?? null,
+  };
+}
+
 serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
@@ -130,7 +186,11 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
 
     if (!authHeader) {
-      return json(401, { error: "Authorization header ausente." });
+      return json(401, {
+        error: "Authorization header ausente.",
+        code: "missing_authorization_header",
+        debugStep: "auth-header",
+      });
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -138,10 +198,13 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
-      return json(500, { error: "Secrets do Supabase não configurados." });
+      return json(500, {
+        error: "Secrets do Supabase não configurados.",
+      });
     }
 
     const mp = getMercadoPagoConfig();
+    const webhookOnlyUrl = buildWebhookOnlyNotificationUrl(mp.webhookUrl);
 
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: {
@@ -162,7 +225,11 @@ serve(async (req) => {
     } = await userClient.auth.getUser();
 
     if (authError || !authUser) {
-      return json(401, { error: "Sessão inválida." });
+      return json(401, {
+        error: "Sessão inválida.",
+        code: "invalid_session",
+        debugStep: "auth-get-user",
+      });
     }
 
     const { data: user, error: userError } = await admin
@@ -172,11 +239,19 @@ serve(async (req) => {
       .single();
 
     if (userError || !user) {
-      return json(404, { error: "Usuário não encontrado." });
+      return json(404, {
+        error: "Usuário não encontrado.",
+        code: "user_not_found",
+        debugStep: "load-user",
+      });
     }
 
     if (!user.email) {
-      return json(400, { error: "Usuário sem e-mail cadastrado." });
+      return json(400, {
+        error: "Usuário sem e-mail cadastrado.",
+        code: "missing_user_email",
+        debugStep: "validate-user-email",
+      });
     }
 
     const cpf = sanitizeCpf(user.cpf);
@@ -184,6 +259,8 @@ serve(async (req) => {
     if (cpf.length !== 11) {
       return json(400, {
         error: "Usuário precisa ter CPF válido cadastrado para pagar com Pix.",
+        code: "invalid_user_cpf",
+        debugStep: "validate-user-cpf",
       });
     }
 
@@ -195,45 +272,10 @@ serve(async (req) => {
       .single();
 
     if (associationError || !association) {
-      return json(404, { error: "Associação ativa não encontrada." });
-    }
-
-    const { data: existingPending, error: existingPendingError } = await admin
-      .from("payments")
-      .select(
-        "id, provider_payment_id, status, gateway_response, expires_at, checkout_url",
-      )
-      .eq("provider", "mercadopago")
-      .eq("payment_method_type", "pix")
-      .eq("purpose", "partner_membership")
-      .eq("user_id", user.id)
-      .eq("association_id", association.id)
-      .eq("status", "pending")
-      .gte("expires_at", new Date().toISOString())
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (existingPendingError) {
-      return json(500, {
-        error: `Erro ao verificar Pix pendente: ${existingPendingError.message}`,
-      });
-    }
-
-    if (existingPending) {
-      const transactionData = getPixTransactionData(
-        existingPending.gateway_response ?? {},
-      );
-
-      return json(200, {
-        existing: true,
-        paymentId: existingPending.provider_payment_id,
-        internalPaymentId: existingPending.id,
-        qrCode: transactionData.qrCode,
-        qrCodeBase64: transactionData.qrCodeBase64,
-        ticketUrl: transactionData.ticketUrl ?? existingPending.checkout_url,
-        expiresAt: existingPending.expires_at,
-        status: existingPending.status,
+      return json(404, {
+        error: "Associação ativa não encontrada.",
+        code: "association_not_found",
+        debugStep: "load-association",
       });
     }
 
@@ -247,6 +289,8 @@ serve(async (req) => {
     if (sellerError || !sellerData) {
       return json(400, {
         error: "A associação ainda não conectou a conta Mercado Pago.",
+        code: "missing_active_seller_account",
+        debugStep: "load-seller-account",
       });
     }
 
@@ -255,11 +299,167 @@ serve(async (req) => {
       seller: sellerData as Record<string, unknown>,
     });
 
+    const accessToken = String(seller.access_token ?? "");
+
+    if (!accessToken) {
+      return json(400, {
+        error: "Access token do seller não encontrado.",
+        code: "missing_seller_access_token",
+        debugStep: "validate-seller-access-token",
+      });
+    }
+
+    // Busca o pagamento mais recente do tipo Pix para tentar reaproveitar.
+    const { data: latestPayment, error: latestPaymentError } = await admin
+      .from("payments")
+      .select(
+        `
+          id,
+          provider_payment_id,
+          status,
+          provider_status,
+          provider_status_detail,
+          gateway_response,
+          expires_at,
+          checkout_url,
+          created_at
+        `,
+      )
+      .eq("provider", "mercadopago")
+      .eq("payment_method_type", "pix")
+      .eq("purpose", "partner_membership")
+      .eq("user_id", user.id)
+      .eq("association_id", association.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (latestPaymentError) {
+      return json(500, {
+        error: `Erro ao verificar Pix existente: ${latestPaymentError.message}`,
+      });
+    }
+
+    if (latestPayment) {
+      const expiresAtMs = latestPayment.expires_at
+        ? new Date(latestPayment.expires_at).getTime()
+        : 0;
+      const isNotExpired = expiresAtMs > Date.now();
+      const cachedResponse = buildExistingPixResponse(latestPayment);
+
+      // Se ainda está válido e já temos dados do QR em cache, reaproveita.
+      if (
+        isNotExpired &&
+        isOpenProviderStatus(latestPayment.provider_status) &&
+        (cachedResponse.qrCode ||
+          cachedResponse.qrCodeBase64 ||
+          cachedResponse.ticketUrl)
+      ) {
+        log("reusing-cached-pix", {
+          internalPaymentId: latestPayment.id,
+          providerPaymentId: latestPayment.provider_payment_id,
+          providerStatus: latestPayment.provider_status,
+        });
+
+        return json(200, cachedResponse);
+      }
+
+      // Se existe payment id externo, sincroniza com o Mercado Pago antes de decidir criar outro.
+      if (latestPayment.provider_payment_id && isNotExpired) {
+        try {
+          const mpPayment = await fetchPayment({
+            sellerAccessToken: accessToken,
+            paymentId: latestPayment.provider_payment_id,
+          });
+
+          const internalStatus = normalizeInternalPaymentStatus(
+            mpPayment.status,
+          );
+          const transactionData = getPixTransactionData(mpPayment);
+
+          const { error: syncError } = await admin
+            .from("payments")
+            .update({
+              status: internalStatus,
+              provider_status: mpPayment.status,
+              provider_status_detail: mpPayment.status_detail ?? null,
+              checkout_url: transactionData.ticketUrl,
+              expires_at:
+                mpPayment.date_of_expiration ?? latestPayment.expires_at,
+              gateway_response: mpPayment,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", latestPayment.id);
+
+          if (syncError) {
+            throw new Error(syncError.message);
+          }
+
+          if (
+            isOpenProviderStatus(mpPayment.status) &&
+            (transactionData.qrCode ||
+              transactionData.qrCodeBase64 ||
+              transactionData.ticketUrl)
+          ) {
+            log("reusing-synced-pix", {
+              internalPaymentId: latestPayment.id,
+              providerPaymentId: latestPayment.provider_payment_id,
+              providerStatus: mpPayment.status,
+            });
+
+            return json(200, {
+              existing: true,
+              paymentId: String(mpPayment.id),
+              internalPaymentId: latestPayment.id,
+              qrCode: transactionData.qrCode,
+              qrCodeBase64: transactionData.qrCodeBase64,
+              ticketUrl: transactionData.ticketUrl,
+              expiresAt:
+                mpPayment.date_of_expiration ?? latestPayment.expires_at,
+              status: internalStatus,
+              providerStatus: mpPayment.status,
+              providerStatusDetail: mpPayment.status_detail ?? null,
+            });
+          }
+
+          // Se o pagamento já terminou, segue para criar um novo.
+          if (isTerminalProviderStatus(mpPayment.status)) {
+            log("latest-pix-terminal-status", {
+              internalPaymentId: latestPayment.id,
+              providerPaymentId: latestPayment.provider_payment_id,
+              providerStatus: mpPayment.status,
+            });
+          }
+        } catch (syncRemoteError) {
+          log("sync-latest-pix-failed", {
+            internalPaymentId: latestPayment.id,
+            providerPaymentId: latestPayment.provider_payment_id,
+            error:
+              syncRemoteError instanceof Error
+                ? syncRemoteError.message
+                : String(syncRemoteError),
+          });
+
+          // Se a row local ainda tem dados de QR e não expirou, devolve mesmo assim.
+          if (
+            isNotExpired &&
+            (cachedResponse.qrCode ||
+              cachedResponse.qrCodeBase64 ||
+              cachedResponse.ticketUrl)
+          ) {
+            return json(200, cachedResponse);
+          }
+        }
+      }
+    }
+
     const amountTotalCents = toCents(association.monthly_fee);
 
     if (amountTotalCents <= mp.applicationFeeCents) {
       return json(400, {
         error: "Mensalidade insuficiente para a taxa fixa da plataforma.",
+        code: "monthly_fee_too_low",
+        debugStep: "validate-monthly-fee",
       });
     }
 
@@ -291,6 +491,7 @@ serve(async (req) => {
           source: "mercadopago-create-membership-pix",
           association_id: association.id,
           mp_seller_user_id: seller.mp_user_id,
+          notification_url: webhookOnlyUrl,
         },
         gateway_response: {},
         created_by: user.id,
@@ -308,7 +509,7 @@ serve(async (req) => {
 
     try {
       const payment = await createPixPayment({
-        sellerAccessToken: String(seller.access_token),
+        sellerAccessToken: accessToken,
         idempotencyKey: crypto.randomUUID(),
         body: {
           description: `Mensalidade - ${association.name}`,
@@ -317,7 +518,7 @@ serve(async (req) => {
           application_fee: toMoneyNumberFromCents(mp.applicationFeeCents),
           date_of_expiration: expiresAt,
           external_reference: externalReference,
-          notification_url: mp.webhookUrl,
+          notification_url: webhookOnlyUrl,
           payer: {
             email: user.email,
             first_name: firstName,

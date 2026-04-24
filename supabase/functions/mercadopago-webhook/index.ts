@@ -21,6 +21,14 @@ function addMonthIso(baseIso: string) {
   return date.toISOString();
 }
 
+function safeJsonParse(value: string) {
+  try {
+    return value ? JSON.parse(value) : {};
+  } catch {
+    return {};
+  }
+}
+
 function getPixTransactionData(source: unknown) {
   const root =
     typeof source === "object" && source !== null
@@ -61,7 +69,7 @@ function getGatewayFeeCents(source: unknown) {
       : null;
 
   const feeDetails = Array.isArray(root?.fee_details)
-    ? (root?.fee_details as Array<Record<string, unknown>>)
+    ? (root.fee_details as Array<Record<string, unknown>>)
     : [];
 
   const total = feeDetails.reduce((sum, item) => {
@@ -70,14 +78,6 @@ function getGatewayFeeCents(source: unknown) {
   }, 0);
 
   return Math.round(total * 100);
-}
-
-function safeJsonParse(value: string) {
-  try {
-    return value ? JSON.parse(value) : {};
-  } catch {
-    return {};
-  }
 }
 
 async function refreshSellerIfNeeded(params: {
@@ -157,48 +157,68 @@ serve(async (req) => {
     const url = new URL(req.url);
     const query = Object.fromEntries(url.searchParams.entries());
 
-    const topic = String(
-      body?.type ??
-        body?.topic ??
-        url.searchParams.get("type") ??
-        url.searchParams.get("topic") ??
-        "",
-    );
-
-    const dataId = String(
-      body?.data?.id ??
-        body?.id ??
-        url.searchParams.get("data.id") ??
-        url.searchParams.get("id") ??
-        "",
-    );
-
-    const action = String(body?.action ?? "");
     const hasSignature =
       Boolean(req.headers.get("x-signature")) &&
       Boolean(req.headers.get("x-request-id"));
 
-    const isSignatureValid = hasSignature
-      ? await verifyWebhookSignature(req, mp.webhookSecret)
-      : null;
+    const type = String(
+      body?.type ?? body?.topic ?? url.searchParams.get("type") ?? "",
+    );
 
-    await admin.from("mercadopago_webhook_events").insert({
-      topic: topic || null,
-      action: action || null,
-      data_id: dataId || null,
-      live_mode: Boolean(body?.live_mode ?? false),
-      type: topic || null,
-      is_signature_valid: isSignatureValid,
-      raw_payload: body,
-      query_params: query,
-      headers: {
-        "x-signature": req.headers.get("x-signature"),
-        "x-request-id": req.headers.get("x-request-id"),
-        "user-agent": req.headers.get("user-agent"),
-      },
+    const action = String(body?.action ?? "");
+
+    const dataId = String(
+      body?.data?.id ?? url.searchParams.get("data.id") ?? "",
+    );
+
+    log("webhook-start", {
+      type,
+      action,
+      dataId,
+      hasSignature,
+      userAgent: req.headers.get("user-agent"),
     });
 
-    if (hasSignature && !isSignatureValid) {
+    // IPN removido do fluxo: requests sem assinatura são ignorados.
+    if (!hasSignature) {
+      log("unsigned-request-ignored", {
+        query,
+        userAgent: req.headers.get("user-agent"),
+      });
+
+      return json(200, {
+        received: true,
+        skipped: true,
+        reason: "unsigned-request-ignored",
+      });
+    }
+
+    const isSignatureValid = await verifyWebhookSignature(
+      req,
+      mp.webhookSecret,
+    );
+
+    try {
+      await admin.from("mercadopago_webhook_events").insert({
+        topic: type || null,
+        action: action || null,
+        data_id: dataId || null,
+        live_mode: Boolean(body?.live_mode ?? false),
+        type: type || null,
+        is_signature_valid: isSignatureValid,
+        raw_payload: body,
+        query_params: query,
+        headers: {
+          "x-signature": req.headers.get("x-signature"),
+          "x-request-id": req.headers.get("x-request-id"),
+          "user-agent": req.headers.get("user-agent"),
+        },
+      });
+    } catch (logError) {
+      log("webhook-event-log-failed", logError);
+    }
+
+    if (!isSignatureValid) {
       return json(401, { error: "Assinatura inválida." });
     }
 
@@ -210,7 +230,7 @@ serve(async (req) => {
       });
     }
 
-    if (topic !== "payment") {
+    if (type !== "payment") {
       return json(200, {
         received: true,
         skipped: true,
@@ -225,16 +245,18 @@ serve(async (req) => {
           id,
           user_id,
           association_id,
+          provider,
           provider_payment_id,
+          status,
           provider_status,
           provider_status_detail,
-          status,
           amount_total,
           amount_platform_fee,
           amount_association_transfer,
           amount_stripe_fee,
           gateway_response,
-          paid_at
+          paid_at,
+          expires_at
         `,
       )
       .eq("provider", "mercadopago")
@@ -275,19 +297,59 @@ serve(async (req) => {
     });
 
     const internalStatus = normalizeInternalPaymentStatus(mpPayment.status);
-    const transactionData = getPixTransactionData(mpPayment);
     const gatewayFeeCents = getGatewayFeeCents(mpPayment);
+    const transactionData = getPixTransactionData(mpPayment);
+    const now = new Date().toISOString();
+
     const amountAssociationTransfer = Math.max(
       0,
       Number(paymentRow.amount_total) -
         Number(paymentRow.amount_platform_fee) -
         gatewayFeeCents,
     );
-    const now = new Date().toISOString();
+
+    log("payment-fetched", {
+      paymentId: paymentRow.id,
+      providerPaymentId: dataId,
+      remoteStatus: mpPayment.status,
+      remoteStatusDetail: mpPayment.status_detail,
+      internalStatus,
+      gatewayFeeCents,
+      amountAssociationTransfer,
+    });
+
+    // Evita rebaixar localmente um pagamento já liquidado.
+    const alreadySucceeded =
+      paymentRow.status === "succeeded" || Boolean(paymentRow.paid_at);
+
+    if (alreadySucceeded && mpPayment.status !== "approved") {
+      log("skip-status-downgrade", {
+        paymentId: paymentRow.id,
+        providerPaymentId: dataId,
+        currentStatus: paymentRow.status,
+        currentProviderStatus: paymentRow.provider_status,
+        remoteStatus: mpPayment.status,
+        remoteStatusDetail: mpPayment.status_detail,
+      });
+
+      return json(200, {
+        received: true,
+        skipped: true,
+        reason: "already-succeeded-no-downgrade",
+      });
+    }
+
     const paidAt =
       mpPayment.status === "approved"
         ? (paymentRow.paid_at ?? now)
         : (paymentRow.paid_at ?? null);
+
+    log("before-payment-update", {
+      paymentId: paymentRow.id,
+      currentStatus: paymentRow.status,
+      newStatus: internalStatus,
+      paidAt,
+    });
 
     const { error: updatePaymentError } = await admin
       .from("payments")
@@ -296,9 +358,12 @@ serve(async (req) => {
         provider_status: mpPayment.status,
         provider_status_detail: mpPayment.status_detail ?? null,
         amount_stripe_fee: gatewayFeeCents,
+        amount_platform_transfer: 0,
+        amount_third_party_transfer: 0,
         amount_association_transfer: amountAssociationTransfer,
         paid_at: paidAt,
-        expires_at: mpPayment.date_of_expiration ?? null,
+        expires_at:
+          mpPayment.date_of_expiration ?? paymentRow.expires_at ?? null,
         checkout_url: transactionData.ticketUrl,
         gateway_response: mpPayment,
         updated_at: now,
@@ -312,10 +377,18 @@ serve(async (req) => {
     if (mpPayment.status === "approved") {
       const expiresAt = addMonthIso(now);
 
+      log("before-partner-upsert", {
+        userId: paymentRow.user_id,
+        associationId: paymentRow.association_id,
+        paymentId: paymentRow.id,
+        expiresAt,
+      });
+
       const { data: existingPartner, error: partnerSelectError } = await admin
         .from("partners")
         .select("id")
-        .eq("payment_id", paymentRow.id)
+        .eq("user_id", paymentRow.user_id)
+        .eq("association_id", paymentRow.association_id)
         .maybeSingle();
 
       if (partnerSelectError) {
@@ -327,7 +400,6 @@ serve(async (req) => {
         association_id: paymentRow.association_id,
         payment_id: paymentRow.id,
         payment_status: "paid",
-        created_at: now,
         expires_at: expiresAt,
         status: "active",
       };
@@ -335,14 +407,22 @@ serve(async (req) => {
       if (existingPartner?.id) {
         const { error } = await admin
           .from("partners")
-          .update(partnerPayload)
+          .update({
+            payment_id: partnerPayload.payment_id,
+            payment_status: partnerPayload.payment_status,
+            expires_at: partnerPayload.expires_at,
+            status: partnerPayload.status,
+          })
           .eq("id", existingPartner.id);
 
         if (error) {
           throw new Error(error.message);
         }
       } else {
-        const { error } = await admin.from("partners").insert(partnerPayload);
+        const { error } = await admin.from("partners").insert({
+          ...partnerPayload,
+          created_at: now,
+        });
 
         if (error) {
           throw new Error(error.message);
@@ -354,12 +434,13 @@ serve(async (req) => {
       internalPaymentId: paymentRow.id,
       mpPaymentId: dataId,
       status: mpPayment.status,
-      hasSignature,
-      isSignatureValid,
+      statusDetail: mpPayment.status_detail,
     });
 
     return json(200, { received: true });
   } catch (error) {
+    log("fatal", error instanceof Error ? error.message : error);
+
     return json(500, {
       error:
         error instanceof Error

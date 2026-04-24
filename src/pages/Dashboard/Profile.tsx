@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -35,6 +36,7 @@ import {
 } from "@/services/supabase/membership";
 import {
   createMembershipPixCheckout,
+  getMembershipPixCheckoutStatus,
   type MembershipPixCheckout,
 } from "@/services/supabase/mercadopago";
 import type { OpenMembershipPayment } from "@/types/membership";
@@ -130,6 +132,8 @@ const EMPTY_PASSWORD_FORM: PasswordFormState = {
 
 const PROFILE_CACHE_KEY = "profile_page_cache_v2";
 const PROFILE_CACHE_TTL = 1000 * 60 * 5;
+const PIX_SUCCESS_CLOSE_DELAY_MS = 3000;
+const PIX_STATUS_POLL_INTERVAL_MS = 2500;
 
 function getProfileCache() {
   try {
@@ -225,6 +229,14 @@ function getPartnerBadge(history: PartnerHistoryItem[]) {
       };
 }
 
+function shouldPollPixStatus(status: MembershipPixCheckout["status"] | null) {
+  return (
+    status === "pending" ||
+    status === "processing" ||
+    status === "requires_action"
+  );
+}
+
 export default function ProfilePage() {
   const navigate = useNavigate();
 
@@ -255,6 +267,7 @@ export default function ProfilePage() {
   );
   const [loadingPixPayment, setLoadingPixPayment] = useState(false);
   const [pixPaymentError, setPixPaymentError] = useState("");
+  const [pixSuccessHandled, setPixSuccessHandled] = useState(false);
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileForm, setProfileForm] =
@@ -354,6 +367,9 @@ export default function ProfilePage() {
     return "Digite sua rua ou quadra";
   }, [selectedCommunity, communityAddressItems]);
 
+  const currentPixPaymentId = pixCheckout?.internalPaymentId ?? null;
+  const currentPixStatus = pixCheckout?.status ?? null;
+
   async function handleLogout() {
     await supabase.auth.signOut();
     navigate("/auth");
@@ -379,6 +395,46 @@ export default function ProfilePage() {
       setLoadingOpenMembershipPayment(false);
     }
   }
+
+  const refreshProfilePageData = useCallback(async () => {
+    const [profileData, partnerData, listingData, openPaymentData] =
+      await Promise.all([
+        getMyProfile(),
+        getMyPartnerHistory(),
+        getMyListings(),
+        getOpenMembershipPayment(),
+      ]);
+
+    let nextAvatarUrl: string | null = null;
+
+    if (profileData.picture_path) {
+      try {
+        nextAvatarUrl = await getMyAvatarSignedUrl(profileData.picture_path);
+      } catch {
+        nextAvatarUrl = null;
+      }
+    }
+
+    setProfile(profileData);
+    setPartnerHistory(partnerData);
+    setListings(listingData);
+    setOpenMembershipPayment(openPaymentData);
+    setAvatarUrl(nextAvatarUrl);
+    setProfileForm({
+      fullname: profileData.fullname ?? "",
+      address_1: profileData.address_1 ?? "",
+      address_2: profileData.address_2 ?? "",
+      zipcode: profileData.zipcode ?? "",
+      phone: profileData.phone ?? "",
+    });
+
+    saveProfileCache({
+      profile: profileData,
+      partnerHistory: partnerData,
+      listings: listingData,
+      avatarUrl: nextAvatarUrl,
+    });
+  }, []);
 
   useEffect(() => {
     const cache = getProfileCache();
@@ -492,17 +548,6 @@ export default function ProfilePage() {
     legalModalType,
   ]);
 
-  function setFeedbackSuccess(message: string) {
-    setSuccessMessage(message);
-    setErrorMessage("");
-  }
-
-  function clearMessages() {
-    setErrorMessage("");
-    setSuccessMessage("");
-    setPartnerActionMessage("");
-  }
-
   useEffect(() => {
     function handleFocus() {
       void refreshOpenMembershipPayment();
@@ -514,6 +559,95 @@ export default function ProfilePage() {
       window.removeEventListener("focus", handleFocus);
     };
   }, []);
+
+  useEffect(() => {
+    if (
+      !isPartnerPixModalOpen ||
+      !currentPixPaymentId ||
+      !shouldPollPixStatus(currentPixStatus)
+    ) {
+      return;
+    }
+
+    const paymentId = currentPixPaymentId;
+    let cancelled = false;
+    let closeTimeoutId: number | undefined;
+
+    async function pollPixStatus() {
+      try {
+        const latest = await getMembershipPixCheckoutStatus(paymentId);
+
+        if (cancelled) return;
+
+        setPixCheckout((current) => {
+          if (!current) return latest;
+
+          return {
+            ...current,
+            ...latest,
+            qrCode: latest.qrCode ?? current.qrCode,
+            qrCodeBase64: latest.qrCodeBase64 ?? current.qrCodeBase64,
+            ticketUrl: latest.ticketUrl ?? current.ticketUrl,
+          };
+        });
+
+        if (latest.status === "succeeded" && !pixSuccessHandled) {
+          setPixSuccessHandled(true);
+          setPixPaymentError("");
+          setErrorMessage("");
+          setSuccessMessage("Pagamento Pix confirmado com sucesso.");
+          setPartnerActionMessage("Atualizando sua mensalidade...");
+
+          await refreshProfilePageData();
+
+          closeTimeoutId = window.setTimeout(() => {
+            if (cancelled) return;
+
+            setIsPartnerPixModalOpen(false);
+            setPixCheckout(null);
+            setPixSuccessHandled(false);
+            setPartnerActionMessage("");
+          }, PIX_SUCCESS_CLOSE_DELAY_MS);
+        }
+      } catch (error) {
+        console.error("[profile] pix-status-poll:error", {
+          message: error instanceof Error ? error.message : "unknown",
+        });
+      }
+    }
+
+    void pollPixStatus();
+
+    const intervalId = window.setInterval(() => {
+      void pollPixStatus();
+    }, PIX_STATUS_POLL_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+
+      if (closeTimeoutId) {
+        window.clearTimeout(closeTimeoutId);
+      }
+    };
+  }, [
+    isPartnerPixModalOpen,
+    currentPixPaymentId,
+    currentPixStatus,
+    pixSuccessHandled,
+    refreshProfilePageData,
+  ]);
+
+  function setFeedbackSuccess(message: string) {
+    setSuccessMessage(message);
+    setErrorMessage("");
+  }
+
+  function clearMessages() {
+    setErrorMessage("");
+    setSuccessMessage("");
+    setPartnerActionMessage("");
+  }
 
   async function handlePayMonthlyFeeClick() {
     if (payingMonthlyFee || hasActivePartner || hasOpenMembershipPayment) {
@@ -568,14 +702,31 @@ export default function ProfilePage() {
   }
 
   function handleOpenPixModal() {
+    if (hasActivePartner) {
+      return;
+    }
+
     setPixPaymentError("");
+    setPixSuccessHandled(false);
     setIsPartnerPixModalOpen(true);
   }
 
   async function handleGeneratePixPayment() {
+    const hasLivePixInMemory =
+      !!pixCheckout &&
+      !!pixCheckout.expiresAt &&
+      new Date(pixCheckout.expiresAt).getTime() > Date.now() &&
+      shouldPollPixStatus(pixCheckout.status);
+
+    if (hasActivePartner || loadingPixPayment || hasLivePixInMemory) {
+      setIsPartnerPixModalOpen(true);
+      return;
+    }
+
     try {
       setLoadingPixPayment(true);
       setPixPaymentError("");
+      setPixSuccessHandled(false);
 
       const data = await createMembershipPixCheckout();
       setPixCheckout(data);
@@ -1070,7 +1221,10 @@ export default function ProfilePage() {
         loading={loadingPixPayment}
         errorMessage={pixPaymentError}
         pixData={pixCheckout}
-        onClose={() => setIsPartnerPixModalOpen(false)}
+        onClose={() => {
+          setIsPartnerPixModalOpen(false);
+          setPixSuccessHandled(false);
+        }}
         onGeneratePix={() => {
           void handleGeneratePixPayment();
         }}
