@@ -17,6 +17,10 @@ import SponsorBannerPage from "@/pages/Sponsor/Banner";
 const AuthPage = lazy(() => import("@/pages/Auth"));
 const DashboardPage = lazy(() => import("@/pages/Dashboard"));
 
+const MercadoPagoOAuthCallbackPage = lazy(
+  () => import("@/pages/MercadoPagoOAuthCallback"),
+);
+
 const LostAndFoundPage = lazy(() => import("@/pages/LostAndFound"));
 
 const LostAnimalsPage = lazy(() => import("@/pages/LostAnimals"));
@@ -79,6 +83,10 @@ export function AppRoutes() {
           <Route path="/child-policy" element={<ChildPolicyPage />} />
           <Route path="/delete-account" element={<DeleteAccountPage />} />
           <Route path="/payment/result" element={<PaymentResultPage />} />
+          <Route
+            path="/payments/mercadopago/oauth/callback"
+            element={<MercadoPagoOAuthCallbackPage />}
+          />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<DashboardPage />} />

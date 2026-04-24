@@ -1,4 +1,5 @@
 import { Clock3, CreditCard, LoaderCircle } from "lucide-react";
+import PartnerPixButton from "@/components/profile/PartnerPixButton";
 import type { PartnerHistoryItem } from "@/types/profile";
 
 type Props = {
@@ -15,6 +16,10 @@ type Props = {
   loadingOpenMembershipPayment: boolean;
   onPayMonthlyFeeClick: () => void;
   onOpenHistory: () => void;
+
+  loadingPixPayment: boolean;
+  hasOpenPixPayment: boolean;
+  onOpenPixModal: () => void;
 };
 
 function formatDate(value: string | null) {
@@ -35,6 +40,9 @@ export default function ProfilePartnerSection({
   loadingOpenMembershipPayment,
   onPayMonthlyFeeClick,
   onOpenHistory,
+  loadingPixPayment,
+  hasOpenPixPayment,
+  onOpenPixModal,
 }: Props) {
   const preview = partnerHistory.slice(0, 3);
 
@@ -101,7 +109,7 @@ export default function ProfilePartnerSection({
         ) : null}
       </div>
 
-      <div className="mt-5 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+      <div className="mt-5 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <button
           type="button"
           onClick={onPayMonthlyFeeClick}
@@ -122,6 +130,12 @@ export default function ProfilePartnerSection({
 
           {buttonLabel}
         </button>
+
+        <PartnerPixButton
+          loading={loadingPixPayment}
+          hasOpenPix={hasOpenPixPayment}
+          onClick={onOpenPixModal}
+        />
 
         {partnerHistory.length > 3 ? (
           <button

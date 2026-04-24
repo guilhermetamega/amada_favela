@@ -1,6 +1,7 @@
 import { supabase } from "@/services/supabase/client";
 import type {
   AssociationFormData,
+  AssociationMercadoPagoConnectResponse,
   AssociationRow,
   AssociationStripeOnboardingResponse,
   AssociationStripeStatusResponse,
@@ -177,6 +178,10 @@ function mapAssociationRowToFormData(
     monthly_fee: formatMonthlyFeeValue(row.monthly_fee),
     stripe_connected_account_id: "",
     stripe_onboarding_completed: false,
+
+    mercadopago_user_id: normalizeNullableText(row.mercadopago_user_id),
+    mercadopago_status: row.mercadopago_status ?? "not_connected",
+    mercadopago_connected_at: row.mercadopago_connected_at ?? null,
   };
 }
 
@@ -204,7 +209,10 @@ async function getAssociationRowByCommunity(
         president_name,
         president_role,
         is_active,
-        monthly_fee
+        monthly_fee,
+        mercadopago_user_id,
+        mercadopago_status,
+        mercadopago_connected_at
       `,
     )
     .eq("community", community)
@@ -364,7 +372,10 @@ export async function updateAssociation(
         president_name,
         president_role,
         is_active,
-        monthly_fee
+        monthly_fee,
+        mercadopago_user_id,
+        mercadopago_status,
+        mercadopago_connected_at
       `,
     )
     .single();
@@ -377,8 +388,6 @@ export async function updateAssociation(
 }
 
 export async function createAssociationStripeOnboarding(): Promise<AssociationStripeOnboardingResponse> {
-  console.info("[association-service] createAssociationStripeOnboarding:start");
-
   const { data, error } = await supabase.functions.invoke(
     "create-association-stripe-onboarding",
     {
@@ -387,41 +396,19 @@ export async function createAssociationStripeOnboarding(): Promise<AssociationSt
   );
 
   if (error) {
-    console.error(
-      "[association-service] createAssociationStripeOnboarding:error",
-      {
-        message: error.message,
-      },
-    );
-
     throw new Error(
       error.message || "Não foi possível iniciar o onboarding da Stripe.",
     );
   }
 
   if (!data?.url || !data?.mode) {
-    console.error(
-      "[association-service] createAssociationStripeOnboarding:invalid-response",
-      { data },
-    );
     throw new Error("A Stripe não retornou um link de onboarding válido.");
   }
-
-  console.info(
-    "[association-service] createAssociationStripeOnboarding:success",
-    {
-      mode: data.mode,
-    },
-  );
 
   return data as AssociationStripeOnboardingResponse;
 }
 
 export async function syncAssociationStripeOnboardingStatus(): Promise<AssociationStripeStatusResponse> {
-  console.info(
-    "[association-service] syncAssociationStripeOnboardingStatus:start",
-  );
-
   const { data, error } = await supabase.functions.invoke(
     "sync-association-stripe-onboarding-status",
     {
@@ -430,19 +417,12 @@ export async function syncAssociationStripeOnboardingStatus(): Promise<Associati
   );
 
   if (error) {
-    console.error(
-      "[association-service] syncAssociationStripeOnboardingStatus:error",
-      {
-        message: error.message,
-      },
-    );
-
     throw new Error(
       error.message || "Não foi possível sincronizar o status da Stripe.",
     );
   }
 
-  const response: AssociationStripeStatusResponse = {
+  return {
     stripe_connected_account_id: data?.stripe_connected_account_id ?? null,
     stripe_onboarding_completed: Boolean(data?.stripe_onboarding_completed),
     charges_enabled: Boolean(data?.charges_enabled),
@@ -455,13 +435,45 @@ export async function syncAssociationStripeOnboardingStatus(): Promise<Associati
       ? data.requirements_currently_due
       : [],
   };
+}
 
-  console.info(
-    "[association-service] syncAssociationStripeOnboardingStatus:success",
-    response,
+export async function createAssociationMercadoPagoConnect(): Promise<AssociationMercadoPagoConnectResponse> {
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError) {
+    throw new Error("Erro ao verificar sessão atual.");
+  }
+
+  if (!session?.access_token) {
+    throw new Error("Sessão expirada ou usuário não autenticado.");
+  }
+
+  const { data, error } = await supabase.functions.invoke(
+    "mercadopago-connect-start",
+    {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: {},
+    },
   );
 
-  return response;
+  if (error) {
+    throw new Error(
+      error.message || "Não foi possível iniciar a conexão com o Mercado Pago.",
+    );
+  }
+
+  if (!data?.url) {
+    throw new Error(
+      "O Mercado Pago não retornou um link de autorização válido.",
+    );
+  }
+
+  return data as AssociationMercadoPagoConnectResponse;
 }
 
 export async function getAssociationPublicData(): Promise<AssociationPublicData> {

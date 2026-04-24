@@ -33,6 +33,10 @@ import {
   createMembershipCheckout,
   getOpenMembershipPayment,
 } from "@/services/supabase/membership";
+import {
+  createMembershipPixCheckout,
+  type MembershipPixCheckout,
+} from "@/services/supabase/mercadopago";
 import type { OpenMembershipPayment } from "@/types/membership";
 import type {
   MyListingsData,
@@ -53,6 +57,7 @@ import ListingEditModal from "@/components/profile/ListingEditModal";
 import ProfileListingsSection from "@/components/profile/ListingsSection";
 import ProfilePageSkeleton from "@/components/profile/PageSkeleton";
 import ProfilePartnerSection from "@/components/profile/PartnerSection";
+import ProfilePartnerPixModal from "@/components/profile/PartnerPixModal";
 import ProfilePersonalSection from "@/components/profile/PersonalSection";
 import ProfileSecuritySection from "@/components/profile/SecuritySection";
 import ProfileLegalSection from "@/components/profile/LegalSection";
@@ -243,6 +248,13 @@ export default function ProfilePage() {
     useState<OpenMembershipPayment | null>(null);
   const [loadingOpenMembershipPayment, setLoadingOpenMembershipPayment] =
     useState(false);
+
+  const [isPartnerPixModalOpen, setIsPartnerPixModalOpen] = useState(false);
+  const [pixCheckout, setPixCheckout] = useState<MembershipPixCheckout | null>(
+    null,
+  );
+  const [loadingPixPayment, setLoadingPixPayment] = useState(false);
+  const [pixPaymentError, setPixPaymentError] = useState("");
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileForm, setProfileForm] =
@@ -463,14 +475,22 @@ export default function ProfilePage() {
     if (typeof document === "undefined") return;
 
     const shouldLockScroll =
-      isPartnerHistoryModalOpen || !!listingEditState || !!legalModalType;
+      isPartnerHistoryModalOpen ||
+      isPartnerPixModalOpen ||
+      !!listingEditState ||
+      !!legalModalType;
 
     document.body.style.overflow = shouldLockScroll ? "hidden" : "";
 
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isPartnerHistoryModalOpen, listingEditState, legalModalType]);
+  }, [
+    isPartnerHistoryModalOpen,
+    isPartnerPixModalOpen,
+    listingEditState,
+    legalModalType,
+  ]);
 
   function setFeedbackSuccess(message: string) {
     setSuccessMessage(message);
@@ -544,6 +564,31 @@ export default function ProfilePage() {
       setPartnerActionMessage("");
     } finally {
       setPayingMonthlyFee(false);
+    }
+  }
+
+  function handleOpenPixModal() {
+    setPixPaymentError("");
+    setIsPartnerPixModalOpen(true);
+  }
+
+  async function handleGeneratePixPayment() {
+    try {
+      setLoadingPixPayment(true);
+      setPixPaymentError("");
+
+      const data = await createMembershipPixCheckout();
+      setPixCheckout(data);
+      setIsPartnerPixModalOpen(true);
+    } catch (error) {
+      setPixPaymentError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível gerar o pagamento Pix.",
+      );
+      setIsPartnerPixModalOpen(true);
+    } finally {
+      setLoadingPixPayment(false);
     }
   }
 
@@ -952,6 +997,9 @@ export default function ProfilePage() {
                     void handlePayMonthlyFeeClick();
                   }}
                   onOpenHistory={() => setIsPartnerHistoryModalOpen(true)}
+                  loadingPixPayment={loadingPixPayment}
+                  hasOpenPixPayment={Boolean(pixCheckout)}
+                  onOpenPixModal={handleOpenPixModal}
                 />
               </div>
 
@@ -1015,6 +1063,17 @@ export default function ProfilePage() {
         open={isPartnerHistoryModalOpen}
         items={partnerHistory}
         onClose={() => setIsPartnerHistoryModalOpen(false)}
+      />
+
+      <ProfilePartnerPixModal
+        open={isPartnerPixModalOpen}
+        loading={loadingPixPayment}
+        errorMessage={pixPaymentError}
+        pixData={pixCheckout}
+        onClose={() => setIsPartnerPixModalOpen(false)}
+        onGeneratePix={() => {
+          void handleGeneratePixPayment();
+        }}
       />
 
       <ListingEditModal

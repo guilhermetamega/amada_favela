@@ -8,6 +8,9 @@ type Props = {
   uploadingSignature: boolean;
   stripeOnboardingLoading: boolean;
   stripeStatusSyncing: boolean;
+
+  mercadopagoConnectLoading: boolean;
+
   onFieldChange: <K extends keyof AssociationFormData>(
     key: K,
     value: AssociationFormData[K],
@@ -16,6 +19,7 @@ type Props = {
   onSignatureChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   onStripeOnboardingClick: () => void;
+  onMercadoPagoConnectClick: () => void;
   formatCnpj: (value: string) => string;
   formatZipcode: (value: string) => string;
   formatPhone: (value: string) => string;
@@ -48,7 +52,38 @@ function getStripeBadge(form: AssociationFormData) {
     label: "Onboarding pendente",
     className:
       "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  };
+}
+
+function getMercadoPagoBadge(form: AssociationFormData) {
+  if (!form.mercadopago_user_id) {
+    return {
+      label: "Conta não conectada",
+      className:
+        "border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
     };
+  }
+
+  if (form.mercadopago_status === "active") {
+    return {
+      label: "Conta conectada",
+      className:
+        "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    };
+  }
+
+  if (form.mercadopago_status === "expired") {
+    return {
+      label: "Conexão expirada",
+      className:
+        "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    };
+  }
+
+  return {
+    label: "Conexão revogada",
+    className: "border-red-500/20 bg-red-500/10 text-red-700 dark:text-red-300",
+  };
 }
 
 export default function SettingsForm({
@@ -58,21 +93,29 @@ export default function SettingsForm({
   uploadingSignature,
   stripeOnboardingLoading,
   stripeStatusSyncing,
+  mercadopagoConnectLoading,
   onFieldChange,
   onLogoChange,
   onSignatureChange,
   onSubmit,
   onStripeOnboardingClick,
+  onMercadoPagoConnectClick,
   formatCnpj,
   formatZipcode,
   formatPhone,
 }: Props) {
   const stripeBadge = getStripeBadge(form);
+  const mercadoPagoBadge = getMercadoPagoBadge(form);
+
   const onboardingButtonLabel = form.stripe_connected_account_id
     ? form.stripe_onboarding_completed
       ? "Abrir painel Stripe Express"
       : "Continuar onboarding na Stripe"
     : "Criar conta Express na Stripe";
+
+  const mercadoPagoButtonLabel = form.mercadopago_user_id
+    ? "Abrir Mercado Pago"
+    : "Conectar Mercado Pago";
 
   return (
     <form
@@ -305,18 +348,20 @@ export default function SettingsForm({
         <section className="space-y-5 border-t border-zinc-200 pt-6 dark:border-zinc-800">
           <div>
             <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-              Mensalidade e Stripe
+              Mensalidade e gateways
             </h3>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Defina o valor da mensalidade e conclua o onboarding da conta
-              Express da associação. O split avançado será configurado depois em
-              uma tela exclusiva para super admins.
+              Defina o valor da mensalidade e conecte os meios de recebimento da
+              associação.
             </p>
           </div>
 
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div>
-              <label htmlFor="association-monthly-fee" className={labelClassName}>
+              <label
+                htmlFor="association-monthly-fee"
+                className={labelClassName}
+              >
                 Mensalidade
               </label>
               <input
@@ -371,6 +416,49 @@ export default function SettingsForm({
                 {stripeOnboardingLoading
                   ? "Abrindo Stripe..."
                   : onboardingButtonLabel}
+              </button>
+            </div>
+
+            <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${mercadoPagoBadge.className}`}
+                >
+                  {mercadoPagoBadge.label}
+                </span>
+              </div>
+
+              <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">
+                {form.mercadopago_user_id
+                  ? "A associação já está vinculada ao Mercado Pago. Use o botão abaixo para abrir a conta e acompanhar saldo, recebimentos e movimentações."
+                  : "Conecte a conta Mercado Pago da associação para habilitar o Pix via marketplace."}
+              </p>
+
+              {form.mercadopago_user_id ? (
+                <p className="mt-2 break-all text-xs text-zinc-500 dark:text-zinc-400">
+                  Seller ID: {form.mercadopago_user_id}
+                </p>
+              ) : null}
+
+              {form.mercadopago_connected_at ? (
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                  Conectado em{" "}
+                  {new Intl.DateTimeFormat("pt-BR", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  }).format(new Date(form.mercadopago_connected_at))}
+                </p>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={onMercadoPagoConnectClick}
+                disabled={mercadopagoConnectLoading}
+                className="mt-4 rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {mercadopagoConnectLoading
+                  ? "Abrindo Mercado Pago..."
+                  : mercadoPagoButtonLabel}
               </button>
             </div>
           </div>

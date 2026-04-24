@@ -14,6 +14,7 @@ import SettingsForm from "@/components/associationSettings/SettingsForm";
 import InstitutionalPreview from "@/components/associationSettings/InstitutionalPreview";
 import type { AssociationFormData } from "@/types/association";
 import {
+  createAssociationMercadoPagoConnect,
   createAssociationStripeOnboarding,
   getCurrentAssociationAccess,
   getMyAssociation,
@@ -48,6 +49,9 @@ const initialForm: AssociationFormData = {
   monthly_fee: "",
   stripe_connected_account_id: "",
   stripe_onboarding_completed: false,
+  mercadopago_user_id: "",
+  mercadopago_status: "not_connected",
+  mercadopago_connected_at: null,
 };
 
 function onlyDigits(value: string) {
@@ -101,6 +105,8 @@ export default function AssociationSettingsPage() {
   const [uploadingSignature, setUploadingSignature] = useState(false);
   const [stripeOnboardingLoading, setStripeOnboardingLoading] = useState(false);
   const [stripeStatusSyncing, setStripeStatusSyncing] = useState(false);
+  const [mercadopagoConnectLoading, setMercadopagoConnectLoading] =
+    useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [accessDenied, setAccessDenied] = useState(false);
@@ -109,7 +115,6 @@ export default function AssociationSettingsPage() {
     let active = true;
 
     async function load() {
-      console.info("[association-admin] load:start");
       setLoading(true);
       setErrorMessage("");
       setSuccessMessage("");
@@ -142,8 +147,6 @@ export default function AssociationSettingsPage() {
 
           if (!active) return;
 
-          console.info("[association-admin] stripe-sync:success", stripeStatus);
-
           setForm((current) => ({
             ...current,
             stripe_connected_account_id:
@@ -151,15 +154,8 @@ export default function AssociationSettingsPage() {
             stripe_onboarding_completed:
               stripeStatus.stripe_onboarding_completed,
           }));
-        } catch (stripeError) {
-          if (!active) return;
-
-          console.warn("[association-admin] stripe-sync:warning", {
-            message:
-              stripeError instanceof Error
-                ? stripeError.message
-                : "sync failed",
-          });
+        } catch {
+          // noop
         } finally {
           if (active) {
             setStripeStatusSyncing(false);
@@ -167,10 +163,6 @@ export default function AssociationSettingsPage() {
         }
       } catch (error) {
         if (!active) return;
-
-        console.error("[association-admin] load:error", {
-          message: error instanceof Error ? error.message : "unknown",
-        });
 
         setErrorMessage(
           error instanceof Error
@@ -193,17 +185,52 @@ export default function AssociationSettingsPage() {
 
   useEffect(() => {
     const stripeFlowState = searchParams.get("stripe");
+    const mercadoPagoFlowState = searchParams.get("mercadopago");
 
-    if (!stripeFlowState) {
+    if (!stripeFlowState && !mercadoPagoFlowState) {
       return;
     }
 
     let active = true;
 
     async function syncAfterReturn() {
-      console.info("[association-admin] stripe-return:start", {
-        stripeFlowState,
-      });
+      if (mercadoPagoFlowState === "success") {
+        try {
+          const association = await getMyAssociation();
+
+          if (!active) return;
+
+          setForm((current) => ({
+            ...association,
+            stripe_connected_account_id: current.stripe_connected_account_id,
+            stripe_onboarding_completed: current.stripe_onboarding_completed,
+          }));
+
+          setSuccessMessage("Conta Mercado Pago conectada com sucesso.");
+        } catch (error) {
+          if (!active) return;
+
+          setErrorMessage(
+            error instanceof Error
+              ? error.message
+              : "Não foi possível atualizar os dados do Mercado Pago.",
+          );
+        } finally {
+          if (active) {
+            window.history.replaceState(
+              {},
+              document.title,
+              window.location.pathname,
+            );
+          }
+        }
+
+        return;
+      }
+
+      if (!stripeFlowState) {
+        return;
+      }
 
       setStripeStatusSyncing(true);
 
@@ -226,10 +253,6 @@ export default function AssociationSettingsPage() {
         );
       } catch (error) {
         if (!active) return;
-
-        console.error("[association-admin] stripe-return:error", {
-          message: error instanceof Error ? error.message : "unknown",
-        });
 
         setErrorMessage(
           error instanceof Error
@@ -355,23 +378,14 @@ export default function AssociationSettingsPage() {
       return;
     }
 
-    console.info("[association-admin] stripe-onboarding:click");
-
     setStripeOnboardingLoading(true);
     setErrorMessage("");
     setSuccessMessage("");
 
     try {
       const result = await createAssociationStripeOnboarding();
-
-      console.info("[association-admin] stripe-onboarding:redirect", result);
-
       window.open(result.url, "_blank", "noopener,noreferrer");
     } catch (error) {
-      console.error("[association-admin] stripe-onboarding:error", {
-        message: error instanceof Error ? error.message : "unknown",
-      });
-
       setErrorMessage(
         error instanceof Error
           ? error.message
@@ -382,15 +396,42 @@ export default function AssociationSettingsPage() {
     }
   }
 
+  async function handleMercadoPagoConnectClick() {
+    if (mercadopagoConnectLoading || accessDenied) {
+      return;
+    }
+
+    setMercadopagoConnectLoading(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      if (form.mercadopago_user_id) {
+        window.open(
+          "https://www.mercadopago.com.br/home",
+          "_blank",
+          "noopener,noreferrer",
+        );
+        return;
+      }
+
+      const result = await createAssociationMercadoPagoConnect();
+      window.open(result.url, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível abrir a conexão com o Mercado Pago.",
+      );
+    } finally {
+      setMercadopagoConnectLoading(false);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (saving || accessDenied) return;
-
-    console.info("[association-admin] submit:start", {
-      associationId: form.id,
-      community: form.community,
-    });
 
     setSaving(true);
     setErrorMessage("");
@@ -427,16 +468,8 @@ export default function AssociationSettingsPage() {
         invalidateAssociationContactCache(updated.community);
       }
 
-      console.info("[association-admin] submit:success", {
-        associationId: updated.id,
-      });
-
       setSuccessMessage("Dados da associação atualizados com sucesso.");
     } catch (error) {
-      console.error("[association-admin] submit:error", {
-        message: error instanceof Error ? error.message : "unknown",
-      });
-
       setErrorMessage(
         error instanceof Error
           ? error.message
@@ -475,12 +508,16 @@ export default function AssociationSettingsPage() {
                 uploadingSignature={uploadingSignature}
                 stripeOnboardingLoading={stripeOnboardingLoading}
                 stripeStatusSyncing={stripeStatusSyncing}
+                mercadopagoConnectLoading={mercadopagoConnectLoading}
                 onFieldChange={updateField}
                 onLogoChange={(event) => void handleLogoChange(event)}
                 onSignatureChange={(event) => void handleSignatureChange(event)}
                 onSubmit={handleSubmit}
                 onStripeOnboardingClick={() => {
                   void handleStripeOnboardingClick();
+                }}
+                onMercadoPagoConnectClick={() => {
+                  void handleMercadoPagoConnectClick();
                 }}
                 formatCnpj={formatCnpj}
                 formatZipcode={formatZipcode}

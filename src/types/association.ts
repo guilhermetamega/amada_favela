@@ -19,8 +19,13 @@ export type AssociationFormData = {
   president_role: string;
   is_active: boolean;
   monthly_fee: string;
+
   stripe_connected_account_id: string;
   stripe_onboarding_completed: boolean;
+
+  mercadopago_user_id: string;
+  mercadopago_status: "not_connected" | "active" | "expired" | "revoked";
+  mercadopago_connected_at: string | null;
 };
 
 export type AssociationRow = {
@@ -42,6 +47,10 @@ export type AssociationRow = {
   president_role: string | null;
   is_active: boolean;
   monthly_fee: number | string | null;
+
+  mercadopago_user_id: string | null;
+  mercadopago_status: "not_connected" | "active" | "expired" | "revoked" | null;
+  mercadopago_connected_at: string | null;
 };
 
 export type AssociationUpdateInput = {
@@ -92,4 +101,9 @@ export type AssociationStripeStatusResponse = {
   card_payments_enabled: boolean;
   boleto_enabled: boolean;
   requirements_currently_due: string[];
+};
+
+export type AssociationMercadoPagoConnectResponse = {
+  url: string;
+  expiresAt: string;
 };
