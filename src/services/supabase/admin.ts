@@ -1,5 +1,9 @@
 import { supabase } from "@/services/supabase/client";
-import type { ManageableUser, UserRole } from "@/types/admin";
+import type {
+  ManageableUser,
+  PlatformThirdPartyStripeStatus,
+  UserRole,
+} from "@/types/admin";
 
 async function getCurrentProfile() {
   const {
@@ -160,4 +164,46 @@ export async function updateUserRoleAsAdmin(
   if (error) {
     throw new Error(error.message);
   }
+}
+
+export async function getPlatformThirdPartyStripeStatus(): Promise<PlatformThirdPartyStripeStatus> {
+  const { data, error } = await supabase.functions.invoke(
+    "create-platform-third-party-stripe-onboarding",
+    {
+      body: {
+        action: "status",
+      },
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      error.message || "Não foi possível consultar a conta Stripe do sócio.",
+    );
+  }
+
+  return data as PlatformThirdPartyStripeStatus;
+}
+
+export async function openPlatformThirdPartyStripeAccount(): Promise<PlatformThirdPartyStripeStatus> {
+  const { data, error } = await supabase.functions.invoke(
+    "create-platform-third-party-stripe-onboarding",
+    {
+      body: {
+        action: "open",
+      },
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      error.message || "Não foi possível abrir a conta Stripe do sócio.",
+    );
+  }
+
+  if (!data?.url) {
+    throw new Error("A Stripe não retornou um link válido.");
+  }
+
+  return data as PlatformThirdPartyStripeStatus;
 }
