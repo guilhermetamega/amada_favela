@@ -69,6 +69,57 @@ function getPixTransactionData(source: unknown) {
   };
 }
 
+function isValidCpf(value: string | null | undefined) {
+  const cpf = String(value ?? "").replace(/\D/g, "");
+
+  if (cpf.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(cpf)) return false;
+
+  let sum = 0;
+
+  for (let i = 0; i < 9; i += 1) {
+    sum += Number(cpf[i]) * (10 - i);
+  }
+
+  let firstDigit = 11 - (sum % 11);
+  if (firstDigit >= 10) firstDigit = 0;
+
+  if (firstDigit !== Number(cpf[9])) return false;
+
+  sum = 0;
+
+  for (let i = 0; i < 10; i += 1) {
+    sum += Number(cpf[i]) * (11 - i);
+  }
+
+  let secondDigit = 11 - (sum % 11);
+  if (secondDigit >= 10) secondDigit = 0;
+
+  return secondDigit === Number(cpf[10]);
+}
+
+function buildMercadoPagoPayer(params: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  cpf: string;
+}) {
+  const payer: Record<string, unknown> = {
+    email: params.email,
+    first_name: params.firstName,
+    last_name: params.lastName,
+  };
+
+  if (isValidCpf(params.cpf)) {
+    payer.identification = {
+      type: "CPF",
+      number: params.cpf,
+    };
+  }
+
+  return payer;
+}
+
 function buildWebhookOnlyNotificationUrl(baseUrl: string) {
   const url = new URL(baseUrl);
   url.searchParams.set("source_news", "webhooks");
@@ -256,11 +307,10 @@ serve(async (req) => {
 
     const cpf = sanitizeCpf(user.cpf);
 
-    if (cpf.length !== 11) {
-      return json(400, {
-        error: "Usuário precisa ter CPF válido cadastrado para pagar com Pix.",
-        code: "invalid_user_cpf",
-        debugStep: "validate-user-cpf",
+    if (!isValidCpf(cpf)) {
+      log("payer-cpf-not-sent", {
+        userId: user.id,
+        reason: "invalid-cpf-checksum",
       });
     }
 
@@ -519,15 +569,12 @@ serve(async (req) => {
           date_of_expiration: expiresAt,
           external_reference: externalReference,
           notification_url: webhookOnlyUrl,
-          payer: {
+          payer: buildMercadoPagoPayer({
             email: user.email,
-            first_name: firstName,
-            last_name: lastName,
-            identification: {
-              type: "CPF",
-              number: cpf,
-            },
-          },
+            firstName,
+            lastName,
+            cpf,
+          }),
         },
       });
 
