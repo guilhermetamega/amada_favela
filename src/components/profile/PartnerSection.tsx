@@ -16,6 +16,7 @@ type Props = {
   loadingOpenMembershipPayment: boolean;
   onPayMonthlyFeeClick: () => void;
   onOpenHistory: () => void;
+
   loadingPixPayment: boolean;
   hasOpenPixPayment: boolean;
   onOpenPixModal: () => void;
@@ -70,7 +71,10 @@ export default function ProfilePartnerSection({
       : null;
 
   return (
-    <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
+    <section
+      id="partner-section"
+      className="scroll-mt-24 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-6"
+    >
       <div className="text-center">
         <h2 className="text-lg font-semibold text-zinc-950 dark:text-zinc-50">
           Situação de sócio

@@ -15,7 +15,12 @@ type Props = {
   hasOpenMembershipPayment: boolean;
   openMembershipPaymentStatus: OpenMembershipPayment["status"] | null;
   loadingOpenMembershipPayment: boolean;
-  onPayMonthlyFeeClick: () => void;
+
+  /**
+   * Mantido por compatibilidade com a tela pai.
+   * Este botão não abre mais checkout diretamente; agora navega para o perfil.
+   */
+  onPayMonthlyFeeClick?: () => void;
 };
 
 function DashboardRouteGrid({ routes }: { routes: AppRouteConfig[] }) {
@@ -44,8 +49,9 @@ function DashboardModuleGridComponent({
   hasOpenMembershipPayment,
   openMembershipPaymentStatus,
   loadingOpenMembershipPayment,
-  onPayMonthlyFeeClick,
 }: Props) {
+  const navigate = useNavigate();
+
   const premiumRoutes = useMemo(
     () => routes.filter((route) => route.isPremium),
     [routes],
@@ -65,7 +71,7 @@ function DashboardModuleGridComponent({
     loadingOpenMembershipPayment;
 
   const buttonLabel = payingMonthlyFee
-    ? "Abrindo checkout..."
+    ? "Abrindo perfil..."
     : hasOpenMembershipPayment
       ? "Processando pagamento"
       : "Quero Virar Sócio";
@@ -75,6 +81,12 @@ function DashboardModuleGridComponent({
       ? "Existe uma cobrança que ainda requer ação ou confirmação."
       : "Existe uma cobrança em aberto. Aguarde a confirmação antes de tentar novamente."
     : null;
+
+  function handleBecomePartnerClick() {
+    if (payDisabled) return;
+
+    navigate("/profile#partner-section");
+  }
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -107,10 +119,10 @@ function DashboardModuleGridComponent({
             <DashboardRouteGrid routes={premiumRoutes} />
 
             {!hasActivePartner ? (
-              <div className="">
+              <div>
                 <button
                   type="button"
-                  onClick={onPayMonthlyFeeClick}
+                  onClick={handleBecomePartnerClick}
                   disabled={payDisabled}
                   className={`group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl px-4 py-3 text-sm font-semibold transition duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 sm:min-w-55 sm:w-auto ${
                     payDisabled
@@ -149,7 +161,7 @@ function DashboardModuleGridComponent({
         </section>
       ) : null}
 
-      <section className={`space-y-3 pt-1`}>
+      <section className="space-y-3 pt-1">
         {standardRoutes.length > 0 ? (
           <DashboardRouteGrid routes={standardRoutes} />
         ) : null}
