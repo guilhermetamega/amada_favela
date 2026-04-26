@@ -42,7 +42,7 @@ function getStripeBadge(form: AssociationFormData) {
 
   if (form.stripe_onboarding_completed) {
     return {
-      label: "Onboarding concluído",
+      label: "Habilitado para pagamentos",
       className:
         "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
     };
@@ -66,7 +66,7 @@ function getMercadoPagoBadge(form: AssociationFormData) {
 
   if (form.mercadopago_status === "active") {
     return {
-      label: "Conta conectada",
+      label: "Habilitado para pagamentos",
       className:
         "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
     };
@@ -381,7 +381,7 @@ export default function SettingsForm({
             </div>
 
             <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap justify-center items-center gap-2">
                 <span
                   className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${stripeBadge.className}`}
                 >
@@ -420,7 +420,7 @@ export default function SettingsForm({
             </div>
 
             <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap justify-center items-center gap-2">
                 <span
                   className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${mercadoPagoBadge.className}`}
                 >

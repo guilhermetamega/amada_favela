@@ -2,12 +2,14 @@ import { supabase } from "@/services/supabase/client";
 import type {
   AssociationFormData,
   AssociationMercadoPagoConnectResponse,
+  AssociationMercadoPagoStatusResponse,
   AssociationRow,
   AssociationStripeOnboardingResponse,
   AssociationStripeStatusResponse,
   AssociationUpdateInput,
   CurrentAssociationAccess,
   CurrentProfileAssociationRow,
+  MercadoPagoSellerStatus,
 } from "@/types/association";
 
 export type AssociationPublicData = {
@@ -53,7 +55,7 @@ function parseMonthlyFeeValue(value: string) {
 function sanitizeFileName(fileName: string) {
   return fileName
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, "-")
     .replace(/[^a-zA-Z0-9._-]/g, "")
     .toLowerCase();
@@ -178,10 +180,9 @@ function mapAssociationRowToFormData(
     monthly_fee: formatMonthlyFeeValue(row.monthly_fee),
     stripe_connected_account_id: "",
     stripe_onboarding_completed: false,
-
-    mercadopago_user_id: normalizeNullableText(row.mercadopago_user_id),
-    mercadopago_status: row.mercadopago_status ?? "not_connected",
-    mercadopago_connected_at: row.mercadopago_connected_at ?? null,
+    mercadopago_user_id: "",
+    mercadopago_status: "not_connected",
+    mercadopago_connected_at: null,
   };
 }
 
@@ -209,10 +210,7 @@ async function getAssociationRowByCommunity(
         president_name,
         president_role,
         is_active,
-        monthly_fee,
-        mercadopago_user_id,
-        mercadopago_status,
-        mercadopago_connected_at
+        monthly_fee
       `,
     )
     .eq("community", community)
@@ -372,10 +370,7 @@ export async function updateAssociation(
         president_name,
         president_role,
         is_active,
-        monthly_fee,
-        mercadopago_user_id,
-        mercadopago_status,
-        mercadopago_connected_at
+        monthly_fee
       `,
     )
     .single();
@@ -474,6 +469,51 @@ export async function createAssociationMercadoPagoConnect(): Promise<Association
   }
 
   return data as AssociationMercadoPagoConnectResponse;
+}
+
+function normalizeMercadoPagoStatus(value: unknown): MercadoPagoSellerStatus {
+  if (value === "active") return "active";
+  if (value === "expired") return "expired";
+  if (value === "revoked") return "revoked";
+
+  return "not_connected";
+}
+
+export async function syncAssociationMercadoPagoStatus(): Promise<AssociationMercadoPagoStatusResponse> {
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError) {
+    throw new Error("Erro ao verificar sessão atual.");
+  }
+
+  if (!session?.access_token) {
+    throw new Error("Sessão expirada ou usuário não autenticado.");
+  }
+
+  const { data, error } = await supabase.functions.invoke(
+    "sync-association-mercadopago-status",
+    {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: {},
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      error.message || "Não foi possível sincronizar o status do Mercado Pago.",
+    );
+  }
+
+  return {
+    mercadopago_user_id: data?.mercadopago_user_id ?? null,
+    mercadopago_status: normalizeMercadoPagoStatus(data?.mercadopago_status),
+    mercadopago_connected_at: data?.mercadopago_connected_at ?? null,
+  };
 }
 
 export async function getAssociationPublicData(): Promise<AssociationPublicData> {

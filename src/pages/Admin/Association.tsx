@@ -18,6 +18,7 @@ import {
   createAssociationStripeOnboarding,
   getCurrentAssociationAccess,
   getMyAssociation,
+  syncAssociationMercadoPagoStatus,
   syncAssociationStripeOnboardingStatus,
   updateAssociation,
   uploadAssociationLogo,
@@ -140,6 +141,22 @@ export default function AssociationSettingsPage() {
         setAccessDenied(false);
         setForm(association);
 
+        try {
+          const mercadoPagoStatus = await syncAssociationMercadoPagoStatus();
+
+          if (!active) return;
+
+          setForm((current) => ({
+            ...current,
+            mercadopago_user_id: mercadoPagoStatus.mercadopago_user_id ?? "",
+            mercadopago_status: mercadoPagoStatus.mercadopago_status,
+            mercadopago_connected_at:
+              mercadoPagoStatus.mercadopago_connected_at,
+          }));
+        } catch {
+          // noop
+        }
+
         setStripeStatusSyncing(true);
 
         try {
@@ -196,7 +213,10 @@ export default function AssociationSettingsPage() {
     async function syncAfterReturn() {
       if (mercadoPagoFlowState === "success") {
         try {
-          const association = await getMyAssociation();
+          const [association, mercadoPagoStatus] = await Promise.all([
+            getMyAssociation(),
+            syncAssociationMercadoPagoStatus(),
+          ]);
 
           if (!active) return;
 
@@ -204,6 +224,10 @@ export default function AssociationSettingsPage() {
             ...association,
             stripe_connected_account_id: current.stripe_connected_account_id,
             stripe_onboarding_completed: current.stripe_onboarding_completed,
+            mercadopago_user_id: mercadoPagoStatus.mercadopago_user_id ?? "",
+            mercadopago_status: mercadoPagoStatus.mercadopago_status,
+            mercadopago_connected_at:
+              mercadoPagoStatus.mercadopago_connected_at,
           }));
 
           setSuccessMessage("Conta Mercado Pago conectada com sucesso.");
@@ -462,6 +486,9 @@ export default function AssociationSettingsPage() {
         ...updated,
         stripe_connected_account_id: current.stripe_connected_account_id,
         stripe_onboarding_completed: current.stripe_onboarding_completed,
+        mercadopago_user_id: current.mercadopago_user_id,
+        mercadopago_status: current.mercadopago_status,
+        mercadopago_connected_at: current.mercadopago_connected_at,
       }));
 
       if (updated.community) {
