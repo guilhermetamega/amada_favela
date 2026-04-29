@@ -11,9 +11,12 @@ import {
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/Layout";
 import {
+  createCommunityAsAdmin,
   getAdminManageableUsers,
+  listCommunitiesAsAdmin,
   getPlatformThirdPartyStripeStatus,
   openPlatformThirdPartyStripeAccount,
+  updateCommunityAsAdmin,
   updateUserRoleAsAdmin,
 } from "@/services/supabase/admin";
 import type {
@@ -23,6 +26,7 @@ import type {
 } from "@/types/admin";
 import DashboardHeader from "@/components/layout/DashboardHeader";
 import MainLayout from "@/components/layout/MainLayout";
+import type { CommunityData } from "@/types/community";
 
 function StripePartnerStatusBadge({
   status,
@@ -77,6 +81,22 @@ export default function SuperAdminPage() {
   const [loadingStripePartnerStatus, setLoadingStripePartnerStatus] =
     useState(true);
   const [openingStripePartner, setOpeningStripePartner] = useState(false);
+  const [communities, setCommunities] = useState<CommunityData[]>([]);
+  const [loadingCommunities, setLoadingCommunities] = useState(true);
+  const [showCommunityModal, setShowCommunityModal] = useState(false);
+  const [savingCommunity, setSavingCommunity] = useState(false);
+  const [editingCommunityKey, setEditingCommunityKey] = useState<string | null>(
+    null,
+  );
+  const [communityForm, setCommunityForm] = useState<CommunityData>({
+    key: "",
+    label: "",
+    active: true,
+    zipcodes: [],
+    addressItems: [],
+  });
+  const [zipcodesText, setZipcodesText] = useState("");
+  const [addressItemsText, setAddressItemsText] = useState("[]");
 
   const stripePartnerButtonLabel = useMemo(
     () =>
@@ -112,6 +132,7 @@ export default function SuperAdminPage() {
         const [usersData] = await Promise.all([
           getAdminManageableUsers(),
           loadStripePartnerStatus(),
+          loadCommunities(),
         ]);
 
         setUsers(usersData);
@@ -170,6 +191,81 @@ export default function SuperAdminPage() {
       setErrorMessage(message);
     } finally {
       setUpdatingUserId(null);
+    }
+  }
+
+  async function loadCommunities() {
+    try {
+      setLoadingCommunities(true);
+      const data = await listCommunitiesAsAdmin();
+      setCommunities(data);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Erro ao carregar comunidades.";
+      setErrorMessage(message);
+    } finally {
+      setLoadingCommunities(false);
+    }
+  }
+
+  function openCreateCommunityModal() {
+    setEditingCommunityKey(null);
+    setCommunityForm({
+      key: "",
+      label: "",
+      active: true,
+      zipcodes: [],
+      addressItems: [],
+    });
+    setZipcodesText("");
+    setAddressItemsText("[]");
+    setShowCommunityModal(true);
+  }
+
+  function openEditCommunityModal(item: CommunityData) {
+    setEditingCommunityKey(item.key);
+    setCommunityForm(item);
+    setZipcodesText(item.zipcodes.join("\n"));
+    setAddressItemsText(JSON.stringify(item.addressItems, null, 2));
+    setShowCommunityModal(true);
+  }
+
+  async function handleSubmitCommunity() {
+    try {
+      setSavingCommunity(true);
+      setErrorMessage("");
+      setSuccessMessage("");
+
+      const nextZipcodes = zipcodesText
+        .split("\n")
+        .map((item) => item.trim())
+        .filter(Boolean);
+      const parsedAddressItems = JSON.parse(addressItemsText) as CommunityData["addressItems"];
+
+      const payload: CommunityData = {
+        ...communityForm,
+        zipcodes: nextZipcodes,
+        addressItems: parsedAddressItems,
+      };
+
+      if (editingCommunityKey) {
+        await updateCommunityAsAdmin(editingCommunityKey, payload);
+        setSuccessMessage("Comunidade atualizada com sucesso.");
+      } else {
+        await createCommunityAsAdmin(payload);
+        setSuccessMessage("Comunidade criada com sucesso.");
+      }
+
+      setShowCommunityModal(false);
+      await loadCommunities();
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Erro ao salvar comunidade. Verifique o JSON de endereços.";
+      setErrorMessage(message);
+    } finally {
+      setSavingCommunity(false);
     }
   }
 
@@ -407,7 +503,78 @@ export default function SuperAdminPage() {
               </div>
             ) : null}
           </section>
+
+          <section className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
+            <div className="flex flex-col gap-3 border-b border-zinc-800 px-5 py-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-white">Comunidades</h2>
+                <p className="text-sm text-zinc-400">
+                  Cadastre e edite associações e seus endereços por JSON.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={openCreateCommunityModal}
+                className="rounded-xl bg-violet-500 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-400"
+              >
+                Nova comunidade
+              </button>
+            </div>
+
+            {loadingCommunities ? <div className="p-5 text-zinc-300">Carregando comunidades...</div> : null}
+            {!loadingCommunities ? (
+              <div className="grid grid-cols-1 divide-y divide-zinc-800">
+                {communities.map((item) => (
+                  <div key={item.key} className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-base font-semibold text-white">{item.label}</p>
+                      <p className="text-xs text-zinc-400">key: {item.key}</p>
+                      <p className="text-xs text-zinc-400">
+                        CEPs: {item.zipcodes.length} • Endereços: {item.addressItems.length} • {item.active ? "Ativa" : "Inativa"}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openEditCommunityModal(item)}
+                      className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-100 hover:bg-zinc-800"
+                    >
+                      Editar
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </section>
         </div>
+
+        {showCommunityModal ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+            <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+              <h3 className="text-lg font-semibold text-white">
+                {editingCommunityKey ? "Editar comunidade" : "Nova comunidade"}
+              </h3>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <input value={communityForm.label} onChange={(e) => setCommunityForm((prev) => ({ ...prev, label: e.target.value }))} placeholder="Nome da associação" className="rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100" />
+                <input value={communityForm.key} onChange={(e) => setCommunityForm((prev) => ({ ...prev, key: e.target.value }))} placeholder="key (ex: morro_x)" className="rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100" disabled={Boolean(editingCommunityKey)} />
+              </div>
+              <label className="mt-4 flex items-center gap-2 text-sm text-zinc-300">
+                <input type="checkbox" checked={communityForm.active} onChange={(e) => setCommunityForm((prev) => ({ ...prev, active: e.target.checked }))} /> Ativa
+              </label>
+              <div className="mt-4">
+                <p className="mb-1 text-sm text-zinc-300">CEPs (1 por linha)</p>
+                <textarea value={zipcodesText} onChange={(e) => setZipcodesText(e.target.value)} rows={4} className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100" />
+              </div>
+              <div className="mt-4">
+                <p className="mb-1 text-sm text-zinc-300">Address items (JSON array)</p>
+                <textarea value={addressItemsText} onChange={(e) => setAddressItemsText(e.target.value)} rows={12} className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-100" />
+              </div>
+              <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <button type="button" onClick={() => setShowCommunityModal(false)} className="rounded-xl border border-zinc-700 px-4 py-2 text-zinc-200">Cancelar</button>
+                <button type="button" onClick={() => void handleSubmitCommunity()} disabled={savingCommunity} className="rounded-xl bg-violet-500 px-4 py-2 font-semibold text-white disabled:opacity-60">{savingCommunity ? "Salvando..." : "Salvar"}</button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </MainLayout>
     </DashboardLayout>
   );
