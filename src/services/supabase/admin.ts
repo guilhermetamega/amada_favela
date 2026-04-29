@@ -81,7 +81,7 @@ export async function getAdminManageableUsers() {
     .select(
       "id, fullname, email, phone,address_1, address_2, comunity, role, created_at",
     )
-    .in("role", ["user", "employee", "president"])
+    .in("role", ["user", "employee", "president", "admin"])
     .order("fullname", { ascending: true });
 
   if (error) {
@@ -162,7 +162,11 @@ export async function updateUserRoleAsAdmin(
   }
 
   if (targetUser.role === "admin") {
-    throw new Error("Usuários admin não podem ser alterados por esta tela.");
+    throw new Error("Usuários admin não podem ter a role alterada por esta tela.");
+  }
+
+  if (targetUserId === profile.id) {
+    throw new Error("Você não pode alterar sua própria role.");
   }
 
   const { error } = await supabase
@@ -186,7 +190,7 @@ export async function updateUserCommunityAsAdmin(
     throw new Error("Acesso não autorizado.");
   }
 
-  const { data: targetUser, error: targetError } = await supabase
+  const { error: targetError } = await supabase
     .from("users")
     .select("id, role")
     .eq("id", targetUserId)
@@ -195,11 +199,6 @@ export async function updateUserCommunityAsAdmin(
   if (targetError) {
     throw new Error(targetError.message);
   }
-
-  if (targetUser.role === "admin") {
-    throw new Error("Usuários admin não podem ser alterados por esta tela.");
-  }
-
   const { error } = await supabase
     .from("users")
     .update({ comunity: communityKey || null })

@@ -11,6 +11,7 @@ type UsersSectionProps = {
   communities: CommunityData[];
   loading: boolean;
   updatingUserId: string | null;
+  currentUserId: string | null;
   searchText: string;
   selectedCommunity: string;
   onSearchTextChange: (value: string) => void;

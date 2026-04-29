@@ -13,6 +13,7 @@ import {
 import DashboardLayout from "@/components/layout/Layout";
 import DashboardHeader from "@/components/layout/DashboardHeader";
 import MainLayout from "@/components/layout/MainLayout";
+import { supabase } from "@/services/supabase/client";
 import SectionCard from "@/components/superAdmin/SectionCard";
 import UsersSection from "@/components/superAdmin/UsersSection";
 import {
@@ -54,6 +55,7 @@ function StripePartnerStatusBadge({ status }: { status: PlatformThirdPartyStripe
 export default function SuperAdminPage() {
   const [openSectionId, setOpenSectionId] = useState<string | null>("stripe");
   const [users, setUsers] = useState<ManageableUser[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -91,7 +93,9 @@ export default function SuperAdminPage() {
   }
 
   useEffect(() => { (async () => {
-    try { setLoading(true); setErrorMessage(""); setSuccessMessage(""); const [usersData] = await Promise.all([getAdminManageableUsers(), loadStripePartnerStatus(), loadCommunities()]); setUsers(usersData); }
+    try { setLoading(true); setErrorMessage(""); setSuccessMessage(""); const [{ data: authData }, usersData] = await Promise.all([supabase.auth.getUser(), getAdminManageableUsers(), loadStripePartnerStatus(), loadCommunities()]);
+        setCurrentUserId(authData.user?.id ?? null);
+        setUsers(usersData); }
     catch (error) { setErrorMessage(error instanceof Error ? error.message : "Erro ao carregar usuários."); }
     finally { setLoading(false); }
   })(); }, []);
@@ -104,6 +108,10 @@ export default function SuperAdminPage() {
   }, []);
 
   async function handleRoleChange(userId: string, newRole: Extract<UserRole, "user" | "employee" | "president">) {
+    if (userId === currentUserId) {
+      setErrorMessage("Você não pode alterar sua própria role.");
+      return;
+    }
     try { setUpdatingUserId(userId); setErrorMessage(""); setSuccessMessage(""); await updateUserRoleAsAdmin(userId, newRole); setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, role: newRole } : u)); setSuccessMessage("Permissão atualizada com sucesso."); }
     catch (error) { setErrorMessage(error instanceof Error ? error.message : "Erro ao atualizar role."); }
     finally { setUpdatingUserId(null); }
@@ -139,7 +147,7 @@ export default function SuperAdminPage() {
       <button type="button" onClick={() => { void handleOpenStripePartner(); }} disabled={openingStripePartner || loadingStripePartnerStatus} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-400/40 bg-violet-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto">{openingStripePartner ? <LoaderCircle size={16} className="animate-spin" /> : <ExternalLink size={16} />}{stripeBtn}</button></div>
     </SectionCard>
 
-    <UsersSection id="users" isOpen={openSectionId === "users"} onToggle={toggleSection} users={filteredUsers} communities={communities} loading={loading} updatingUserId={updatingUserId} searchText={searchText} selectedCommunity={communityFilter} onSearchTextChange={setSearchText} onCommunityFilterChange={setCommunityFilter} onRoleChange={(u, r) => void handleRoleChange(u, r)} onUserCommunityChange={(u, c) => void handleCommunityChange(u, c)} />
+    <UsersSection id="users" isOpen={openSectionId === "users"} onToggle={toggleSection} users={filteredUsers} communities={communities} loading={loading} updatingUserId={updatingUserId} currentUserId={currentUserId} searchText={searchText} selectedCommunity={communityFilter} onSearchTextChange={setSearchText} onCommunityFilterChange={setCommunityFilter} onRoleChange={(u, r) => void handleRoleChange(u, r)} onUserCommunityChange={(u, c) => void handleCommunityChange(u, c)} />
 
     <SectionCard id="communities" title="Comunidades" description="Cadastre e edite comunidades e seus endereços." icon={<Plus size={19} />} isOpen={openSectionId === "communities"} onToggle={toggleSection} headerAction={<button type="button" onClick={openCreateCommunityModal} className="rounded-xl bg-violet-500 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-400">Nova comunidade</button>}>
       {loadingCommunities ? <div className="text-zinc-300">Carregando comunidades...</div> : <div className="grid grid-cols-1 divide-y divide-zinc-800">{communities.map((item) => <div key={item.key} className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between"><div><p className="text-base font-semibold text-zinc-900 dark:text-white">{item.label}</p><p className="text-xs text-zinc-500 dark:text-zinc-400">key: {item.key}</p></div><button type="button" onClick={() => openEditCommunityModal(item)} className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-100 hover:bg-zinc-800">Editar</button></div>)}</div>}
