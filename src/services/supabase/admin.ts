@@ -175,6 +175,40 @@ export async function updateUserRoleAsAdmin(
   }
 }
 
+
+export async function updateUserCommunityAsAdmin(
+  targetUserId: string,
+  communityKey: string | null,
+) {
+  const profile = await getCurrentProfile();
+
+  if (profile.role !== "admin") {
+    throw new Error("Acesso não autorizado.");
+  }
+
+  const { data: targetUser, error: targetError } = await supabase
+    .from("users")
+    .select("id, role")
+    .eq("id", targetUserId)
+    .single();
+
+  if (targetError) {
+    throw new Error(targetError.message);
+  }
+
+  if (targetUser.role === "admin") {
+    throw new Error("Usuários admin não podem ser alterados por esta tela.");
+  }
+
+  const { error } = await supabase
+    .from("users")
+    .update({ comunity: communityKey || null })
+    .eq("id", targetUserId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
 export async function getPlatformThirdPartyStripeStatus(): Promise<PlatformThirdPartyStripeStatus> {
   const { data, error } = await supabase.functions.invoke(
     "create-platform-third-party-stripe-onboarding",
