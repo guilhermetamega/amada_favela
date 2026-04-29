@@ -175,6 +175,26 @@ export async function updateUserRoleAsAdmin(
   }
 }
 
+
+export async function updateUserCommunityAsAdmin(
+  targetUserId: string,
+  community: string,
+) {
+  const profile = await getCurrentProfile();
+
+  if (profile.role !== "admin") {
+    throw new Error("Acesso não autorizado.");
+  }
+
+  const { error } = await supabase
+    .from("users")
+    .update({ comunity: community || null })
+    .eq("id", targetUserId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
 export async function getPlatformThirdPartyStripeStatus(): Promise<PlatformThirdPartyStripeStatus> {
   const { data, error } = await supabase.functions.invoke(
     "create-platform-third-party-stripe-onboarding",
