@@ -81,7 +81,7 @@ export async function getAdminManageableUsers() {
     .select(
       "id, fullname, email, phone,address_1, address_2, comunity, role, created_at",
     )
-    .in("role", ["user", "employee", "president"])
+    .in("role", ["user", "employee", "president", "admin"])
     .order("fullname", { ascending: true });
 
   if (error) {
@@ -162,7 +162,11 @@ export async function updateUserRoleAsAdmin(
   }
 
   if (targetUser.role === "admin") {
-    throw new Error("Usuários admin não podem ser alterados por esta tela.");
+    throw new Error("Usuários admin não podem ter a role alterada por esta tela.");
+  }
+
+  if (targetUserId === profile.id) {
+    throw new Error("Você não pode alterar sua própria role.");
   }
 
   const { error } = await supabase
@@ -175,6 +179,35 @@ export async function updateUserRoleAsAdmin(
   }
 }
 
+
+export async function updateUserCommunityAsAdmin(
+  targetUserId: string,
+  communityKey: string | null,
+) {
+  const profile = await getCurrentProfile();
+
+  if (profile.role !== "admin") {
+    throw new Error("Acesso não autorizado.");
+  }
+
+  const { error: targetError } = await supabase
+    .from("users")
+    .select("id, role")
+    .eq("id", targetUserId)
+    .single();
+
+  if (targetError) {
+    throw new Error(targetError.message);
+  }
+  const { error } = await supabase
+    .from("users")
+    .update({ comunity: communityKey || null })
+    .eq("id", targetUserId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
 export async function getPlatformThirdPartyStripeStatus(): Promise<PlatformThirdPartyStripeStatus> {
   const { data, error } = await supabase.functions.invoke(
     "create-platform-third-party-stripe-onboarding",
