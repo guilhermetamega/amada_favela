@@ -282,3 +282,16 @@ export async function updateCommunityAsAdmin(
     .eq("key", sourceKey);
   if (error) throw new Error(error.message);
 }
+
+
+export async function updateCurrentAdminCommunity(communityKey: string) {
+  const profile = await getCurrentProfile();
+  if (profile.role !== "admin") throw new Error("Acesso não autorizado.");
+
+  const { error } = await supabase
+    .from("users")
+    .update({ comunity: communityKey })
+    .eq("id", profile.id);
+
+  if (error) throw new Error(error.message);
+}
