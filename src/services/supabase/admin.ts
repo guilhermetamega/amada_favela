@@ -4,6 +4,15 @@ import type {
   PlatformThirdPartyStripeStatus,
   UserRole,
 } from "@/types/admin";
+import type { CommunityAddressItem, CommunityData } from "@/types/community";
+
+type CommunityPayload = {
+  key: string;
+  label: string;
+  active: boolean;
+  zipcodes: string[];
+  address_items: CommunityAddressItem[];
+};
 
 async function getCurrentProfile() {
   const {
@@ -206,4 +215,70 @@ export async function openPlatformThirdPartyStripeAccount(): Promise<PlatformThi
   }
 
   return data as PlatformThirdPartyStripeStatus;
+}
+
+function mapCommunityPayload(input: CommunityData): CommunityPayload {
+  return {
+    key: input.key.trim().toLowerCase(),
+    label: input.label.trim(),
+    active: Boolean(input.active),
+    zipcodes: input.zipcodes.map((item) => item.trim()).filter(Boolean),
+    address_items: input.addressItems.map((item) => ({
+      type: item.type.trim() || "others",
+      label: item.label.trim(),
+      value: item.value.trim(),
+      address_number: (item.address_number ?? "").toString().trim(),
+    })),
+  };
+}
+
+export async function listCommunitiesAsAdmin(): Promise<CommunityData[]> {
+  const profile = await getCurrentProfile();
+
+  if (profile.role !== "admin") {
+    throw new Error("Acesso não autorizado.");
+  }
+
+  const { data, error } = await supabase
+    .from("communities")
+    .select("key, label, active, zipcodes, address_items")
+    .order("label", { ascending: true });
+
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((item) => ({
+    key: item.key,
+    label: item.label,
+    active: Boolean(item.active),
+    zipcodes: Array.isArray(item.zipcodes) ? item.zipcodes : [],
+    addressItems: Array.isArray(item.address_items)
+      ? (item.address_items as CommunityAddressItem[])
+      : [],
+  }));
+}
+
+export async function createCommunityAsAdmin(input: CommunityData) {
+  const profile = await getCurrentProfile();
+  if (profile.role !== "admin") throw new Error("Acesso não autorizado.");
+
+  const payload = mapCommunityPayload(input);
+
+  const { error } = await supabase.from("communities").insert(payload);
+  if (error) throw new Error(error.message);
+}
+
+export async function updateCommunityAsAdmin(
+  sourceKey: string,
+  input: CommunityData,
+) {
+  const profile = await getCurrentProfile();
+  if (profile.role !== "admin") throw new Error("Acesso não autorizado.");
+
+  const payload = mapCommunityPayload(input);
+
+  const { error } = await supabase
+    .from("communities")
+    .update(payload)
+    .eq("key", sourceKey);
+  if (error) throw new Error(error.message);
 }
