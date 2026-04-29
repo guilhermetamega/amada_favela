@@ -4,8 +4,10 @@ import {
   Clock3,
   ExternalLink,
   LoaderCircle,
+  Plus,
   ShieldAlert,
   ShieldCheck,
+  Trash2,
   Circle,
   Users,
 } from "lucide-react";
@@ -26,7 +28,25 @@ import type {
 } from "@/types/admin";
 import DashboardHeader from "@/components/layout/DashboardHeader";
 import MainLayout from "@/components/layout/MainLayout";
-import type { CommunityData } from "@/types/community";
+import type { CommunityAddressItem, CommunityData } from "@/types/community";
+
+const ADDRESS_TYPE_OPTIONS = [
+  { value: "street", label: "Street (Rua)" },
+  { value: "block", label: "Block (Quadra)" },
+  { value: "lane", label: "Lane (Travessa)" },
+  { value: "village", label: "Village (Vila)" },
+  { value: "building", label: "Building (Prédio)" },
+  { value: "others", label: "Others (Outros)" },
+] as const;
+
+function createEmptyAddressItem(): CommunityAddressItem {
+  return {
+    type: "street",
+    label: "",
+    value: "",
+    address_number: "",
+  };
+}
 
 function StripePartnerStatusBadge({
   status,
@@ -96,7 +116,9 @@ export default function SuperAdminPage() {
     addressItems: [],
   });
   const [zipcodesText, setZipcodesText] = useState("");
-  const [addressItemsText, setAddressItemsText] = useState("[]");
+  const [addressItemsForm, setAddressItemsForm] = useState<CommunityAddressItem[]>([
+    createEmptyAddressItem(),
+  ]);
 
   const stripePartnerButtonLabel = useMemo(
     () =>
@@ -218,7 +240,7 @@ export default function SuperAdminPage() {
       addressItems: [],
     });
     setZipcodesText("");
-    setAddressItemsText("[]");
+    setAddressItemsForm([createEmptyAddressItem()]);
     setShowCommunityModal(true);
   }
 
@@ -226,7 +248,9 @@ export default function SuperAdminPage() {
     setEditingCommunityKey(item.key);
     setCommunityForm(item);
     setZipcodesText(item.zipcodes.join("\n"));
-    setAddressItemsText(JSON.stringify(item.addressItems, null, 2));
+    setAddressItemsForm(
+      item.addressItems.length ? item.addressItems : [createEmptyAddressItem()],
+    );
     setShowCommunityModal(true);
   }
 
@@ -240,7 +264,14 @@ export default function SuperAdminPage() {
         .split("\n")
         .map((item) => item.trim())
         .filter(Boolean);
-      const parsedAddressItems = JSON.parse(addressItemsText) as CommunityData["addressItems"];
+      const parsedAddressItems = addressItemsForm
+        .map((item) => ({
+          type: item.type.trim().toLowerCase(),
+          label: item.label.trim(),
+          value: item.value.trim(),
+          address_number: (item.address_number ?? "").toString().trim(),
+        }))
+        .filter((item) => item.type && item.label && item.value);
 
       const payload: CommunityData = {
         ...communityForm,
@@ -262,11 +293,33 @@ export default function SuperAdminPage() {
       const message =
         error instanceof Error
           ? error.message
-          : "Erro ao salvar comunidade. Verifique o JSON de endereços.";
+          : "Erro ao salvar comunidade. Revise os campos de endereços.";
       setErrorMessage(message);
     } finally {
       setSavingCommunity(false);
     }
+  }
+
+  function addAddressItemRow() {
+    setAddressItemsForm((prev) => [...prev, createEmptyAddressItem()]);
+  }
+
+  function removeAddressItemRow(index: number) {
+    setAddressItemsForm((prev) =>
+      prev.length === 1 ? prev : prev.filter((_, itemIndex) => itemIndex !== index),
+    );
+  }
+
+  function updateAddressItemRow(
+    index: number,
+    field: keyof CommunityAddressItem,
+    value: string,
+  ) {
+    setAddressItemsForm((prev) =>
+      prev.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, [field]: value } : item,
+      ),
+    );
   }
 
   async function handleOpenStripePartner() {
@@ -565,8 +618,74 @@ export default function SuperAdminPage() {
                 <textarea value={zipcodesText} onChange={(e) => setZipcodesText(e.target.value)} rows={4} className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100" />
               </div>
               <div className="mt-4">
-                <p className="mb-1 text-sm text-zinc-300">Address items (JSON array)</p>
-                <textarea value={addressItemsText} onChange={(e) => setAddressItemsText(e.target.value)} rows={12} className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-100" />
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-sm text-zinc-300">Endereços (linha a linha)</p>
+                  <button
+                    type="button"
+                    onClick={addAddressItemRow}
+                    className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-100 hover:bg-zinc-800"
+                  >
+                    <Plus size={13} />
+                    Adicionar linha
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {addressItemsForm.map((item, index) => (
+                    <div
+                      key={`${item.value}-${index}`}
+                      className="grid gap-2 rounded-xl border border-zinc-800 bg-zinc-950 p-3 md:grid-cols-[160px_1fr_1fr_120px_auto]"
+                    >
+                      <select
+                        value={item.type}
+                        onChange={(event) =>
+                          updateAddressItemRow(index, "type", event.target.value)
+                        }
+                        className="rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-2 text-xs text-zinc-100"
+                      >
+                        {ADDRESS_TYPE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        value={item.label}
+                        onChange={(event) =>
+                          updateAddressItemRow(index, "label", event.target.value)
+                        }
+                        placeholder="Label (ex: M2 - Quadra)"
+                        className="rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-2 text-xs text-zinc-100"
+                      />
+                      <input
+                        value={item.value}
+                        onChange={(event) =>
+                          updateAddressItemRow(index, "value", event.target.value)
+                        }
+                        placeholder="Value (ex: m2q-1)"
+                        className="rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-2 text-xs text-zinc-100"
+                      />
+                      <input
+                        value={item.address_number ?? ""}
+                        onChange={(event) =>
+                          updateAddressItemRow(
+                            index,
+                            "address_number",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Número"
+                        className="rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-2 text-xs text-zinc-100"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeAddressItemRow(index)}
+                        className="inline-flex items-center justify-center rounded-lg border border-red-500/40 px-2 py-2 text-red-300 hover:bg-red-500/10"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
               <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
                 <button type="button" onClick={() => setShowCommunityModal(false)} className="rounded-xl border border-zinc-700 px-4 py-2 text-zinc-200">Cancelar</button>
