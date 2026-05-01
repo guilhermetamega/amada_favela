@@ -4,6 +4,7 @@ import { toPng } from "html-to-image";
 import DashboardLayout from "@/components/layout/Layout";
 import DashboardHeader from "@/components/layout/DashboardHeader";
 import { getMyMemberCardData } from "@/services/supabase/member_card";
+import { getMemberCardCache, saveMemberCardCache } from "@/lib/cache/member-card";
 import { MemberCardData } from "@/types/member_card";
 import MainLayout from "@/components/layout/MainLayout";
 
@@ -39,15 +40,27 @@ export default function MemberCardPage() {
   useEffect(() => {
     let active = true;
 
+    const cached = getMemberCardCache();
+
+    if (cached?.cardData) {
+      setCardData(cached.cardData);
+      setLoading(false);
+    }
+
     async function loadMemberCard() {
       try {
-        setLoading(true);
+        if (!cached) {
+          setLoading(true);
+        }
+
         setErrorMessage("");
 
         const data = await getMyMemberCardData();
 
         if (!active) return;
+
         setCardData(data);
+        saveMemberCardCache(data);
       } catch (error) {
         if (!active) return;
 
