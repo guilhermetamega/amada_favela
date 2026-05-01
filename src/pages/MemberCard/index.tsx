@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, IdCard, MapPin, CalendarDays, Cake } from "lucide-react";
+import {
+  Download,
+  IdCard,
+  MapPin,
+  CalendarDays,
+  Cake,
+  Sparkles,
+  CreditCard,
+} from "lucide-react";
 import { toPng } from "html-to-image";
 import DashboardLayout from "@/components/layout/Layout";
 import DashboardHeader from "@/components/layout/DashboardHeader";
 import { getMyMemberCardData } from "@/services/supabase/member_card";
 import { MemberCardData } from "@/types/member_card";
 import MainLayout from "@/components/layout/MainLayout";
+import { useNavigate } from "react-router-dom";
 
 function formatDate(date: string | null | undefined) {
   if (!date) return "Não informado";
@@ -35,6 +44,8 @@ export default function MemberCardPage() {
   const [downloading, setDownloading] = useState(false);
 
   const cardRef = useRef<HTMLDivElement | null>(null);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     let active = true;
@@ -341,11 +352,27 @@ export default function MemberCardPage() {
                 </div>
 
                 <div className="mt-6 flex flex-col gap-3">
+                  {!cardData?.isPartnerActive ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate("/profile#partner-section")}
+                      className="group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-amber-300/80 bg-linear-to-r from-amber-300 via-yellow-300 to-orange-300 px-4 py-3 text-sm font-semibold text-amber-950 shadow-[0_12px_30px_rgba(251,191,36,0.22)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(251,191,36,0.28)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 dark:border-amber-300/20 dark:from-amber-300 dark:via-yellow-200 dark:to-orange-200 dark:text-amber-950 sm:min-w-55 sm:w-auto"
+                    >
+                      <span className="pointer-events-none absolute inset-y-0 left-[-30%] w-1/3 -skew-x-12 bg-white/25 blur-md transition-transform duration-700 group-hover:translate-x-[330%]" />
+                      <span className="pointer-events-none absolute right-3 top-2 text-amber-800/80">
+                        <Sparkles size={12} className="animate-pulse" />
+                      </span>
+                      <CreditCard size={16} />
+                      Quero Virar Sócio
+                    </button>
+                  ) : (
+                    ""
+                  )}
                   <button
                     type="button"
                     onClick={() => void handleDownloadCard()}
                     disabled={downloading}
-                    className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-zinc-900 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-zinc-900 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Download className="h-4 w-4" />
                     {downloading ? "Gerando imagem..." : "Baixar carteirinha"}

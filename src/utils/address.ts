@@ -31,5 +31,5 @@ export function buildFullAddressLine(
   const primary = buildAddressLine(address1, addressNumber);
   const complement = address2?.trim() ?? "";
 
-  return [primary, complement].filter(Boolean).join(" , ");
+  return [primary, complement].filter(Boolean).join(", ");
 }
