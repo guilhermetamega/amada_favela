@@ -299,8 +299,7 @@ export default function MemberCardPage() {
                 <p className="mt-3 text-sm leading-6 text-zinc-300">
                   Ao baixar, a carteirinha será gerada como imagem PNG. Em
                   celular, o arquivo normalmente vai para a pasta de downloads
-                  do aparelho e pode aparecer na galeria, dependendo do sistema
-                  e do navegador.
+                  do aparelho e pode aparecer na galeria, dependendo do sistema.
                 </p>
 
                 <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
