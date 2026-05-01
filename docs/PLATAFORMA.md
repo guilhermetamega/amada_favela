@@ -192,9 +192,8 @@ Sem detalhar schema SQL completo, o sistema opera com entidades de alto valor:
 
 ## Curto prazo
 
-1. **Padronização de nomenclaturas** (ex.: `sevice_orders.ts` → `service_orders.ts`).
-2. **Unificação de pontos de acesso de contexto** para evitar duplicidade de hooks.
-3. **Checklist de cache por usuário/comunidade** para prevenir leak de sessão.
+1. **Unificação de pontos de acesso de contexto** para evitar duplicidade de hooks.
+2. **Checklist de cache por usuário/comunidade** para prevenir leak de sessão.
 
 ## Médio prazo
 

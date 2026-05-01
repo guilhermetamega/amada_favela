@@ -11,6 +11,7 @@ export type MemberCardData = {
   picturePath: string | null;
   avatarUrl: string | null;
   issuedAt: string;
-  expiresAt: string;
+  expiresAt: string | null;
+  isPartnerActive: boolean;
   associationLogoUrl: string | null;
 };

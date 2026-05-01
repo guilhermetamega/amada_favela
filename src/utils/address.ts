@@ -20,7 +20,7 @@ export function buildAddressLine(
   if (!normalizedAddress1) return "";
   if (!normalizedNumber) return normalizedAddress1;
 
-  return `${normalizedAddress1}, ${normalizedNumber}`;
+  return `${normalizedAddress1} ${normalizedNumber}`;
 }
 
 export function buildFullAddressLine(
@@ -31,5 +31,5 @@ export function buildFullAddressLine(
   const primary = buildAddressLine(address1, addressNumber);
   const complement = address2?.trim() ?? "";
 
-  return [primary, complement].filter(Boolean).join(" • ");
+  return [primary, complement].filter(Boolean).join(" , ");
 }
