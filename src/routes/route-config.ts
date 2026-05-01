@@ -64,13 +64,12 @@ export const appRoutes: AppRouteConfig[] = [
   {
     path: "/member-card",
     label: "Carteirinha",
-    description: "Visualize e baixe sua carteirinha virtual de sócio.",
+    description: "Visualize e baixe sua carteirinha virtual de morador.",
     icon: IdCard,
     colorClass: "violet",
     showInSidebar: true,
     showInMobileNav: true,
     showInDashboard: true,
-    isPremium: true,
     canAccess: (permissions) => !!permissions,
   },
   {

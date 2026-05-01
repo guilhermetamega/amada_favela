@@ -10,6 +10,7 @@ import { buildFullAddressLine } from "@/utils/address";
 
 type PartnerRow = {
   expires_at: string;
+  status: string | null;
 };
 
 type CommunityDataRow = {
@@ -72,7 +73,7 @@ export async function getMyMemberCardData(): Promise<MemberCardData> {
 
   const { data: partner, error: partnerError } = await supabase
     .from("partners")
-    .select("expires_at")
+    .select("expires_at, status")
     .eq("user_id", profile.id)
     .order("expires_at", { ascending: false })
     .limit(1)
@@ -83,13 +84,9 @@ export async function getMyMemberCardData(): Promise<MemberCardData> {
   }
 
   const isPartnerActive =
-    !!partner && new Date(partner.expires_at).getTime() >= Date.now();
-
-  if (!isPartnerActive || !partner) {
-    throw new Error(
-      "Você precisa ter uma assinatura de sócio ativa para acessar sua carteirinha.",
-    );
-  }
+    !!partner &&
+    !["expired", "cancelled", "past_due"].includes(partner.status ?? "") &&
+    new Date(partner.expires_at).getTime() >= Date.now();
 
   const [avatarUrl, associationLogoUrl] = await Promise.all([
     getMyAvatarSignedUrl(profile.picture_path),
@@ -115,6 +112,7 @@ export async function getMyMemberCardData(): Promise<MemberCardData> {
     avatarUrl,
     associationLogoUrl,
     issuedAt: new Date().toISOString(),
-    expiresAt: partner.expires_at,
+    expiresAt: partner?.expires_at ?? null,
+    isPartnerActive,
   };
 }
