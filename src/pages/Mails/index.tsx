@@ -6,7 +6,13 @@ import {
   type MailItem,
 } from "@/services/supabase/mail";
 import MainLayout from "@/components/layout/MainLayout";
-import { HeartHandshake, CalendarDays } from "lucide-react";
+import {
+  HeartHandshake,
+  CalendarDays,
+  Sparkles,
+  CreditCard,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function MailsPage() {
   const [mailItems, setMailItems] = useState<MailItem[]>([]);
@@ -54,44 +60,51 @@ export default function MailsPage() {
     }
   }
 
+  const navigate = useNavigate();
+
   return (
     <DashboardLayout>
-      <MainLayout className="bg-transparent">
+      <MainLayout>
         <div className="mx-auto max-w-5xl space-y-4 px-1 sm:space-y-5">
-          {/* 🔥 HEADER BONITO */}
           <section className="relative overflow-hidden rounded-[28px] border border-zinc-200 bg-linear-to-br from-emerald-100 via-sky-100 to-pink-100 p-4 shadow-lg dark:border-zinc-800/80 dark:from-emerald-500/10 dark:via-sky-500/10 dark:to-pink-500/10 sm:p-6">
             <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-emerald-400/25 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-10 -left-10 h-28 w-28 rounded-full bg-pink-400/25 blur-3xl" />
 
-            <div className="relative z-10">
-              <h1 className="mt-4 text-2xl font-black text-zinc-900 dark:text-white sm:text-3xl">
-                💌 Minhas Cartas
-              </h1>
-
-              <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
-                Acompanhe suas cartas e gerencie as notificações recebidas.
-              </p>
-            </div>
+            <h1 className=" text-2xl font-black text-zinc-900 dark:text-white sm:text-3xl">
+              Minhas Cartas
+            </h1>
           </section>
 
-          {/* ERRO */}
           {errorMessage && (
-            <div className="rounded-3xl border border-red-300 bg-red-50 p-4 text-red-700 dark:bg-red-500/10 dark:text-red-300">
-              {errorMessage}
+            <div className="mt-6 flex flex-col gap-3">
+              <div className="rounded-3xl border border-red-300 bg-red-50 p-4 text-red-700 dark:bg-red-500/10 dark:text-red-300">
+                {errorMessage}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => navigate("/profile#partner-section")}
+                className="group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-amber-300/80 bg-linear-to-r from-amber-300 via-yellow-300 to-orange-300 px-4 py-3 text-sm font-semibold text-amber-950 shadow-[0_12px_30px_rgba(251,191,36,0.22)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(251,191,36,0.28)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 dark:border-amber-300/20 dark:from-amber-300 dark:via-yellow-200 dark:to-orange-200 dark:text-amber-950 sm:min-w-55 sm:w-auto"
+              >
+                <span className="pointer-events-none absolute inset-y-0 left-[-30%] w-1/3 -skew-x-12 bg-white/25 blur-md transition-transform duration-700 group-hover:translate-x-[330%]" />
+                <span className="pointer-events-none absolute right-3 top-2 text-amber-800/80">
+                  <Sparkles size={12} className="animate-pulse" />
+                </span>
+                <CreditCard size={16} />
+                Quero Virar Sócio
+              </button>
             </div>
           )}
 
-          {/* LOADING */}
           {loading && (
             <div className="rounded-3xl border border-zinc-200 bg-white/90 p-5 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/95 dark:text-zinc-300">
               Carregando cartas...
             </div>
           )}
 
-          {/* EMPTY STATE FOFO */}
           {!loading && mailItems.length === 0 && (
             <section className="relative overflow-hidden rounded-[28px] border border-zinc-200 bg-linear-to-br from-emerald-100 via-sky-100 to-pink-100 p-6 text-center shadow-lg dark:border-zinc-800 dark:from-emerald-500/10 dark:via-sky-500/10 dark:to-pink-500/10">
-              <div className="absolute inset-0 animate-ping bg-pink-300/20 blur-3xl" />
+              <div className="absolute inset-0 animate-[ping_8s_cubic-bezier(0,0,0.2,1)_infinite] bg-pink-300/20 blur-3xl" />
 
               <div className="relative z-10 flex flex-col items-center">
                 <HeartHandshake className="h-12 w-12 text-pink-500 mb-4" />
@@ -114,7 +127,6 @@ export default function MailsPage() {
             </section>
           )}
 
-          {/* LISTA */}
           {mailItems.length > 0 && (
             <div className="grid gap-4">
               {mailItems.map((mail) => (
