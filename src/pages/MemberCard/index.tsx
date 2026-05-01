@@ -125,25 +125,32 @@ export default function MemberCardPage() {
               <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6">
                 <div
                   ref={cardRef}
-                  className={`relative overflow-hidden rounded-[28px] border p-5 text-white shadow-2xl ${isPartnerCard ? "border-amber-300/80 bg-linear-to-br from-amber-300/20 via-zinc-900 to-orange-300/20 shadow-[0_12px_30px_rgba(251,191,36,0.22)]" : "border-emerald-400/20 bg-linear-to-br from-zinc-950 via-zinc-900 to-emerald-950"}`}
+                  className={`relative overflow-hidden rounded-[28px] border p-5 text-white shadow-2xl ${isPartnerCard ? "border-amber-200/55 bg-linear-to-br from-[#2b2415] via-[#15120c] to-[#3a2f1b] shadow-[0_16px_40px_rgba(15,12,6,0.55),0_0_0_1px_rgba(217,170,84,0.22)]" : "border-emerald-400/20 bg-linear-to-br from-zinc-950 via-zinc-900 to-emerald-950"}`}
                 >
-                  <div className="pointer-events-none absolute inset-0 opacity-20">
+                  <div className={`pointer-events-none absolute inset-0 ${isPartnerCard ? "opacity-30" : "opacity-20"}`}>
                     <div
-                      className={`absolute -right-12 -top-12 h-40 w-40 rounded-full blur-3xl ${isPartnerCard ? "bg-amber-300" : "bg-emerald-400"}`}
+                      className={`absolute -right-12 -top-12 h-40 w-40 rounded-full blur-3xl ${isPartnerCard ? "bg-amber-100/60" : "bg-emerald-400"}`}
                     />
                     <div
-                      className={`absolute -bottom-16 -left-12 h-44 w-44 rounded-full blur-3xl ${isPartnerCard ? "bg-yellow-300" : "bg-cyan-400"}`}
+                      className={`absolute -bottom-16 -left-12 h-44 w-44 rounded-full blur-3xl ${isPartnerCard ? "bg-amber-700/45" : "bg-cyan-400"}`}
                     />
                   </div>
+
+                  {isPartnerCard ? (
+                    <>
+                      <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-linear-to-r from-transparent via-amber-200/80 to-transparent" />
+                      <div className="pointer-events-none absolute -right-20 top-8 h-28 w-56 rotate-12 bg-linear-to-r from-transparent via-amber-100/18 to-transparent blur-xl" />
+                    </>
+                  ) : null}
 
                   <div className="relative z-10">
                     <div className="mb-5 flex items-start justify-between gap-4">
                       <div>
-                        <p className={`text-[11px] font-semibold uppercase tracking-[0.28em] ${isPartnerCard ? "text-amber-100/95" : "text-emerald-300/90"}`}>
+                        <p className={`text-[11px] font-semibold uppercase tracking-[0.28em] ${isPartnerCard ? "text-amber-100" : "text-emerald-300/90"}`}>
                           Associação
                         </p>
                         <h2 className="mt-1 flex items-center gap-2 text-lg font-bold sm:text-xl">
-                          <IdCard className={`h-5 w-5 ${isPartnerCard ? "text-amber-200" : "text-emerald-300"}`} />
+                          <IdCard className={`h-5 w-5 ${isPartnerCard ? "text-amber-300" : "text-emerald-300"}`} />
                           Carteirinha de Morador
                         </h2>
                       </div>
@@ -183,7 +190,7 @@ export default function MemberCardPage() {
                         <h3 className="mt-1 line-clamp-2 text-xl font-bold leading-tight sm:text-2xl">
                           {cardData.fullname}
                         </h3>
-                        <p className={`mt-2 rounded-full bg-white/8 px-3 py-1 text-xs backdrop-blur-sm ${isPartnerCard ? "text-amber-100/90" : "text-emerald-200"}`}>
+                        <p className={`mt-2 rounded-full bg-white/8 px-3 py-1 text-xs backdrop-blur-sm ${isPartnerCard ? "text-amber-100" : "text-emerald-200"}`}>
                           Comunidade: {cardData.community}
                         </p>
                       </div>
@@ -193,7 +200,7 @@ export default function MemberCardPage() {
                       <div className="grid grid-cols-2 gap-3">
                         <div className="rounded-2xl border border-white/10 bg-white/6 p-3">
                           <div className="mb-1 flex items-center gap-2 text-zinc-300">
-                            <Cake className={`h-4 w-4 ${isPartnerCard ? "text-amber-200" : "text-emerald-300"}`} />
+                            <Cake className={`h-4 w-4 ${isPartnerCard ? "text-amber-300" : "text-emerald-300"}`} />
                             <span className="text-xs uppercase tracking-wide">
                               Nascimento
                             </span>
@@ -205,7 +212,7 @@ export default function MemberCardPage() {
 
                         <div className="rounded-2xl border border-white/10 bg-white/6 p-3">
                           <div className="mb-1 flex items-center gap-2 text-zinc-300">
-                            <IdCard className={`h-4 w-4 ${isPartnerCard ? "text-amber-200" : "text-emerald-300"}`} />
+                            <IdCard className={`h-4 w-4 ${isPartnerCard ? "text-amber-300" : "text-emerald-300"}`} />
                             <span className="text-xs uppercase tracking-wide">
                               Idade
                             </span>
@@ -220,7 +227,7 @@ export default function MemberCardPage() {
 
                       <div className="rounded-2xl border border-white/10 bg-white/6 p-3">
                         <div className="mb-1 flex items-center gap-2 text-zinc-300">
-                          <MapPin className={`h-4 w-4 ${isPartnerCard ? "text-amber-200" : "text-emerald-300"}`} />
+                          <MapPin className={`h-4 w-4 ${isPartnerCard ? "text-amber-300" : "text-emerald-300"}`} />
                           <span className="text-xs uppercase tracking-wide">
                             Endereço
                           </span>
@@ -233,7 +240,7 @@ export default function MemberCardPage() {
                       <div className="grid grid-cols-2 gap-3">
                         <div className="rounded-2xl border border-white/10 bg-white/6 p-3">
                           <div className="mb-1 flex items-center gap-2 text-zinc-300">
-                            <CalendarDays className={`h-4 w-4 ${isPartnerCard ? "text-amber-200" : "text-emerald-300"}`} />
+                            <CalendarDays className={`h-4 w-4 ${isPartnerCard ? "text-amber-300" : "text-emerald-300"}`} />
                             <span className="text-xs uppercase tracking-wide">
                               Emissão
                             </span>
@@ -245,7 +252,7 @@ export default function MemberCardPage() {
 
                         <div className="rounded-2xl border border-white/10 bg-white/6 p-3">
                           <div className="mb-1 flex items-center gap-2 text-zinc-300">
-                            <CalendarDays className={`h-4 w-4 ${isPartnerCard ? "text-amber-200" : "text-emerald-300"}`} />
+                            <CalendarDays className={`h-4 w-4 ${isPartnerCard ? "text-amber-300" : "text-emerald-300"}`} />
                             <span className="text-xs uppercase tracking-wide">
                               Validade
                             </span>
