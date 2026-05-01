@@ -13,7 +13,7 @@ export type ProfilePageCachePayload = {
 };
 
 const PROFILE_CACHE_KEY = "profile_page_cache_v2";
-const PROFILE_CACHE_TTL = 1000 * 60 * 5;
+const PROFILE_CACHE_TTL = 1000 * 60 * 10;
 
 let memoryCache: ProfilePageCachePayload | null = null;
 
