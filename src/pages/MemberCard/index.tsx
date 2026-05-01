@@ -4,7 +4,6 @@ import { toPng } from "html-to-image";
 import DashboardLayout from "@/components/layout/Layout";
 import DashboardHeader from "@/components/layout/DashboardHeader";
 import { getMyMemberCardData } from "@/services/supabase/member_card";
-import MembershipPayButton from "@/components/membership/MembershipPayButton";
 import { MemberCardData } from "@/types/member_card";
 import MainLayout from "@/components/layout/MainLayout";
 
@@ -101,6 +100,8 @@ export default function MemberCardPage() {
     [cardData?.expiresAt],
   );
 
+  const isPartnerCard = !!cardData?.isPartnerActive;
+
   return (
     <DashboardLayout>
       <MainLayout>
@@ -124,22 +125,26 @@ export default function MemberCardPage() {
               <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6">
                 <div
                   ref={cardRef}
-                  className="relative overflow-hidden rounded-[28px] border border-emerald-400/20 bg-linear-to-br from-zinc-950 via-zinc-900 to-emerald-950 p-5 text-white shadow-2xl"
+                  className={`relative overflow-hidden rounded-[28px] border p-5 text-white shadow-2xl ${isPartnerCard ? "border-amber-300/80 bg-linear-to-br from-amber-300/20 via-zinc-900 to-orange-300/20 shadow-[0_12px_30px_rgba(251,191,36,0.22)]" : "border-emerald-400/20 bg-linear-to-br from-zinc-950 via-zinc-900 to-emerald-950"}`}
                 >
                   <div className="pointer-events-none absolute inset-0 opacity-20">
-                    <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-emerald-400 blur-3xl" />
-                    <div className="absolute -bottom-16 -left-12 h-44 w-44 rounded-full bg-cyan-400 blur-3xl" />
+                    <div
+                      className={`absolute -right-12 -top-12 h-40 w-40 rounded-full blur-3xl ${isPartnerCard ? "bg-amber-300" : "bg-emerald-400"}`}
+                    />
+                    <div
+                      className={`absolute -bottom-16 -left-12 h-44 w-44 rounded-full blur-3xl ${isPartnerCard ? "bg-yellow-300" : "bg-cyan-400"}`}
+                    />
                   </div>
 
                   <div className="relative z-10">
                     <div className="mb-5 flex items-start justify-between gap-4">
                       <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-300/90">
+                        <p className={`text-[11px] font-semibold uppercase tracking-[0.28em] ${isPartnerCard ? "text-amber-100/95" : "text-emerald-300/90"}`}>
                           Associação
                         </p>
                         <h2 className="mt-1 flex items-center gap-2 text-lg font-bold sm:text-xl">
-                          <IdCard className="h-5 w-5 text-emerald-300" />
-                          Carteirinha de Sócio
+                          <IdCard className={`h-5 w-5 ${isPartnerCard ? "text-amber-200" : "text-emerald-300"}`} />
+                          Carteirinha de Morador
                         </h2>
                       </div>
 
@@ -173,12 +178,12 @@ export default function MemberCardPage() {
 
                       <div className="min-w-0">
                         <p className="text-xs uppercase tracking-[0.25em] text-zinc-400">
-                          Associado
+                          Morador
                         </p>
                         <h3 className="mt-1 line-clamp-2 text-xl font-bold leading-tight sm:text-2xl">
                           {cardData.fullname}
                         </h3>
-                        <p className="mt-2 rounded-full bg-white/8 px-3 py-1 text-xs text-emerald-200 backdrop-blur-sm">
+                        <p className={`mt-2 rounded-full bg-white/8 px-3 py-1 text-xs backdrop-blur-sm ${isPartnerCard ? "text-amber-100/90" : "text-emerald-200"}`}>
                           Comunidade: {cardData.community}
                         </p>
                       </div>
@@ -188,7 +193,7 @@ export default function MemberCardPage() {
                       <div className="grid grid-cols-2 gap-3">
                         <div className="rounded-2xl border border-white/10 bg-white/6 p-3">
                           <div className="mb-1 flex items-center gap-2 text-zinc-300">
-                            <Cake className="h-4 w-4 text-emerald-300" />
+                            <Cake className={`h-4 w-4 ${isPartnerCard ? "text-amber-200" : "text-emerald-300"}`} />
                             <span className="text-xs uppercase tracking-wide">
                               Nascimento
                             </span>
@@ -200,7 +205,7 @@ export default function MemberCardPage() {
 
                         <div className="rounded-2xl border border-white/10 bg-white/6 p-3">
                           <div className="mb-1 flex items-center gap-2 text-zinc-300">
-                            <IdCard className="h-4 w-4 text-emerald-300" />
+                            <IdCard className={`h-4 w-4 ${isPartnerCard ? "text-amber-200" : "text-emerald-300"}`} />
                             <span className="text-xs uppercase tracking-wide">
                               Idade
                             </span>
@@ -215,7 +220,7 @@ export default function MemberCardPage() {
 
                       <div className="rounded-2xl border border-white/10 bg-white/6 p-3">
                         <div className="mb-1 flex items-center gap-2 text-zinc-300">
-                          <MapPin className="h-4 w-4 text-emerald-300" />
+                          <MapPin className={`h-4 w-4 ${isPartnerCard ? "text-amber-200" : "text-emerald-300"}`} />
                           <span className="text-xs uppercase tracking-wide">
                             Endereço
                           </span>
@@ -228,7 +233,7 @@ export default function MemberCardPage() {
                       <div className="grid grid-cols-2 gap-3">
                         <div className="rounded-2xl border border-white/10 bg-white/6 p-3">
                           <div className="mb-1 flex items-center gap-2 text-zinc-300">
-                            <CalendarDays className="h-4 w-4 text-emerald-300" />
+                            <CalendarDays className={`h-4 w-4 ${isPartnerCard ? "text-amber-200" : "text-emerald-300"}`} />
                             <span className="text-xs uppercase tracking-wide">
                               Emissão
                             </span>
@@ -240,7 +245,7 @@ export default function MemberCardPage() {
 
                         <div className="rounded-2xl border border-white/10 bg-white/6 p-3">
                           <div className="mb-1 flex items-center gap-2 text-zinc-300">
-                            <CalendarDays className="h-4 w-4 text-emerald-300" />
+                            <CalendarDays className={`h-4 w-4 ${isPartnerCard ? "text-amber-200" : "text-emerald-300"}`} />
                             <span className="text-xs uppercase tracking-wide">
                               Validade
                             </span>
@@ -303,7 +308,7 @@ export default function MemberCardPage() {
 
                   <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
                     <p className="text-xs uppercase tracking-wide text-zinc-500">
-                      Expiração do sócio
+                      Validade do sócio (se ativo)
                     </p>
                     <p className="mt-1 font-medium text-white">
                       {cardValidityText}
@@ -322,7 +327,7 @@ export default function MemberCardPage() {
                     {downloading ? "Gerando imagem..." : "Baixar carteirinha"}
                   </button>
 
-                  <MembershipPayButton className="text-left" />
+                  
                 </div>
               </section>
             </div>
