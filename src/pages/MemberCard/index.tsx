@@ -234,7 +234,7 @@ export default function MemberCardPage() {
                     <div className="grid grid-cols-1 gap-3 text-sm">
                       <div className="grid grid-cols-2 gap-3">
                         <div className="rounded-2xl border border-white/10 bg-white/6 p-3">
-                          <div className="mb-1 flex items-center gap-2 text-zinc-300">
+                          <div className="mb-1 flex justify-center items-center gap-2 text-zinc-300">
                             <Cake
                               className={`h-4 w-4 ${isPartnerCard ? "text-amber-300" : "text-emerald-300"}`}
                             />
@@ -248,7 +248,7 @@ export default function MemberCardPage() {
                         </div>
 
                         <div className="rounded-2xl border border-white/10 bg-white/6 p-3">
-                          <div className="mb-1 flex items-center gap-2 text-zinc-300">
+                          <div className="mb-1 flex justify-center items-center gap-2 text-zinc-300">
                             <IdCard
                               className={`h-4 w-4 ${isPartnerCard ? "text-amber-300" : "text-emerald-300"}`}
                             />
@@ -265,7 +265,7 @@ export default function MemberCardPage() {
                       </div>
 
                       <div className="rounded-2xl border border-white/10 bg-white/6 p-3">
-                        <div className="mb-1 flex items-center gap-2 text-zinc-300">
+                        <div className="mb-1 flex justify-center items-center gap-2 text-zinc-300">
                           <MapPin
                             className={`h-4 w-4 ${isPartnerCard ? "text-amber-300" : "text-emerald-300"}`}
                           />
@@ -280,7 +280,7 @@ export default function MemberCardPage() {
 
                       <div className="grid grid-cols-2 gap-3">
                         <div className="rounded-2xl border border-white/10 bg-white/6 p-3">
-                          <div className="mb-1 flex items-center gap-2 text-zinc-300">
+                          <div className="mb-1 flex justify-center items-center gap-2 text-zinc-300">
                             <CalendarDays
                               className={`h-4 w-4 ${isPartnerCard ? "text-amber-300" : "text-emerald-300"}`}
                             />
@@ -294,7 +294,7 @@ export default function MemberCardPage() {
                         </div>
 
                         <div className="rounded-2xl border border-white/10 bg-white/6 p-3">
-                          <div className="mb-1 flex items-center gap-2 text-zinc-300">
+                          <div className="mb-1 flex justify-center items-center gap-2 text-zinc-300">
                             <CalendarDays
                               className={`h-4 w-4 ${isPartnerCard ? "text-amber-300" : "text-emerald-300"}`}
                             />
@@ -360,7 +360,7 @@ export default function MemberCardPage() {
 
                   <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
                     <p className="text-xs uppercase tracking-wide text-zinc-500">
-                      Validade do sócio (se ativo)
+                      Validade do sócio
                     </p>
                     <p className="mt-1 font-medium text-white">
                       {cardValidityText}
@@ -389,7 +389,7 @@ export default function MemberCardPage() {
                     type="button"
                     onClick={() => void handleDownloadCard()}
                     disabled={downloading}
-                    className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-zinc-900 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex items-center gap-2 justify-center rounded-xl bg-white px-5 py-3 font-semibold text-zinc-900 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Download className="h-4 w-4" />
                     {downloading ? "Gerando imagem..." : "Baixar carteirinha"}

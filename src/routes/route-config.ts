@@ -70,6 +70,7 @@ export const appRoutes: AppRouteConfig[] = [
     showInSidebar: true,
     showInMobileNav: true,
     showInDashboard: true,
+    isPremium: true,
     canAccess: (permissions) => !!permissions,
   },
   {
