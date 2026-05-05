@@ -14,6 +14,10 @@ import SponsorHomePage from "@/pages/Sponsor";
 import SponsorWeeklyAdPage from "@/pages/Sponsor/WeeklyAd";
 import SponsorBannerPage from "@/pages/Sponsor/Banner";
 
+const GarbageSchedulesPublicPage = lazy(
+  () => import("@/pages/GarbageSchedules"),
+);
+
 const AuthPage = lazy(() => import("@/pages/Auth"));
 const DashboardPage = lazy(() => import("@/pages/Dashboard"));
 
@@ -54,6 +58,10 @@ const PaymentResultPage = lazy(() => import("@/pages/PaymentResult"));
 
 const WelcomeBannerPage = lazy(() => import("@/pages/Dashboard/WelcomeBanner"));
 const AssociationSettingsPage = lazy(() => import("@/pages/Admin/Association"));
+
+const GarbageSchedulesPage = lazy(
+  () => import("@/pages/Admin/GarbageSchedules"),
+);
 
 const NotFoundPage = lazy(() => import("@/pages/NotFound"));
 
@@ -111,6 +119,10 @@ export function AppRoutes() {
 
             <Route path="/social-projects" element={<SocialProjectsPage />} />
             <Route
+              path="/garbage-schedules"
+              element={<GarbageSchedulesPublicPage />}
+            />
+            <Route
               path="/social-projects/:id"
               element={<SocialProjectsDetailsPage />}
             />
@@ -143,6 +155,10 @@ export function AppRoutes() {
               <Route
                 path="/admin/welcome-banner"
                 element={<WelcomeBannerPage />}
+              />
+              <Route
+                path="/admin/association/garbage-schedules"
+                element={<GarbageSchedulesPage />}
               />
             </Route>
 

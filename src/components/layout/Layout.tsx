@@ -3,6 +3,7 @@ import SideBar from "@/components/ui/SideBar";
 import MobileBottomNav from "@/components/layout/MobileBottomNav";
 
 import developedByLogo from "@/assets/developed_by_logo.png";
+import GarbageCountdownWidget from "../garbage/GarbageCountdownWidget";
 
 type Props = {
   children: ReactNode;
@@ -37,7 +38,7 @@ export default function Layout({ children, hasLogo = false }: Props) {
           </div>
         )}
       </div>
-
+      <GarbageCountdownWidget />
       <MobileBottomNav />
     </div>
   );

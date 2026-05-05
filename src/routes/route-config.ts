@@ -17,6 +17,7 @@ import {
   UserCircle2,
   Building2,
   Wrench,
+  Trash2,
 } from "lucide-react";
 import type { Permissions } from "@/lib/permissions";
 
@@ -178,6 +179,16 @@ export const appRoutes: AppRouteConfig[] = [
     canAccess: (permissions) => !!permissions,
   },
   {
+    path: "/garbage-schedules",
+    label: "Horários de lixo",
+    description: "Consulte os horários da coleta na sua comunidade.",
+    icon: Trash2,
+    colorClass: "emerald",
+    showInSidebar: true,
+    showInDashboard: true,
+    canAccess: (permissions) => !!permissions,
+  },
+  {
     path: "/admin/polls",
     label: "Gerenciar Enquetes",
     description: "Crie e edite enquetes da comunidade.",
@@ -308,6 +319,22 @@ export const appRoutes: AppRouteConfig[] = [
     showInAdmin: true,
     canAccess: (permissions) =>
       !!permissions && (permissions.isAdmin || permissions.isPresident),
+  },
+  {
+    path: "/admin/association/garbage-schedules",
+    label: "Horários de lixo",
+    description:
+      "Configure os horários de passagem da coleta para o contador e push.",
+    icon: Trash2,
+    colorClass: "emerald",
+    showInSidebar: false,
+    showInDashboard: false,
+    showInAdmin: true,
+    canAccess: (permissions) =>
+      !!permissions &&
+      (permissions.isEmployee ||
+        permissions.isPresident ||
+        permissions.isAdmin),
   },
 ];
 
