@@ -54,6 +54,7 @@ const PaymentResultPage = lazy(() => import("@/pages/PaymentResult"));
 
 const WelcomeBannerPage = lazy(() => import("@/pages/Dashboard/WelcomeBanner"));
 const AssociationSettingsPage = lazy(() => import("@/pages/Admin/Association"));
+const GarbageSchedulesPage = lazy(() => import("@/pages/Admin/GarbageSchedules"));
 
 const NotFoundPage = lazy(() => import("@/pages/NotFound"));
 
@@ -132,6 +133,7 @@ export function AppRoutes() {
                 path="/admin/association"
                 element={<AssociationSettingsPage />}
               />
+              <Route path="/admin/association/garbage-schedules" element={<GarbageSchedulesPage />} />
               <Route
                 path="/admin/create-warnings"
                 element={<CreateWarningsPage />}
