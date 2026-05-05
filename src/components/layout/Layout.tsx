@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import SideBar from "@/components/ui/SideBar";
 import MobileBottomNav from "@/components/layout/MobileBottomNav";
+import GarbageCountdownWidget from "@/components/garbage/GarbageCountdownWidget";
 
 import developedByLogo from "@/assets/developed_by_logo.png";
 
@@ -38,6 +39,7 @@ export default function Layout({ children, hasLogo = false }: Props) {
         )}
       </div>
 
+      <GarbageCountdownWidget />
       <MobileBottomNav />
     </div>
   );
