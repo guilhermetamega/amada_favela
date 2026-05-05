@@ -229,11 +229,7 @@ export default function AdminSocialProjectsPage() {
     <DashboardLayout>
       <MainLayout>
         <div className="mx-auto max-w-7xl">
-          <DashboardHeader
-            title="Projetos Sociais"
-            description="Crie, edite e remova projetos sociais da sua comunidade."
-            showBackButton
-          />
+          <DashboardHeader title="Projetos Sociais" />
 
           {errorMessage ? (
             <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-300">
