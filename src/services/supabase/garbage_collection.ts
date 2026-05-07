@@ -116,3 +116,19 @@ export async function updateGarbageSchedule(
 
   return data as GarbageCollectionSchedule;
 }
+
+export async function deleteGarbageSchedule(id: string) {
+  const profile = await getCurrentProfile();
+
+  if (!["employee", "president", "admin"].includes(profile.role)) {
+    throw new Error("Acesso não autorizado.");
+  }
+
+  const { error } = await supabase
+    .from("garbage_collection_schedules")
+    .delete()
+    .eq("id", id)
+    .eq("community", profile.comunity);
+
+  if (error) throw new Error(error.message);
+}

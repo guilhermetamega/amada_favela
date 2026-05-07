@@ -55,6 +55,7 @@ const PaymentResultPage = lazy(() => import("@/pages/PaymentResult"));
 const WelcomeBannerPage = lazy(() => import("@/pages/Dashboard/WelcomeBanner"));
 const AssociationSettingsPage = lazy(() => import("@/pages/Admin/Association"));
 const GarbageSchedulesPage = lazy(() => import("@/pages/Admin/GarbageSchedules"));
+const GarbageSchedulesPublicPage = lazy(() => import("@/pages/GarbageSchedules"));
 
 const NotFoundPage = lazy(() => import("@/pages/NotFound"));
 
@@ -100,6 +101,7 @@ export function AppRoutes() {
             <Route path="/home-rent" element={<HomeRentPage />} />
 
             <Route path="/polls" element={<PollsPage />} />
+            <Route path="/garbage-schedules" element={<GarbageSchedulesPublicPage />} />
 
             <Route path="/service-orders" element={<ServiceOrdersPage />} />
 

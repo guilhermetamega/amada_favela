@@ -85,6 +85,16 @@ export const appRoutes: AppRouteConfig[] = [
     canAccess: (permissions) => !!permissions,
   },
   {
+    path: "/garbage-schedules",
+    label: "Horários de lixo",
+    description: "Consulte os horários da coleta na sua comunidade.",
+    icon: Trash2,
+    colorClass: "emerald",
+    showInSidebar: true,
+    showInDashboard: true,
+    canAccess: (permissions) => !!permissions,
+  },
+  {
     path: "/mails",
     label: "Cartas",
     description: "Visualize e confirme o recebimento das suas cartas.",
