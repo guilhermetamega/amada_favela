@@ -71,6 +71,7 @@ export default function GarbageCountdownWidget() {
     x: number;
     y: number;
   } | null>(null);
+  const [widgetSize, setWidgetSize] = useState({ width: 210, height: 104 });
 
   useEffect(() => {
     void getCommunityGarbageSchedules()
@@ -107,9 +108,7 @@ export default function GarbageCountdownWidget() {
   const totalSeconds = Math.floor(diffMs / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-  const widgetRect = widgetRef.current?.getBoundingClientRect();
-  const width = widgetRect?.width ?? 210;
-  const height = widgetRect?.height ?? 104;
+  const { width, height } = widgetSize;
   const baseStyle = getCornerStyle(corner, isMobile);
   const dragStyle = dragPosition
     ? {
@@ -134,6 +133,8 @@ export default function GarbageCountdownWidget() {
       role="status"
       aria-live="polite"
       onPointerDown={(event) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        setWidgetSize({ width: rect.width, height: rect.height });
         event.currentTarget.setPointerCapture(event.pointerId);
         setDragPosition({ x: event.clientX, y: event.clientY });
       }}

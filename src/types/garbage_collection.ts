@@ -30,3 +30,16 @@ export type UpdateGarbageCollectionScheduleInput =
   CreateGarbageCollectionScheduleInput & {
     is_active: boolean;
   };
+
+export type RegisterGarbagePushTokenInput = {
+  fcm_token: string;
+  platform?: "web" | "android" | "ios";
+  user_agent?: string;
+};
+
+export type GarbagePushRegistrationState =
+  | "unsupported"
+  | "not_configured"
+  | "default"
+  | "denied"
+  | "granted";

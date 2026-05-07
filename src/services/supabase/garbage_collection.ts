@@ -132,3 +132,50 @@ export async function deleteGarbageSchedule(id: string) {
 
   if (error) throw new Error(error.message);
 }
+
+export async function registerGarbagePushToken(input: {
+  fcm_token: string;
+  platform?: "web" | "android" | "ios";
+  user_agent?: string;
+}) {
+  const profile = await getCurrentProfile();
+
+  const { data, error } = await supabase
+    .from("user_push_tokens")
+    .upsert(
+      {
+        user_id: profile.id,
+        community: profile.comunity,
+        fcm_token: input.fcm_token,
+        platform: input.platform ?? "web",
+        user_agent: input.user_agent ?? null,
+        enabled: true,
+        disabled_at: null,
+        updated_at: new Date().toISOString(),
+        last_seen_at: new Date().toISOString(),
+      },
+      { onConflict: "fcm_token" },
+    )
+    .select("id")
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  return data;
+}
+
+export async function disableGarbagePushToken(fcmToken: string) {
+  const profile = await getCurrentProfile();
+
+  const { error } = await supabase
+    .from("user_push_tokens")
+    .update({
+      enabled: false,
+      disabled_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", profile.id)
+    .eq("fcm_token", fcmToken);
+
+  if (error) throw new Error(error.message);
+}
