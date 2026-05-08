@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/layout/Layout";
 import MainLayout from "@/components/layout/MainLayout";
 import ScheduleWeekTable from "@/components/garbage/ScheduleWeekTable";
+import GarbagePushNotificationCard from "@/components/garbage/GarbagePushNotificationCard";
 import { getCommunityGarbageSchedules } from "@/services/supabase/garbage_collection";
 import type { GarbageCollectionSchedule } from "@/types/garbage_collection";
 
@@ -24,6 +25,7 @@ export default function GarbageSchedulesPublicPage() {
             comunidade.
           </p>
         </div>
+        <GarbagePushNotificationCard />
         <ScheduleWeekTable items={items} />
       </MainLayout>
     </DashboardLayout>
