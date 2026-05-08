@@ -23,10 +23,37 @@ type ScheduleDispatchSummary = {
   schedule_id: string;
   community: string;
   pass_time: string;
+  matched_hhmm?: string;
   status: "sent" | "duplicate" | "no_tokens";
   recipients_count: number;
   success_count: number;
   failure_count: number;
+};
+
+type DispatcherRunStatus = "no_matching_schedules" | "finished" | "error";
+
+type DispatcherSummary = {
+  source: string;
+  time_zone: string;
+  target: {
+    weekday: string;
+    hhmm: string;
+    date: string;
+    match_window_minutes: number;
+    candidate_hhmms: string[];
+  };
+  target_iso: string;
+  active_schedules_same_weekday: number;
+  matching_schedules: number;
+  duplicate_schedules: number;
+  schedules_without_tokens: number;
+  firebase_auth_requested: boolean;
+  fcm_send_attempts: number;
+  dispatched: number;
+  success: number;
+  failed: number;
+  details: ScheduleDispatchSummary[];
+  message?: string;
 };
 
 const LOG_PREFIX = "[garbage-collection-push-dispatcher]";
@@ -42,6 +69,14 @@ const WEEKDAYS = [
 
 function log(step: string, payload?: unknown) {
   console.log(`${LOG_PREFIX} ${step}`, payload ?? "");
+}
+
+function readMatchWindowMinutes() {
+  const value = Number(Deno.env.get("GARBAGE_COLLECTION_MATCH_WINDOW_MINUTES"));
+
+  if (!Number.isFinite(value) || value < 0) return 2;
+
+  return Math.min(Math.trunc(value), 10);
 }
 
 function base64UrlEncode(input: ArrayBuffer | string) {
@@ -140,7 +175,7 @@ function getZonedParts(date: Date, timeZone: string) {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
+    hourCycle: "h23",
   }).formatToParts(date);
   const byType = Object.fromEntries(
     parts.map((part) => [part.type, part.value]),
@@ -160,6 +195,67 @@ function getZonedParts(date: Date, timeZone: string) {
     hhmm: `${byType.hour}:${byType.minute}`,
     date: `${byType.year}-${byType.month}-${byType.day}`,
   };
+}
+
+function getMatchingTargets(
+  targetInstant: Date,
+  timeZone: string,
+  windowMinutes: number,
+) {
+  const targets = new Map<string, ReturnType<typeof getZonedParts>>();
+
+  // Only look backwards from the 10-minute target so delayed cron invocations
+  // are recovered without sending future schedules earlier than intended.
+  for (let offset = -windowMinutes; offset <= 0; offset += 1) {
+    const candidate = getZonedParts(
+      new Date(targetInstant.getTime() + offset * 60 * 1000),
+      timeZone,
+    );
+    targets.set(`${candidate.weekday}|${candidate.hhmm}`, candidate);
+  }
+
+  return targets;
+}
+
+async function recordDispatcherRun(
+  admin: ReturnType<typeof createClient>,
+  summary: DispatcherSummary,
+  status: DispatcherRunStatus,
+  message?: string,
+) {
+  try {
+    const payload = {
+      source: summary.source,
+      status,
+      time_zone: summary.time_zone,
+      target: summary.target,
+      target_iso: summary.target_iso,
+      active_schedules_same_weekday: summary.active_schedules_same_weekday,
+      matching_schedules: summary.matching_schedules,
+      duplicate_schedules: summary.duplicate_schedules,
+      schedules_without_tokens: summary.schedules_without_tokens,
+      firebase_auth_requested: summary.firebase_auth_requested,
+      fcm_send_attempts: summary.fcm_send_attempts,
+      dispatched: summary.dispatched,
+      success: summary.success,
+      failed: summary.failed,
+      details: summary.details,
+      message: message ?? summary.message ?? null,
+    };
+
+    const { error } = await admin
+      .from("garbage_collection_dispatcher_runs")
+      .insert(payload);
+
+    if (error) {
+      log("dispatcher-run-log-error", error.message);
+    }
+  } catch (error) {
+    log(
+      "dispatcher-run-log-error",
+      error instanceof Error ? error.message : error,
+    );
+  }
 }
 
 async function readRequestBody(req: Request) {
@@ -231,6 +327,11 @@ serve(async (req) => {
     return json(500, { error: "Variáveis do dispatcher não configuradas." });
   }
 
+  const admin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false },
+  });
+  let responseSummary: DispatcherSummary | null = null;
+
   try {
     const body = await readRequestBody(req);
     const targetInstant = body.target_iso
@@ -243,14 +344,24 @@ serve(async (req) => {
       });
     }
 
-    const admin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false },
-    });
+    const matchWindowMinutes = readMatchWindowMinutes();
     const target = getZonedParts(targetInstant, timeZone);
-    const responseSummary = {
+    const matchingTargets = getMatchingTargets(
+      targetInstant,
+      timeZone,
+      matchWindowMinutes,
+    );
+    const candidateHhmms = Array.from(
+      new Set(Array.from(matchingTargets.values()).map((item) => item.hhmm)),
+    ).sort();
+    responseSummary = {
       source: body.source ?? "unknown",
       time_zone: timeZone,
-      target,
+      target: {
+        ...target,
+        match_window_minutes: matchWindowMinutes,
+        candidate_hhmms: candidateHhmms,
+      },
       target_iso: targetInstant.toISOString(),
       active_schedules_same_weekday: 0,
       matching_schedules: 0,
@@ -270,42 +381,75 @@ serve(async (req) => {
       .from("garbage_collection_schedules")
       .select("id, community, weekday, pass_time")
       .eq("is_active", true)
-      .eq("weekday", target.weekday);
+      .in(
+        "weekday",
+        Array.from(
+          new Set(
+            Array.from(matchingTargets.values()).map((item) => item.weekday),
+          ),
+        ),
+      );
 
     if (schedulesError) throw schedulesError;
 
-    responseSummary.active_schedules_same_weekday = schedulesData?.length ?? 0;
+    responseSummary.active_schedules_same_weekday =
+      schedulesData?.filter((schedule) => schedule.weekday === target.weekday)
+        .length ?? 0;
 
-    const schedules = ((schedulesData ?? []) as ScheduleRow[]).filter(
-      (schedule) => schedule.pass_time.startsWith(target.hhmm),
-    );
+    const schedules = ((schedulesData ?? []) as ScheduleRow[])
+      .map((schedule) => ({
+        schedule,
+        matchedTarget: matchingTargets.get(
+          `${schedule.weekday}|${schedule.pass_time.slice(0, 5)}`,
+        ),
+      }))
+      .filter(
+        (
+          item,
+        ): item is {
+          schedule: ScheduleRow;
+          matchedTarget: ReturnType<typeof getZonedParts>;
+        } => Boolean(item.matchedTarget),
+      );
 
     responseSummary.matching_schedules = schedules.length;
 
     if (!schedules.length) {
+      const message =
+        "Nenhum horário ativo bateu com a janela calculada. Confira o timezone GARBAGE_COLLECTION_TIMEZONE, o horário da coleta e, se o cron atrasar, ajuste GARBAGE_COLLECTION_MATCH_WINDOW_MINUTES.";
+
       log("no-matching-schedules", {
         target,
         timeZone,
+        matchWindowMinutes,
+        candidateHhmms,
         activeSchedulesSameWeekday:
           responseSummary.active_schedules_same_weekday,
       });
 
+      responseSummary.message = message;
+      await recordDispatcherRun(
+        admin,
+        responseSummary,
+        "no_matching_schedules",
+        message,
+      );
+
       return json(200, {
         ...responseSummary,
-        message:
-          "Nenhum horário ativo bateu com o alvo calculado. Confira o timezone GARBAGE_COLLECTION_TIMEZONE e se existe coleta exatamente nesse HH:mm.",
+        message,
       });
     }
 
     let accessToken = "";
 
-    for (const schedule of schedules) {
+    for (const { schedule, matchedTarget } of schedules) {
       const { data: insertedLog, error: logError } = await admin
         .from("garbage_collection_notification_logs")
         .insert({
           schedule_id: schedule.id,
           community: schedule.community,
-          target_occurrence_date: target.date,
+          target_occurrence_date: matchedTarget.date,
           target_occurrence_time: schedule.pass_time,
           notification_type: "ten_minutes_before",
         })
@@ -318,6 +462,7 @@ serve(async (req) => {
           schedule_id: schedule.id,
           community: schedule.community,
           pass_time: schedule.pass_time,
+          matched_hhmm: matchedTarget.hhmm,
           status: "duplicate",
           recipients_count: 0,
           success_count: 0,
@@ -346,6 +491,7 @@ serve(async (req) => {
           schedule_id: schedule.id,
           community: schedule.community,
           pass_time: schedule.pass_time,
+          matched_hhmm: matchedTarget.hhmm,
           status: "no_tokens",
           recipients_count: 0,
           success_count: 0,
@@ -413,6 +559,7 @@ serve(async (req) => {
         schedule_id: schedule.id,
         community: schedule.community,
         pass_time: schedule.pass_time,
+        matched_hhmm: matchedTarget.hhmm,
         status: "sent",
         recipients_count: tokens.length,
         success_count: scheduleSuccess,
@@ -422,13 +569,28 @@ serve(async (req) => {
 
     log("finish", responseSummary);
 
+    responseSummary.message = "Dispatcher finalizado.";
+    await recordDispatcherRun(
+      admin,
+      responseSummary,
+      "finished",
+      responseSummary.message,
+    );
+
     return json(200, responseSummary);
   } catch (error) {
-    log("error", error instanceof Error ? error.message : error);
+    const message =
+      error instanceof Error ? error.message : "Erro ao enviar notificações.";
+
+    log("error", message);
+
+    if (responseSummary) {
+      responseSummary.message = message;
+      await recordDispatcherRun(admin, responseSummary, "error", message);
+    }
 
     return json(500, {
-      error:
-        error instanceof Error ? error.message : "Erro ao enviar notificações.",
+      error: message,
     });
   }
 });
