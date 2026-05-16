@@ -33,7 +33,6 @@ create index if not exists bingo_cards_bingo_user_idx
 alter table public.bingos enable row level security;
 alter table public.bingo_cards enable row level security;
 
-drop function if exists public.current_user_community();
 create or replace function public.current_user_community()
 returns text
 language sql
@@ -46,7 +45,6 @@ as $$
   where u.id = auth.uid()
 $$;
 
-drop function if exists public.current_user_role();
 create or replace function public.current_user_role()
 returns text
 language sql
@@ -59,7 +57,6 @@ as $$
   where u.id = auth.uid()
 $$;
 
-drop function if exists public.is_current_user_bingo_manager();
 create or replace function public.is_current_user_bingo_manager()
 returns boolean
 language sql
@@ -70,7 +67,6 @@ as $$
   select coalesce(public.current_user_role() in ('employee', 'president', 'admin'), false)
 $$;
 
-drop function if exists public.is_current_user_partner_active();
 create or replace function public.is_current_user_partner_active()
 returns boolean
 language sql
