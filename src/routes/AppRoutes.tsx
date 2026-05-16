@@ -13,6 +13,8 @@ import SponsorSessionGuard from "./SponsorSessionGuard";
 import SponsorHomePage from "@/pages/Sponsor";
 import SponsorWeeklyAdPage from "@/pages/Sponsor/WeeklyAd";
 import SponsorBannerPage from "@/pages/Sponsor/Banner";
+import BingoPage from "@/pages/Bingo";
+import AdminBingoPage from "@/pages/Admin/Bingo";
 
 const GarbageSchedulesPublicPage = lazy(
   () => import("@/pages/GarbageSchedules"),
@@ -108,6 +110,8 @@ export function AppRoutes() {
 
             <Route path="/polls" element={<PollsPage />} />
 
+            <Route path="/bingo" element={<BingoPage />} />
+
             <Route path="/service-orders" element={<ServiceOrdersPage />} />
 
             <Route path="/mails" element={<MailsPage />} />
@@ -139,6 +143,7 @@ export function AppRoutes() {
                 element={<AdminServiceOrdersPage />}
               />
               <Route path="/admin/polls" element={<AdminPollsPage />} />
+              <Route path="/admin/bingo" element={<AdminBingoPage />} />
               <Route path="/admin/mail" element={<AdminMailPage />} />
               <Route
                 path="/admin/association"
