@@ -4,6 +4,7 @@ import {
   Bell,
   ClipboardList,
   ClipboardPenLine,
+  Dices,
   Dog,
   FolderSearch,
   HeartHandshake,
@@ -187,6 +188,30 @@ export const appRoutes: AppRouteConfig[] = [
     showInSidebar: true,
     showInDashboard: true,
     canAccess: (permissions) => !!permissions,
+  },
+  {
+    path: "/bingo",
+    label: "Bingo",
+    description: "Acompanhe sorteios e marque sua cartela da comunidade.",
+    icon: Dices,
+    colorClass: "amber",
+    showInSidebar: true,
+    showInDashboard: true,
+    canAccess: (permissions) => !!permissions,
+  },
+  {
+    path: "/admin/bingo",
+    label: "Gerenciar Bingo",
+    description: "Abra bingos e sorteie números de 1 a 75 sem repetição.",
+    icon: Dices,
+    colorClass: "amber",
+    showInSidebar: false,
+    showInAdmin: true,
+    canAccess: (permissions) =>
+      !!permissions &&
+      (permissions.isEmployee ||
+        permissions.isPresident ||
+        permissions.isAdmin),
   },
   {
     path: "/admin/polls",
