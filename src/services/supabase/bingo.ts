@@ -188,6 +188,23 @@ export async function createBingo(input: CreateBingoInput) {
   return data as string;
 }
 
+export async function finalizeBingo(bingoId: string) {
+  const profile = await getCurrentProfile();
+  ensureCanManage(profile);
+
+  const { data, error } = await supabase
+    .from("bingos")
+    .update({ status: "archived" })
+    .eq("id", bingoId)
+    .select("*")
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  invalidateBingoCache();
+  return mapBingo(data as BingoRow);
+}
+
 export async function drawBingoNumber(bingoId: string) {
   const profile = await getCurrentProfile();
   ensureCanManage(profile);

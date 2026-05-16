@@ -6,7 +6,12 @@ import BingoAdminDrawPanel from "@/components/bingo/AdminDrawPanel";
 import BingoFeedback from "@/components/bingo/Feedback";
 import BingoHero from "@/components/bingo/Hero";
 import BingoPageSkeleton from "@/components/bingo/PageSkeleton";
-import { createBingo, drawBingoNumber, getManageableBingos } from "@/services/supabase/bingo";
+import {
+  createBingo,
+  drawBingoNumber,
+  finalizeBingo,
+  getManageableBingos,
+} from "@/services/supabase/bingo";
 import type { BingoGame } from "@/types/bingo";
 
 function toLocalDateTime(value: Date) {
@@ -28,6 +33,7 @@ export default function AdminBingoPage() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [drawing, setDrawing] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
   const [rollingNumber, setRollingNumber] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -77,6 +83,33 @@ export default function AdminBingoPage() {
       );
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function handleFinalize() {
+    if (!selectedBingo) return;
+
+    const confirmed = window.confirm(
+      `Deseja finalizar o bingo "${selectedBingo.title}"? Após finalizar, novos sorteios serão bloqueados e ele sairá da tela pública.`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setFinalizing(true);
+      setErrorMessage("");
+      setSuccessMessage("");
+      const updated = await finalizeBingo(selectedBingo.id);
+      setBingos((current) =>
+        current.map((bingo) => (bingo.id === updated.id ? updated : bingo)),
+      );
+      setSuccessMessage("Bingo finalizado com sucesso.");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Erro ao finalizar bingo.",
+      );
+    } finally {
+      setFinalizing(false);
     }
   }
 
@@ -153,7 +186,9 @@ export default function AdminBingoPage() {
                 bingo={selectedBingo}
                 rollingNumber={rollingNumber}
                 drawing={drawing}
+                finalizing={finalizing}
                 onDraw={handleDraw}
+                onFinalize={handleFinalize}
               />
             </>
           )}
