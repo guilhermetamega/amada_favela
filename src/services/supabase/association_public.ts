@@ -170,3 +170,43 @@ export function invalidateAssociationContactCache(community: string) {
     // noop
   }
 }
+
+export type AssociationResumeAddressData = {
+  associationName: string;
+  fullAddress: string;
+};
+
+export async function getAssociationResumeAddressData(): Promise<AssociationResumeAddressData> {
+  const profile = await getCurrentProfileRow();
+
+  if (!profile.comunity) {
+    throw new Error("Comunidade do usuário não encontrada.");
+  }
+
+  const { data, error } = await supabase
+    .from("association")
+    .select("name, headquarters_address, headquarters_number, headquarters_complement, headquarters_neighborhood, headquarters_city, headquarters_state")
+    .eq("community", profile.comunity)
+    .eq("is_active", true)
+    .single();
+
+  if (error || !data) {
+    throw new Error("Não foi possível carregar o endereço da associação.");
+  }
+
+  const addressParts = [
+    data.headquarters_address,
+    data.headquarters_number,
+    data.headquarters_complement,
+    data.headquarters_neighborhood,
+    data.headquarters_city,
+    data.headquarters_state,
+  ]
+    .filter((item) => typeof item === "string" && item.trim().length > 0)
+    .map((item) => String(item).trim());
+
+  return {
+    associationName: data.name,
+    fullAddress: addressParts.join(", "),
+  };
+}
