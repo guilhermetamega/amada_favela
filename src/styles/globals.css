@@ -60,3 +60,23 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .resume-print-area,
+  .resume-print-area * {
+    visibility: visible;
+  }
+
+  .resume-print-area {
+    position: absolute;
+    inset: 0;
+    width: 210mm !important;
+    height: 297mm !important;
+    max-width: none !important;
+    box-shadow: none !important;
+  }
+}
