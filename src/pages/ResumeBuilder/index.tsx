@@ -17,13 +17,62 @@ import { getMyProfile } from "@/services/supabase/user_profile";
 import type { AssociationAddressData, ResumeBuilderFormData, ResumeProfileData } from "@/types/resume_builder";
 
 const emptyForm: ResumeBuilderFormData = { templateId:"classic", email:"", linkedin:"", lattes:"", professionalTitle:"", summary:"", experiences:[], education:[], skills:[], additionalInfo:"" };
+const allowedTemplates = ["classic", "modern", "compact"] as const;
 
 function normalizeFileName(value: string) { return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "-").replace(/[^a-zA-Z0-9-_]/g, "").toLowerCase(); }
+
+function ensureTimelineItems(value: unknown): ResumeBuilderFormData["experiences"] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => ({
+    id: typeof item?.id === "string" && item.id ? item.id : crypto.randomUUID(),
+    institution: typeof item?.institution === "string" ? item.institution : "",
+    role: typeof item?.role === "string" ? item.role : "",
+    startMonth: typeof item?.startMonth === "string" ? item.startMonth : "",
+    startYear: typeof item?.startYear === "string" ? item.startYear : "",
+    endMonth: typeof item?.endMonth === "string" ? item.endMonth : "",
+    endYear: typeof item?.endYear === "string" ? item.endYear : "",
+    isCurrent: Boolean(item?.isCurrent),
+    activities: typeof item?.activities === "string" ? item.activities : "",
+  }));
+}
+
+function ensureSkills(value: unknown): ResumeBuilderFormData["skills"] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => ({
+    id: typeof item?.id === "string" && item.id ? item.id : crypto.randomUUID(),
+    name: typeof item?.name === "string" ? item.name : "",
+  })).filter((item) => item.name.length > 0 || item.id.length > 0);
+}
+
+function sanitizeFormData(raw: Partial<ResumeBuilderFormData> | undefined, defaultEmail: string): ResumeBuilderFormData {
+  const templateId: ResumeBuilderFormData["templateId"] = allowedTemplates.includes(raw?.templateId as (typeof allowedTemplates)[number]) ? (raw?.templateId as ResumeBuilderFormData["templateId"]) : "classic";
+  return {
+    ...emptyForm,
+    ...raw,
+    templateId,
+    email: typeof raw?.email === "string" && raw.email ? raw.email : defaultEmail,
+    linkedin: typeof raw?.linkedin === "string" ? raw.linkedin : "",
+    lattes: typeof raw?.lattes === "string" ? raw.lattes : "",
+    professionalTitle: typeof raw?.professionalTitle === "string" ? raw.professionalTitle : "",
+    summary: typeof raw?.summary === "string" ? raw.summary : "",
+    experiences: ensureTimelineItems(raw?.experiences),
+    education: ensureTimelineItems(raw?.education),
+    skills: ensureSkills(raw?.skills),
+    additionalInfo: typeof raw?.additionalInfo === "string" ? raw.additionalInfo : "",
+  };
+}
 
 function renderTimeline(items: ResumeBuilderFormData["experiences"]) { return items.length? items.map((i)=><li key={i.id}>{i.institution} • {i.role} ({i.startMonth}/{i.startYear} - {i.isCurrent?"Atual":`${i.endMonth}/${i.endYear}`})<br/>{i.activities}</li>) : <li>Preencha no formulário.</li>; }
 
 function ResumePreview({ profile, associationAddress, data, previewRef }: { profile: ResumeProfileData; associationAddress: AssociationAddressData | null; data: ResumeBuilderFormData; previewRef: React.RefObject<HTMLDivElement | null>; }) {
-  return <div ref={previewRef} className="resume-print-area mx-auto aspect-[210/297] w-full max-w-[794px] overflow-hidden bg-white p-8 text-[12px] text-zinc-800 shadow-2xl"><h2 className="text-3xl font-black text-zinc-950">{profile.fullname}</h2><p className="font-semibold text-emerald-700">{data.professionalTitle || "Cargo / área"}</p><div className="mt-2 text-[11px] text-zinc-600">{data.email} • {profile.phone || "-"}{data.linkedin?` • ${data.linkedin}`:""}{data.lattes?` • ${data.lattes}`:""}</div><div className="text-[11px] text-zinc-500">{associationAddress?.address || ""}</div><section className="mt-4"><h3 className="font-bold">Resumo</h3><p className="whitespace-pre-line">{data.summary || "Preencha no formulário."}</p></section><section className="mt-3"><h3 className="font-bold">Experiência profissional</h3><ul className="list-disc pl-5">{renderTimeline(data.experiences)}</ul></section><section className="mt-3"><h3 className="font-bold">Formação</h3><ul className="list-disc pl-5">{renderTimeline(data.education)}</ul></section><section className="mt-3"><h3 className="font-bold">Competências</h3><p>{data.skills.map((s)=>s.name).join(" • ") || "Preencha no formulário."}</p></section><section className="mt-3"><h3 className="font-bold">Dados adicionais</h3><p className="whitespace-pre-line">{data.additionalInfo || ""}</p></section></div>;
+  const isModern = data.templateId === "modern";
+  const isCompact = data.templateId === "compact";
+  const wrapperClasses = isModern
+    ? "bg-gradient-to-br from-zinc-50 via-white to-emerald-50"
+    : isCompact
+      ? "text-[11px]"
+      : "";
+  return <div ref={previewRef} className={`resume-print-area mx-auto aspect-[210/297] w-full max-w-[794px] overflow-hidden bg-white p-8 text-[12px] text-zinc-800 shadow-2xl ${wrapperClasses}`}><h2 className={`text-zinc-950 ${isCompact ? "text-2xl" : "text-3xl"} font-black`}>{profile.fullname}</h2><p className={`font-semibold ${isModern ? "text-emerald-800" : "text-emerald-700"}`}>{data.professionalTitle || "Cargo / área"}</p><div className="mt-2 text-[11px] text-zinc-600">{data.email} • {profile.phone || "-"}{data.linkedin?` • ${data.linkedin}`:""}{data.lattes?` • ${data.lattes}`:""}</div><div className="text-[11px] text-zinc-500">{associationAddress?.address || ""}</div><section className={`${isCompact ? "mt-2" : "mt-4"}`}><h3 className={`font-bold ${isModern ? "uppercase tracking-wide" : ""}`}>Resumo</h3><p className="whitespace-pre-line">{data.summary || "Preencha no formulário."}</p></section><section className="mt-3"><h3 className={`font-bold ${isModern ? "uppercase tracking-wide" : ""}`}>Experiência profissional</h3><ul className="list-disc pl-5">{renderTimeline(data.experiences)}</ul></section><section className="mt-3"><h3 className={`font-bold ${isModern ? "uppercase tracking-wide" : ""}`}>Formação</h3><ul className="list-disc pl-5">{renderTimeline(data.education)}</ul></section><section className="mt-3"><h3 className={`font-bold ${isModern ? "uppercase tracking-wide" : ""}`}>Competências</h3><p>{data.skills.map((s)=>s.name).join(" • ") || "Preencha no formulário."}</p></section><section className="mt-3"><h3 className={`font-bold ${isModern ? "uppercase tracking-wide" : ""}`}>Dados adicionais</h3><p className="whitespace-pre-line">{data.additionalInfo || ""}</p></section></div>;
 }
 
 export default function ResumeBuilderPage() {
@@ -46,7 +95,7 @@ export default function ResumeBuilderPage() {
     if (cachedProfile) {
       setProfile(cachedProfile);
       const cachedResume = getResumeBuilderCache(cachedProfile.id);
-      setFormData({ ...emptyForm, email: cachedProfile.email ?? "", ...(cachedResume?.data ?? {}) });
+      setFormData(sanitizeFormData(cachedResume?.data, cachedProfile.email ?? ""));
       setLoading(false);
     }
     (async () => {
@@ -56,7 +105,7 @@ export default function ResumeBuilderPage() {
         setProfile(nextProfile);
         setAssociationAddress({ associationName: association.associationName, address: association.fullAddress });
         const cachedResume = getResumeBuilderCache(nextProfile.id);
-        setFormData({ ...emptyForm, email: nextProfile.email ?? "", ...(cachedResume?.data ?? {}) });
+        setFormData(sanitizeFormData(cachedResume?.data, nextProfile.email ?? ""));
       } catch (error) {
         if (!active) return;
         setErrorMessage(error instanceof Error ? error.message : "Erro ao carregar dados");
@@ -81,6 +130,7 @@ export default function ResumeBuilderPage() {
 
   return <DashboardLayout><MainLayout><div className="mx-auto max-w-7xl"><DashboardHeader title="Criador de Currículos" />{errorMessage?<div className="mb-4 text-sm text-red-500">{errorMessage}</div>:null}{successMessage?<div className="mb-4 inline-flex items-center gap-2 text-emerald-600"><CheckCircle2 size={14}/>{successMessage}</div>:null}<div className="mb-4 flex gap-2"><button type="button" onClick={()=>window.print()} className="rounded-xl border px-4 py-2 text-sm"><FileText size={14} className="mr-1 inline"/>Imprimir/PDF</button><button type="button" onClick={handleDownload} disabled={downloading} className="rounded-xl border px-4 py-2 text-sm">{downloading?<LoaderCircle size={14} className="mr-1 inline animate-spin"/>:<Download size={14} className="mr-1 inline"/>}Baixar</button></div><div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,430px)_1fr]"><aside className="space-y-4"><PersonalDataSection profile={profile} associationAddress={associationAddress} email={formData.email} linkedin={formData.linkedin} lattes={formData.lattes} onEmailChange={(v)=>updateField("email",v)} onLinkedinChange={(v)=>updateField("linkedin",v)} onLattesChange={(v)=>updateField("lattes",v)} />
 <section className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950"><h2 className="text-sm font-black uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">Dados profissionais</h2><div className="mt-4 space-y-3"><input className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700" value={formData.professionalTitle} onChange={(e)=>updateField("professionalTitle", e.target.value)} placeholder="Cargo ou área"/><textarea className="min-h-24 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700" value={formData.summary} onChange={(e)=>updateField("summary", e.target.value)} placeholder="Resumo profissional"/></div></section>
+<section className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950"><h2 className="text-sm font-black uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">Layout do currículo</h2><div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">{allowedTemplates.map((templateId)=><button key={templateId} type="button" onClick={()=>updateField("templateId",templateId)} className={`rounded-xl border px-3 py-2 text-sm capitalize ${formData.templateId===templateId?"border-emerald-500 bg-emerald-50 text-emerald-700":"border-zinc-200"}`}>{templateId}</button>)}</div></section>
 <TimelineListSection title="Experiência" items={formData.experiences} limit={3} onChange={(v)=>updateField("experiences",v)} />
 <TimelineListSection title="Formação" items={formData.education} limit={5} onChange={(v)=>updateField("education",v)} />
 <SkillsSection items={formData.skills} onChange={(v)=>updateField("skills",v)} />
