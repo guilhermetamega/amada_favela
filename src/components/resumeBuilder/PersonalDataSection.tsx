@@ -1,4 +1,4 @@
-import SectionCard from "@/components/resumeBuilder/SectionCard";
+import SectionCard from "@/components/resumeBuilder/Section";
 import type {
   AssociationAddressData,
   ResumeProfileData,

@@ -1,5 +1,5 @@
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import SectionCard from "@/components/resumeBuilder/SectionCard";
+import SectionCard from "@/components/resumeBuilder/Section";
 import type { ResumeTimelineItem } from "@/types/resume_builder";
 
 const months = [
@@ -17,7 +17,7 @@ const months = [
   "12",
 ];
 const years = Array.from(
-  { length: 50 },
+  { length: 100 },
   (_, i) => `${new Date().getFullYear() - i}`,
 );
 
@@ -164,7 +164,7 @@ export default function TimelineListSection({
                   }
                   className="mr-2"
                 />
-                Atual
+                Atualmente
               </label>
               <textarea
                 className="min-h-20 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700"

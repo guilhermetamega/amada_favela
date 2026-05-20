@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import SectionCard from "@/components/resumeBuilder/SectionCard";
+import SectionCard from "@/components/resumeBuilder/Section";
 import type { ResumeSkillItem } from "@/types/resume_builder";
 
 export default function SkillsSection({
