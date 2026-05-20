@@ -11,7 +11,7 @@ function renderTimelineLines(items: ResumeBuilderFormData["experiences"]) {
   if (!items.length) return ["Adicione uma informação por linha."];
   return items.map(
     (i) =>
-      `${i.institution} • ${i.role} (${i.startMonth}/${i.startYear} - ${i.isCurrent ? "Atual" : `${i.endMonth}/${i.endYear}`})${i.activities ? ` • ${i.activities}` : ""}`,
+      `${i.institution} - ${i.role} (${i.startMonth}/${i.startYear} - ${i.isCurrent ? "Atual" : `${i.endMonth}/${i.endYear}`})${i.activities ? ` - ${i.activities}` : ""}`,
   );
 }
 

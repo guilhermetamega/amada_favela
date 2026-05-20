@@ -2,12 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import {
   CheckCircle2,
   CreditCard,
-  Download,
   FileText,
   LoaderCircle,
+  Mail,
+  MapPin,
+  Phone,
   Sparkles,
 } from "lucide-react";
 import { toPng } from "html-to-image";
+import { PDFDocument } from "pdf-lib";
 import { useNavigate } from "react-router-dom";
 import DashboardHeader from "@/components/layout/DashboardHeader";
 import DashboardLayout from "@/components/layout/Layout";
@@ -29,7 +32,6 @@ import type {
   ResumeBuilderFormData,
   ResumeProfileData,
 } from "@/types/resume_builder";
-import ResumePreview from "@/components/resumeBuilder/ResumePreview";
 
 const emptyForm: ResumeBuilderFormData = {
   templateId: "classic",
@@ -126,6 +128,225 @@ function sanitizeFormData(
   };
 }
 
+function renderTimelineLines(items: ResumeBuilderFormData["experiences"]) {
+  if (!items.length) return ["Adicione uma informação por linha."];
+  return items.map(
+    (i) =>
+      `${i.institution} • ${i.role} (${i.startMonth}/${i.startYear} - ${i.isCurrent ? "Atual" : `${i.endMonth}/${i.endYear}`})${i.activities ? ` • ${i.activities}` : ""}`,
+  );
+}
+
+function ResumeSection({
+  title,
+  children,
+  compact = false,
+}: {
+  title: string;
+  children: React.ReactNode;
+  compact?: boolean;
+}) {
+  return (
+    <section className={compact ? "space-y-1.5" : "space-y-2"}>
+      <h3 className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function LineList({ lines }: { lines: string[] }) {
+  if (!lines.length)
+    return <p className="text-zinc-400">Adicione uma informação por linha.</p>;
+  return (
+    <ul className="space-y-1.5">
+      {lines.map((line, index) => (
+        <li key={`${line}-${index}`} className="flex gap-2 leading-snug">
+          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-60" />
+          <span>{line}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ResumePreview({
+  profile,
+  associationAddress,
+  data,
+  previewRef,
+}: {
+  profile: ResumeProfileData;
+  associationAddress: AssociationAddressData | null;
+  data: ResumeBuilderFormData;
+  previewRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const contactItems = [
+    { icon: Mail, label: data.email || "email@exemplo.com" },
+    { icon: Phone, label: profile.phone || "Telefone não informado" },
+    {
+      icon: MapPin,
+      label: associationAddress?.address || "Endereço não informado",
+    },
+  ];
+  const experienceLines = renderTimelineLines(data.experiences);
+  const educationLines = renderTimelineLines(data.education);
+  const skillsLines = data.skills.length ? data.skills.map((s) => s.name) : [];
+  const extraLines = data.additionalInfo
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (data.templateId === "modern")
+    return (
+      <div
+        ref={previewRef}
+        className="resume-print-area mx-auto flex aspect-210/297 w-full max-w-198.5 flex-col overflow-hidden bg-white text-[13px] text-zinc-700 shadow-2xl"
+      >
+        <header className="bg-linear-to-br from-emerald-700 via-emerald-600 to-cyan-600 px-8 py-7 text-white">
+          <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-emerald-100">
+            Currículo profissional
+          </p>
+          <h2 className="mt-2 text-3xl font-black leading-tight">
+            {profile.fullname}
+          </h2>
+          <p className="mt-1 text-sm font-semibold text-emerald-50">
+            {data.professionalTitle || "Cargo ou área de interesse"}
+          </p>
+          <div className="mt-4 grid gap-2 text-[11px] text-emerald-50 sm:grid-cols-3">
+            {contactItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <span key={item.label} className="flex items-center gap-1.5">
+                  <Icon size={12} />
+                  {item.label}
+                </span>
+              );
+            })}
+          </div>
+        </header>
+        <div className="grid flex-1 grid-cols-[1fr_240px] gap-6 px-8 py-6">
+          <main className="space-y-5">
+            <ResumeSection title="Resumo">
+              <p className="whitespace-pre-line leading-relaxed">
+                {data.summary || "Preencha esta seção no formulário."}
+              </p>
+            </ResumeSection>
+            <ResumeSection title="Experiência profissional">
+              <LineList lines={experienceLines} />
+            </ResumeSection>
+            <ResumeSection title="Formação">
+              <LineList lines={educationLines} />
+            </ResumeSection>
+          </main>
+          <aside className="space-y-5 rounded-3xl bg-zinc-100 p-5">
+            <ResumeSection title="Competências">
+              <LineList lines={skillsLines} />
+            </ResumeSection>
+            <ResumeSection title="Informações adicionais">
+              <LineList lines={extraLines} />
+            </ResumeSection>
+          </aside>
+        </div>
+      </div>
+    );
+
+  if (data.templateId === "compact")
+    return (
+      <div
+        ref={previewRef}
+        className="resume-print-area mx-auto aspect-210/297 w-full max-w-198.5 overflow-hidden bg-white p-7 text-[12px] text-zinc-700 shadow-2xl"
+      >
+        <header className="border-b-2 border-zinc-900 pb-4">
+          <div className="flex items-start justify-between gap-5">
+            <div>
+              <h2 className="text-2xl font-black uppercase tracking-tight text-zinc-950">
+                {profile.fullname}
+              </h2>
+              <p className="mt-1 font-bold text-zinc-700">
+                {data.professionalTitle || "Cargo ou área de interesse"}
+              </p>
+            </div>
+            <div className="max-w-65 space-y-1 text-right text-[10px] font-medium text-zinc-600">
+              {contactItems.map((item) => (
+                <p key={item.label}>{item.label}</p>
+              ))}
+            </div>
+          </div>
+        </header>
+        <main className="mt-5 grid grid-cols-[1fr_220px] gap-5">
+          <div className="space-y-4">
+            <ResumeSection title="Perfil profissional" compact>
+              <p className="whitespace-pre-line leading-relaxed">
+                {data.summary || "Preencha esta seção no formulário."}
+              </p>
+            </ResumeSection>
+            <ResumeSection title="Experiência" compact>
+              <LineList lines={experienceLines} />
+            </ResumeSection>
+            <ResumeSection title="Formação" compact>
+              <LineList lines={educationLines} />
+            </ResumeSection>
+          </div>
+          <div className="space-y-4 border-l border-zinc-200 pl-5">
+            <ResumeSection title="Competências" compact>
+              <LineList lines={skillsLines} />
+            </ResumeSection>
+            <ResumeSection title="Extras" compact>
+              <LineList lines={extraLines} />
+            </ResumeSection>
+          </div>
+        </main>
+      </div>
+    );
+
+  return (
+    <div
+      ref={previewRef}
+      className="resume-print-area mx-auto aspect-210/297 w-full max-w-198.5 overflow-hidden bg-white p-8 text-[13px] text-zinc-700 shadow-2xl"
+    >
+      <header className="text-center">
+        <h2 className="text-3xl font-black uppercase tracking-[0.08em] text-zinc-950">
+          {profile.fullname}
+        </h2>
+        <p className="mt-2 text-sm font-bold text-emerald-700">
+          {data.professionalTitle || "Cargo ou área de interesse"}
+        </p>
+        <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[11px] font-medium text-zinc-600">
+          {contactItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <span key={item.label} className="inline-flex items-center gap-1">
+                <Icon size={12} />
+                {item.label}
+              </span>
+            );
+          })}
+        </div>
+      </header>
+      <main className="mt-7 space-y-5">
+        <ResumeSection title="Resumo profissional">
+          <p className="whitespace-pre-line leading-relaxed">
+            {data.summary || "Preencha esta seção no formulário."}
+          </p>
+        </ResumeSection>
+        <ResumeSection title="Experiência profissional">
+          <LineList lines={experienceLines} />
+        </ResumeSection>
+        <ResumeSection title="Formação">
+          <LineList lines={educationLines} />
+        </ResumeSection>
+        <ResumeSection title="Competências">
+          <LineList lines={skillsLines} />
+        </ResumeSection>
+        <ResumeSection title="Informações adicionais">
+          <LineList lines={extraLines} />
+        </ResumeSection>
+      </main>
+    </div>
+  );
+}
+
 export default function ResumeBuilderPage() {
   const { permissions, loading: permissionsLoading } = usePermissions();
   const navigate = useNavigate();
@@ -203,15 +424,33 @@ export default function ResumeBuilderPage() {
     if (!previewRef.current || !profile || downloading) return;
     try {
       setDownloading(true);
+      setErrorMessage("");
       const dataUrl = await toPng(previewRef.current, {
         cacheBust: true,
-        pixelRatio: 2,
+        pixelRatio: 3,
         backgroundColor: "#ffffff",
       });
+      const imageBytes = await fetch(dataUrl).then((response) =>
+        response.arrayBuffer(),
+      );
+      const pdf = await PDFDocument.create();
+      const page = pdf.addPage([595.28, 841.89]);
+      const image = await pdf.embedPng(imageBytes);
+      const pageWidth = page.getWidth();
+      const pageHeight = page.getHeight();
+      page.drawImage(image, {
+        x: 0,
+        y: 0,
+        width: pageWidth,
+        height: pageHeight,
+      });
+      const pdfDataUri = await pdf.saveAsBase64({ dataUri: true });
       const link = document.createElement("a");
-      link.href = dataUrl;
-      link.download = `curriculo-${normalizeFileName(profile.fullname)}.png`;
+      link.href = pdfDataUri;
+      link.download = `curriculo-${normalizeFileName(profile.fullname)}.pdf`;
       link.click();
+    } catch {
+      setErrorMessage("Não foi possível gerar o PDF agora.");
     } finally {
       setDownloading(false);
     }
@@ -274,24 +513,16 @@ export default function ResumeBuilderPage() {
           <div className="mb-4 flex gap-2">
             <button
               type="button"
-              onClick={() => window.print()}
-              className="rounded-xl border px-4 py-2 text-sm"
-            >
-              <FileText size={14} className="mr-1 inline" />
-              Imprimir/PDF
-            </button>
-            <button
-              type="button"
               onClick={handleDownload}
               disabled={downloading}
-              className="rounded-xl border px-4 py-2 text-sm"
+              className="rounded-xl flex items-center justify-center border px-4 py-2 text-sm"
             >
               {downloading ? (
                 <LoaderCircle size={14} className="mr-1 inline animate-spin" />
               ) : (
-                <Download size={14} className="mr-1 inline" />
+                <FileText size={14} className="mr-1 inline" />
               )}
-              Baixar
+              Baixar PDF
             </button>
           </div>
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,430px)_1fr]">
@@ -374,8 +605,8 @@ export default function ResumeBuilderPage() {
               </section>
             </aside>
             <section className="rounded-[28px] border border-zinc-200 bg-zinc-100 p-3 dark:border-zinc-800 dark:bg-zinc-950 sm:p-5">
-              <div className="overflow-x-auto rounded-3xl bg-zinc-200 p-3 dark:bg-zinc-900 sm:p-6">
-                <div className="min-w-155">
+              <div className="rounded-3xl bg-zinc-200 p-2 dark:bg-zinc-900 sm:p-4">
+                <div className="w-full">
                   <ResumePreview
                     profile={profile}
                     associationAddress={associationAddress}
