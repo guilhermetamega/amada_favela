@@ -43,6 +43,7 @@ const SocialProjectsDetailsPage = lazy(
 const ProfilePage = lazy(() => import("@/pages/Dashboard/Profile"));
 const MemberCardPage = lazy(() => import("@/pages/MemberCard"));
 const ProofOfResidencePage = lazy(() => import("@/pages/ProofOfResidence"));
+const ResumeBuilderPage = lazy(() => import("@/pages/ResumeBuilder"));
 const ValidateProofPage = lazy(() => import("@/pages/ValidateProof"));
 
 const AdminPage = lazy(() => import("@/pages/Admin"));
@@ -120,6 +121,7 @@ export function AppRoutes() {
               path="/proof-of-residence"
               element={<ProofOfResidencePage />}
             />
+            <Route path="/resume-builder" element={<ResumeBuilderPage />} />
 
             <Route path="/social-projects" element={<SocialProjectsPage />} />
             <Route
