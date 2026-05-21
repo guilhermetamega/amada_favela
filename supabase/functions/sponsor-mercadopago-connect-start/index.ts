@@ -29,7 +29,7 @@ serve(async (req) => {
 
     const url = buildMercadoPagoAuthorizationUrl({
       clientId: mp.clientId,
-      redirectUri: `${mp.appBaseUrl}/functions/v1/sponsor-mercadopago-oauth-callback`,
+      redirectUri: mp.redirectUri,
       state,
     });
 

@@ -24,7 +24,7 @@ serve(async (req) => {
   }
 
   try {
-    const token = await exchangeAuthorizationCode({ clientId: mp.clientId, clientSecret: mp.clientSecret, code, redirectUri: `${mp.appBaseUrl}/functions/v1/sponsor-mercadopago-oauth-callback`, state });
+    const token = await exchangeAuthorizationCode({ clientId: mp.clientId, clientSecret: mp.clientSecret, code, redirectUri: mp.redirectUri, state });
     const tokenExpiresAt = new Date(Date.now() + token.expires_in * 1000).toISOString();
     await admin.from("sponsor_mercadopago_accounts").upsert({
       sponsor_id: oauthState.sponsor_id,
