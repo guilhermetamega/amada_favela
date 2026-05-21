@@ -109,7 +109,7 @@ export default function PublicRafflePage() {
                   <input className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800" placeholder="Nome completo" value={name} onChange={(e) => setName(e.target.value)} required />
                   <input className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800" placeholder="Whatsapp" value={phone} onChange={(e) => setPhone(e.target.value)} required />
                   <input className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800" placeholder="Instagram (opcional)" value={instagram} onChange={(e) => setInstagram(e.target.value)} />
-                  <input className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800" placeholder="E-mail (opcional)" value={email} onChange={(e) => setEmail(e.target.value)} />
+                  <input className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} required />
                   <button disabled={submitting} onClick={checkoutPix} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 font-semibold text-white disabled:opacity-60 dark:bg-white dark:text-zinc-900">{submitting ? "Gerando Pix..." : `Pagar R$ ${(total / 100).toFixed(2)}`}</button>
                 </div>
               </>

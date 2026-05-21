@@ -9,8 +9,10 @@ serve(async (req) => {
   try {
     const { raffleId, selectedNumbers, buyerName, buyerPhone, buyerInstagram, buyerEmail } = await req.json();
 
-    if (!raffleId || !Array.isArray(selectedNumbers) || selectedNumbers.length === 0 || !buyerName || !buyerPhone) {
-      return json(400, { error: "Dados inválidos para pagamento." });
+    const safeEmail = typeof buyerEmail === "string" ? buyerEmail.trim().toLowerCase() : "";
+
+    if (!raffleId || !Array.isArray(selectedNumbers) || selectedNumbers.length === 0 || !buyerName || !buyerPhone || !safeEmail) {
+      return json(400, { error: "Dados inválidos para pagamento. Nome, telefone e e-mail são obrigatórios." });
     }
 
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -29,14 +31,19 @@ serve(async (req) => {
         transaction_amount: Number((totalCents / 100).toFixed(2)),
         description: `Rifa ${raffle.title}`,
         payment_method_id: "pix",
-        payer: { email: (buyerEmail && buyerEmail.trim()) || `comprador+${crypto.randomUUID()}@example.com`, first_name: buyerName },
+        payer: { email: safeEmail, first_name: buyerName },
         metadata: { raffle_id: raffleId, selected_numbers: selectedNumbers, buyer_name: buyerName, buyer_phone: buyerPhone, buyer_instagram: buyerInstagram || null, buyer_email: buyerEmail || null },
       }),
     });
 
     const mpData = await mpResponse.json();
     if (!mpResponse.ok) {
-      const cause = typeof mpData?.message === "string" ? mpData.message : "";
+      const causeFromMessage = typeof mpData?.message === "string" ? mpData.message : "";
+      const causeFromError = typeof mpData?.error_message === "string" ? mpData.error_message : "";
+      const causeFromList = Array.isArray(mpData?.cause)
+        ? mpData.cause.map((item: { description?: string }) => item?.description).filter(Boolean).join(" | ")
+        : "";
+      const cause = [causeFromMessage, causeFromError, causeFromList].filter(Boolean).join(" | ");
       return json(400, { error: `Falha ao criar pagamento PIX.${cause ? ` ${cause}` : ""}`, details: mpData });
     }
 
