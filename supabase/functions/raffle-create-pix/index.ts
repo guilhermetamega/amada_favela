@@ -139,7 +139,13 @@ serve(async (req) => {
       }),
     });
 
-    const mpData = await mpResponse.json();
+    const mpRaw = await mpResponse.text();
+    let mpData: any = {};
+    try {
+      mpData = mpRaw ? JSON.parse(mpRaw) : {};
+    } catch {
+      mpData = { raw: mpRaw };
+    }
     log("mercadopago-response", {
       requestId,
       status: mpResponse.status,

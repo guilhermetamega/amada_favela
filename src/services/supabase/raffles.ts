@@ -1,3 +1,4 @@
+import { getSponsorProfile } from "@/lib/sponsorSession";
 import { supabase } from "@/services/supabase/client";
 import type {
   CreateRaffleInput,
@@ -20,12 +21,16 @@ async function uploadRaffleImages(raffleId: string, files: File[]) {
 }
 
 export async function createSponsorRaffle(input: CreateRaffleInput) {
+  const sponsorId = getSponsorProfile()?.sponsor.id;
+  if (!sponsorId) throw new Error("Sessão de patrocinador inválida.");
+
   const { data, error } = await supabase.rpc("create_sponsor_raffle", {
     input_title: input.title,
     input_description: input.description,
     input_sales_end_at: input.salesEndAt,
     input_total_numbers: input.totalNumbers,
     input_number_price_cents: input.numberPriceCents,
+    input_sponsor_id: sponsorId,
   });
   if (error || !data) throw new Error(error?.message || "Erro ao criar rifa.");
 
