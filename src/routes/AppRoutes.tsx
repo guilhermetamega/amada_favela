@@ -79,9 +79,11 @@ export function AppRoutes() {
           <Route path="/auth" element={<AuthPage />} />
 
           <Route path="/sponsor/login" element={<SponsorLoginPage />} />
+          <Route path="/sponsor/login/" element={<SponsorLoginPage />} />
 
           <Route element={<SponsorSessionGuard />}>
             <Route path="/sponsor" element={<SponsorHomePage />} />
+            <Route path="/sponsor/" element={<SponsorHomePage />} />
 
             <Route
               path="/sponsor/weekly-ad"
@@ -183,6 +185,7 @@ export function AppRoutes() {
           />
 
           <Route path="/raffles/:slug" element={<PublicRafflePage />} />
+          <Route path="/sponsor/*" element={<NotFoundPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>

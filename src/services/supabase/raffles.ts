@@ -1,3 +1,4 @@
+import { getSponsorProfile } from "@/lib/sponsorSession";
 import { supabase } from "@/services/supabase/client";
 import type {
   CreateRaffleInput,
@@ -20,12 +21,16 @@ async function uploadRaffleImages(raffleId: string, files: File[]) {
 }
 
 export async function createSponsorRaffle(input: CreateRaffleInput) {
+  const sponsorId = getSponsorProfile()?.sponsor.id;
+  if (!sponsorId) throw new Error("Sessão de patrocinador inválida.");
+
   const { data, error } = await supabase.rpc("create_sponsor_raffle", {
     input_title: input.title,
     input_description: input.description,
     input_sales_end_at: input.salesEndAt,
     input_total_numbers: input.totalNumbers,
     input_number_price_cents: input.numberPriceCents,
+    input_sponsor_id: sponsorId,
   });
   if (error || !data) throw new Error(error?.message || "Erro ao criar rifa.");
 
@@ -60,6 +65,28 @@ export async function getPublicRaffleBySlug(slug: string) {
   return data as RafflePublicDetails;
 }
 
+async function parseFunctionErrorResponse(response: Response) {
+  let payload: unknown = null;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
+
+  if (payload && typeof payload === "object") {
+    const maybeError = (payload as { error?: unknown }).error;
+    const maybeCode = (payload as { code?: unknown }).code;
+    const maybeDebug = (payload as { debugStep?: unknown }).debugStep;
+    const message = typeof maybeError === "string" ? maybeError : "";
+    const suffix = [maybeCode, maybeDebug]
+      .filter((item) => typeof item === "string" && item.length > 0)
+      .join(" | ");
+    if (message) return suffix ? `${message} (${suffix})` : message;
+  }
+
+  return `Falha HTTP ${response.status} ao gerar pagamento PIX.`;
+}
+
 export async function createRafflePixCheckout(payload: {
   raffleId: string;
   selectedNumbers: number[];
@@ -75,16 +102,34 @@ export async function createRafflePixCheckout(payload: {
     hasBuyerPhone: !!payload.buyerPhone,
     hasBuyerEmail: !!payload.buyerEmail,
   });
-  const { data, error } = await supabase.functions.invoke("raffle-create-pix", {
-    body: payload,
-  });
-  if (error) {
-    console.error("[raffles] invoke error", error);
-    throw new Error(error.message || "Não foi possível gerar o pagamento PIX.");
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/raffle-create-pix`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  if (!response.ok) {
+    const message = await parseFunctionErrorResponse(response);
+    console.error("[raffles] invoke error", {
+      status: response.status,
+      message,
+    });
+    throw new Error(message);
   }
 
+  const data = (await response.json()) as { error?: string } | null;
   console.info("[raffles] invoke data", data);
-  const maybeError = (data as { error?: string } | null)?.error;
+  const maybeError = data?.error;
   if (maybeError) throw new Error(maybeError);
   if (!data) throw new Error("Não foi possível gerar o pagamento PIX.");
   return data as {
@@ -93,5 +138,27 @@ export async function createRafflePixCheckout(payload: {
     qrCodeBase64: string | null;
     ticketUrl: string | null;
     totalCents: number;
+  };
+}
+
+export async function getSponsorRaffleStatus() {
+  const token = localStorage.getItem("sponsor_session_token");
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sponsor-raffle-status`,
+    {
+      method: "GET",
+      headers: {
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    },
+  );
+
+  if (!response.ok)
+    throw new Error("Não foi possível verificar conexão do Mercado Pago.");
+  return (await response.json()) as {
+    connected: boolean;
+    message: string;
+    status: string;
   };
 }
