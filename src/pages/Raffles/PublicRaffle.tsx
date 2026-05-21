@@ -57,6 +57,13 @@ export default function PublicRafflePage() {
     }
 
     try {
+      console.info("[PublicRaffle] checkout start", {
+        raffleId: raffle.id,
+        selected,
+        name,
+        phone,
+        email,
+      });
       setSubmitting(true);
       setErrorMessage("");
       const data = await createRafflePixCheckout({
@@ -67,8 +74,10 @@ export default function PublicRafflePage() {
         buyerInstagram: instagram,
         buyerEmail: email,
       });
+      console.info("[PublicRaffle] checkout success", data);
       setCheckout(data);
     } catch (error) {
+      console.error("[PublicRaffle] checkout error", error);
       setErrorMessage(
         error instanceof Error
           ? error.message
@@ -174,9 +183,10 @@ export default function PublicRafflePage() {
                     />
                     <input
                       className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800"
-                      placeholder="E-mail (opcional)"
+                      placeholder="E-mail"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      required
                     />
                     <button
                       disabled={submitting}

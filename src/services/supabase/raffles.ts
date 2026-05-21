@@ -68,12 +68,22 @@ export async function createRafflePixCheckout(payload: {
   buyerInstagram?: string;
   buyerEmail?: string;
 }) {
+  console.info("[raffles] createRafflePixCheckout payload", {
+    raffleId: payload.raffleId,
+    selectedCount: payload.selectedNumbers.length,
+    hasBuyerName: !!payload.buyerName,
+    hasBuyerPhone: !!payload.buyerPhone,
+    hasBuyerEmail: !!payload.buyerEmail,
+  });
   const { data, error } = await supabase.functions.invoke("raffle-create-pix", {
     body: payload,
   });
-  if (error)
+  if (error) {
+    console.error("[raffles] invoke error", error);
     throw new Error(error.message || "Não foi possível gerar o pagamento PIX.");
+  }
 
+  console.info("[raffles] invoke data", data);
   const maybeError = (data as { error?: string } | null)?.error;
   if (maybeError) throw new Error(maybeError);
   if (!data) throw new Error("Não foi possível gerar o pagamento PIX.");
