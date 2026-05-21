@@ -65,6 +65,29 @@ export async function getPublicRaffleBySlug(slug: string) {
   return data as RafflePublicDetails;
 }
 
+
+async function parseFunctionErrorResponse(response: Response) {
+  let payload: unknown = null;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
+
+  if (payload && typeof payload === "object") {
+    const maybeError = (payload as { error?: unknown }).error;
+    const maybeCode = (payload as { code?: unknown }).code;
+    const maybeDebug = (payload as { debugStep?: unknown }).debugStep;
+    const message = typeof maybeError === "string" ? maybeError : "";
+    const suffix = [maybeCode, maybeDebug]
+      .filter((item) => typeof item === "string" && item.length > 0)
+      .join(" | ");
+    if (message) return suffix ? `${message} (${suffix})` : message;
+  }
+
+  return `Falha HTTP ${response.status} ao gerar pagamento PIX.`;
+}
+
 export async function createRafflePixCheckout(payload: {
   raffleId: string;
   selectedNumbers: number[];
@@ -80,16 +103,31 @@ export async function createRafflePixCheckout(payload: {
     hasBuyerPhone: !!payload.buyerPhone,
     hasBuyerEmail: !!payload.buyerEmail,
   });
-  const { data, error } = await supabase.functions.invoke("raffle-create-pix", {
-    body: payload,
-  });
-  if (error) {
-    console.error("[raffles] invoke error", error);
-    throw new Error(error.message || "Não foi possível gerar o pagamento PIX.");
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/raffle-create-pix`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  if (!response.ok) {
+    const message = await parseFunctionErrorResponse(response);
+    console.error("[raffles] invoke error", { status: response.status, message });
+    throw new Error(message);
   }
 
+  const data = (await response.json()) as { error?: string } | null;
   console.info("[raffles] invoke data", data);
-  const maybeError = (data as { error?: string } | null)?.error;
+  const maybeError = data?.error;
   if (maybeError) throw new Error(maybeError);
   if (!data) throw new Error("Não foi possível gerar o pagamento PIX.");
   return data as {

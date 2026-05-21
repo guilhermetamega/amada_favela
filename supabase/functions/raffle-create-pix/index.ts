@@ -26,14 +26,18 @@ serve(async (req) => {
       userAgent: req.headers.get("user-agent"),
     });
 
-    const {
-      raffleId,
-      selectedNumbers,
-      buyerName,
-      buyerPhone,
-      buyerInstagram,
-      buyerEmail,
-    } = await req.json();
+    let payload: Record<string, unknown> = {};
+    try {
+      payload = await req.json();
+    } catch {
+      return json(400, {
+        error: "Body JSON inválido.",
+        debugStep: "parse-json",
+        requestId,
+      });
+    }
+
+    const { raffleId, selectedNumbers, buyerName, buyerPhone, buyerInstagram, buyerEmail } = payload;
     const safeEmail =
       typeof buyerEmail === "string" ? buyerEmail.trim().toLowerCase() : "";
 
@@ -69,7 +73,7 @@ serve(async (req) => {
     const mpToken = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN");
     if (!supabaseUrl || !serviceRole || !mpToken) {
       return json(500, {
-        error: "Secrets não configurados.",
+        error: "Secrets não configurados (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, MERCADOPAGO_ACCESS_TOKEN).",
         debugStep: "validate-secrets",
         requestId,
       });
