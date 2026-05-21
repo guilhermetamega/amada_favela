@@ -48,6 +48,10 @@ export async function getPublicRaffleBySlug(slug: string) {
 
 export async function createRafflePixCheckout(payload: { raffleId: string; selectedNumbers: number[]; buyerName: string; buyerPhone: string; buyerInstagram?: string; buyerEmail?: string; }) {
   const { data, error } = await supabase.functions.invoke("raffle-create-pix", { body: payload });
-  if (error || !data) throw new Error(error?.message || "Não foi possível gerar o pagamento PIX.");
+  if (error) throw new Error(error.message || "Não foi possível gerar o pagamento PIX.");
+
+  const maybeError = (data as { error?: string } | null)?.error;
+  if (maybeError) throw new Error(maybeError);
+  if (!data) throw new Error("Não foi possível gerar o pagamento PIX.");
   return data as { checkoutCode: string; qrCode: string | null; qrCodeBase64: string | null; ticketUrl: string | null; totalCents: number; };
 }

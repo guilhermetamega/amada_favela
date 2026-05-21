@@ -19,6 +19,8 @@ export default function PublicRafflePage() {
   const [email, setEmail] = useState("");
   const [checkout, setCheckout] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -41,14 +43,29 @@ export default function PublicRafflePage() {
   }, [raffle, page]);
 
   async function checkoutPix() {
-    const data = await createRafflePixCheckout({ raffleId: raffle.id, selectedNumbers: selected, buyerName: name, buyerPhone: phone, buyerInstagram: instagram, buyerEmail: email });
-    setCheckout(data);
+    if (!raffle || selected.length === 0) {
+      setErrorMessage("Selecione ao menos 1 número.");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setErrorMessage("");
+      const data = await createRafflePixCheckout({ raffleId: raffle.id, selectedNumbers: selected, buyerName: name, buyerPhone: phone, buyerInstagram: instagram, buyerEmail: email });
+      setCheckout(data);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Erro ao gerar o pagamento Pix.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
     <MainLayout className="min-h-dvh bg-zinc-50 px-4 py-6 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50 sm:py-8">
       <div className="mx-auto max-w-5xl rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8">
         {loading ? "Carregando rifa..." : !raffle ? "Rifa não encontrada." : (
+          <>
+            {errorMessage ? <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">{errorMessage}</div> : null}
           <>
             <h1 className="text-2xl font-bold">{raffle.title}</h1>
             <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">{raffle.description}</p>
@@ -93,11 +110,12 @@ export default function PublicRafflePage() {
                   <input className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800" placeholder="Whatsapp" value={phone} onChange={(e) => setPhone(e.target.value)} required />
                   <input className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800" placeholder="Instagram (opcional)" value={instagram} onChange={(e) => setInstagram(e.target.value)} />
                   <input className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800" placeholder="E-mail (opcional)" value={email} onChange={(e) => setEmail(e.target.value)} />
-                  <button onClick={checkoutPix} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 font-semibold text-white dark:bg-white dark:text-zinc-900">Pagar R$ {(total / 100).toFixed(2)}</button>
+                  <button disabled={submitting} onClick={checkoutPix} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 font-semibold text-white disabled:opacity-60 dark:bg-white dark:text-zinc-900">{submitting ? "Gerando Pix..." : `Pagar R$ ${(total / 100).toFixed(2)}`}</button>
                 </div>
               </>
             )}
-            {checkout ? <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300">Pagamento concluído. Código: {checkout.checkoutCode}</div> : null}
+            {checkout ? <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300">Pagamento gerado com sucesso. Código: {checkout.checkoutCode}</div> : null}
+          </>
           </>
         )}
       </div>

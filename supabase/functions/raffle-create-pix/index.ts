@@ -29,13 +29,16 @@ serve(async (req) => {
         transaction_amount: Number((totalCents / 100).toFixed(2)),
         description: `Rifa ${raffle.title}`,
         payment_method_id: "pix",
-        payer: { email: buyerEmail || `raffle-${crypto.randomUUID()}@amada.local`, first_name: buyerName },
+        payer: { email: (buyerEmail && buyerEmail.trim()) || `comprador+${crypto.randomUUID()}@example.com`, first_name: buyerName },
         metadata: { raffle_id: raffleId, selected_numbers: selectedNumbers, buyer_name: buyerName, buyer_phone: buyerPhone, buyer_instagram: buyerInstagram || null, buyer_email: buyerEmail || null },
       }),
     });
 
     const mpData = await mpResponse.json();
-    if (!mpResponse.ok) return json(400, { error: "Falha ao criar pagamento PIX.", details: mpData });
+    if (!mpResponse.ok) {
+      const cause = typeof mpData?.message === "string" ? mpData.message : "";
+      return json(400, { error: `Falha ao criar pagamento PIX.${cause ? ` ${cause}` : ""}`, details: mpData });
+    }
 
     return json(200, {
       checkoutCode: String(mpData.id),
