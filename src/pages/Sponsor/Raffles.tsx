@@ -3,6 +3,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import DashboardHeader from "@/components/layout/DashboardHeader";
 import {
   createSponsorRaffle,
+  getSponsorRaffleStatus,
   getSponsorRaffles,
 } from "@/services/supabase/raffles";
 import type { SponsorRaffle } from "@/types/raffle";
@@ -13,6 +14,8 @@ export default function SponsorRafflesPage() {
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [mpConnected, setMpConnected] = useState(false);
+  const [mpStatusMessage, setMpStatusMessage] = useState("");
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -24,8 +27,13 @@ export default function SponsorRafflesPage() {
   async function load() {
     try {
       setLoading(true);
-      const data = await getSponsorRaffles();
+      const [data, raffleStatus] = await Promise.all([
+        getSponsorRaffles(),
+        getSponsorRaffleStatus(),
+      ]);
       setItems(data);
+      setMpConnected(raffleStatus.connected);
+      setMpStatusMessage(raffleStatus.message);
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Erro ao carregar rifas.",
@@ -47,7 +55,7 @@ export default function SponsorRafflesPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (saving) return;
+    if (saving || !mpConnected) return;
     setSaving(true);
     setErrorMessage("");
     setSuccessMessage("");
@@ -80,6 +88,12 @@ export default function SponsorRafflesPage() {
     <MainLayout className="min-h-dvh bg-zinc-50 px-4 py-6 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50 sm:py-8">
       <div className="mx-auto max-w-6xl">
         <DashboardHeader title="Rifas" />
+
+        {mpStatusMessage ? (
+          <div className={`mt-6 rounded-2xl border px-4 py-3 text-sm ${mpConnected ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
+            {mpStatusMessage}
+          </div>
+        ) : null}
 
         {errorMessage ? (
           <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
@@ -142,7 +156,7 @@ export default function SponsorRafflesPage() {
                 className="w-full text-sm"
               />
               <button
-                disabled={saving}
+                disabled={saving || !mpConnected}
                 className="rounded-2xl bg-zinc-900 px-5 py-3 font-semibold text-white dark:bg-white dark:text-zinc-900"
               >
                 {saving ? "Salvando..." : "Criar rifa"}

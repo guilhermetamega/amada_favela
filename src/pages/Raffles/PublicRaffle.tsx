@@ -27,9 +27,18 @@ export default function PublicRafflePage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const data = await getPublicRaffleBySlug(slug);
-      setRaffle(data);
-      setLoading(false);
+      setErrorMessage("");
+      try {
+        const data = await getPublicRaffleBySlug(slug);
+        setRaffle(data);
+      } catch (error) {
+        setRaffle(null);
+        setErrorMessage(
+          error instanceof Error ? error.message : "Erro ao carregar rifa.",
+        );
+      } finally {
+        setLoading(false);
+      }
     }
     void load();
   }, [slug]);
