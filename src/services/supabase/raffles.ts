@@ -138,3 +138,18 @@ export async function createRafflePixCheckout(payload: {
     totalCents: number;
   };
 }
+
+
+export async function getSponsorRaffleStatus() {
+  const token = localStorage.getItem("sponsor_session_token");
+  const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sponsor-raffle-status`, {
+    method: "GET",
+    headers: {
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!response.ok) throw new Error("Não foi possível verificar conexão do Mercado Pago.");
+  return (await response.json()) as { connected: boolean; message: string; status: string };
+}

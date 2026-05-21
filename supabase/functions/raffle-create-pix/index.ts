@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleCors, json } from "../_shared/http.ts";
+import { createPixPayment, toMoneyNumberFromCents } from "../_shared/mercadopago.ts";
 
 const LOG_PREFIX = "[raffle-create-pix]";
 function log(step: string, payload?: unknown) {
@@ -70,10 +71,9 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const mpToken = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN");
-    if (!supabaseUrl || !serviceRole || !mpToken) {
+    if (!supabaseUrl || !serviceRole) {
       return json(500, {
-        error: "Secrets não configurados (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, MERCADOPAGO_ACCESS_TOKEN).",
+        error: "Secrets não configurados (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY).",
         debugStep: "validate-secrets",
         requestId,
       });
@@ -82,7 +82,7 @@ serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceRole);
     const { data: raffle, error: raffleError } = await admin
       .from("sponsor_raffles")
-      .select("id,title,number_price_cents,sales_end_at,status")
+      .select("id,sponsor_id,title,number_price_cents,sales_end_at,status")
       .eq("id", raffleId)
       .single();
 
@@ -110,68 +110,64 @@ serve(async (req) => {
     }
 
     const totalCents = selectedNumbers.length * raffle.number_price_cents;
-    log("mercadopago-request", { requestId, totalCents, title: raffle.title });
+    const { data: seller, error: sellerError } = await admin
+      .from("sponsor_mercadopago_accounts")
+      .select("access_token,status")
+      .eq("sponsor_id", raffle.sponsor_id)
+      .eq("status", "active")
+      .maybeSingle();
 
-    const mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${mpToken}`,
-        "X-Idempotency-Key":
-          `raffle-${raffleId}-${safeEmail}-${selectedNumbers.join("-")}`.slice(
-            0,
-            64,
-          ),
-      },
-      body: JSON.stringify({
-        transaction_amount: Number((totalCents / 100).toFixed(2)),
-        description: `Rifa ${raffle.title}`,
-        payment_method_id: "pix",
-        payer: {
-          email: safeEmail,
-          first_name: String(buyerName).trim().split(" ")[0] || "Comprador",
-        },
-        metadata: {
-          raffle_id: raffleId,
-          selected_numbers: selectedNumbers,
-          buyer_name: buyerName,
-          buyer_phone: buyerPhone,
-          buyer_instagram: buyerInstagram || null,
-          buyer_email: safeEmail,
-          request_id: requestId,
-        },
-      }),
-    });
+    if (sellerError || !seller?.access_token) {
+      return json(400, {
+        error: "Patrocinador não conectou a conta Mercado Pago.",
+        code: "missing_active_sponsor_seller_account",
+        debugStep: "load-sponsor-seller-account",
+        requestId,
+      });
+    }
 
-    const mpRaw = await mpResponse.text();
+    const platformFeeCents = Math.floor(totalCents * 0.1);
+
+    log("mercadopago-request", { requestId, totalCents, title: raffle.title, platformFeeCents });
+
     let mpData: any = {};
     try {
-      mpData = mpRaw ? JSON.parse(mpRaw) : {};
-    } catch {
-      mpData = { raw: mpRaw };
-    }
-    log("mercadopago-response", {
-      requestId,
-      status: mpResponse.status,
-      body: mpData,
-    });
-
-    if (!mpResponse.ok) {
-      const causeFromMessage =
-        typeof mpData?.message === "string" ? mpData.message : "";
-      const causeFromError =
-        typeof mpData?.error_message === "string" ? mpData.error_message : "";
-      const causeFromList = Array.isArray(mpData?.cause)
-        ? mpData.cause
-            .map((item: { description?: string }) => item?.description)
-            .filter(Boolean)
-            .join(" | ")
-        : "";
-      const cause = [causeFromMessage, causeFromError, causeFromList]
-        .filter(Boolean)
-        .join(" | ");
+      mpData = await createPixPayment({
+        sellerAccessToken: String(seller.access_token),
+        idempotencyKey: `raffle-${raffleId}-${safeEmail}-${selectedNumbers.join("-")}`.slice(0, 64),
+        body: {
+          transaction_amount: toMoneyNumberFromCents(totalCents),
+          application_fee: toMoneyNumberFromCents(platformFeeCents),
+          description: `Rifa ${raffle.title}`,
+          payment_method_id: "pix",
+          payer: {
+            email: safeEmail,
+            first_name: String(buyerName).trim().split(" ")[0] || "Comprador",
+          },
+          metadata: {
+            raffle_id: raffleId,
+            selected_numbers: selectedNumbers,
+            buyer_name: buyerName,
+            buyer_phone: buyerPhone,
+            buyer_instagram: buyerInstagram || null,
+            buyer_email: safeEmail,
+            request_id: requestId,
+          },
+        },
+      });
+    } catch (error) {
       return json(400, {
-        error: `Falha ao criar pagamento PIX.${cause ? ` ${cause}` : ""}`,
+        error: error instanceof Error ? error.message : "Falha ao criar pagamento PIX.",
+        debugStep: "mercadopago-create-payment",
+        requestId,
+      });
+    }
+
+    log("mercadopago-response", { requestId, body: mpData });
+
+    if (!mpData?.id) {
+      return json(400, {
+        error: "Falha ao criar pagamento PIX.",
         details: mpData,
         debugStep: "mercadopago-create-payment",
         requestId,
