@@ -47,9 +47,20 @@ export async function getPublicRaffleBySlug(slug: string) {
 }
 
 export async function createRafflePixCheckout(payload: { raffleId: string; selectedNumbers: number[]; buyerName: string; buyerPhone: string; buyerInstagram?: string; buyerEmail?: string; }) {
+  console.info("[raffles] createRafflePixCheckout payload", {
+    raffleId: payload.raffleId,
+    selectedCount: payload.selectedNumbers.length,
+    hasBuyerName: !!payload.buyerName,
+    hasBuyerPhone: !!payload.buyerPhone,
+    hasBuyerEmail: !!payload.buyerEmail,
+  });
   const { data, error } = await supabase.functions.invoke("raffle-create-pix", { body: payload });
-  if (error) throw new Error(error.message || "Não foi possível gerar o pagamento PIX.");
+  if (error) {
+    console.error("[raffles] invoke error", error);
+    throw new Error(error.message || "Não foi possível gerar o pagamento PIX.");
+  }
 
+  console.info("[raffles] invoke data", data);
   const maybeError = (data as { error?: string } | null)?.error;
   if (maybeError) throw new Error(maybeError);
   if (!data) throw new Error("Não foi possível gerar o pagamento PIX.");

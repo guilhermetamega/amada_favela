@@ -49,11 +49,14 @@ export default function PublicRafflePage() {
     }
 
     try {
+      console.info("[PublicRaffle] checkout start", { raffleId: raffle.id, selected, name, phone, email });
       setSubmitting(true);
       setErrorMessage("");
       const data = await createRafflePixCheckout({ raffleId: raffle.id, selectedNumbers: selected, buyerName: name, buyerPhone: phone, buyerInstagram: instagram, buyerEmail: email });
+      console.info("[PublicRaffle] checkout success", data);
       setCheckout(data);
     } catch (error) {
+      console.error("[PublicRaffle] checkout error", error);
       setErrorMessage(error instanceof Error ? error.message : "Erro ao gerar o pagamento Pix.");
     } finally {
       setSubmitting(false);
