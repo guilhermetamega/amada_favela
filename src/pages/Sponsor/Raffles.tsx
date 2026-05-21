@@ -5,6 +5,7 @@ import {
   createSponsorRaffle,
   getSponsorRaffleStatus,
   getSponsorRaffles,
+  startSponsorMercadoPagoConnect,
 } from "@/services/supabase/raffles";
 import type { SponsorRaffle } from "@/types/raffle";
 
@@ -16,6 +17,7 @@ export default function SponsorRafflesPage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [mpConnected, setMpConnected] = useState(false);
   const [mpStatusMessage, setMpStatusMessage] = useState("");
+  const [mpConnecting, setMpConnecting] = useState(false);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -44,6 +46,15 @@ export default function SponsorRafflesPage() {
   }
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const state = params.get("mercadopago");
+    const message = params.get("message");
+    if (state === "success")
+      setSuccessMessage("Conta Mercado Pago conectada com sucesso.");
+    if (state === "error")
+      setErrorMessage(message || "Falha ao conectar Mercado Pago.");
+    if (state)
+      window.history.replaceState({}, document.title, window.location.pathname);
     void load();
   }, []);
 
@@ -52,6 +63,24 @@ export default function SponsorRafflesPage() {
       items[0] ? `${window.location.origin}/raffles/${items[0].slug}` : "",
     [items],
   );
+
+  async function connectMercadoPago() {
+    if (mpConnecting) return;
+    setMpConnecting(true);
+    setErrorMessage("");
+    try {
+      const url = await startSponsorMercadoPagoConnect();
+      window.location.assign(url);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Erro ao conectar Mercado Pago.",
+      );
+    } finally {
+      setMpConnecting(false);
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -93,7 +122,19 @@ export default function SponsorRafflesPage() {
           <div
             className={`mt-6 rounded-2xl border px-4 py-3 text-sm ${mpConnected ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-800"}`}
           >
-            {mpStatusMessage}
+            <div className="flex items-center justify-between gap-3">
+              <span>{mpStatusMessage}</span>
+              {!mpConnected ? (
+                <button
+                  type="button"
+                  onClick={connectMercadoPago}
+                  disabled={mpConnecting}
+                  className="rounded-xl bg-zinc-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60 dark:bg-white dark:text-zinc-900"
+                >
+                  {mpConnecting ? "Conectando..." : "Conectar Mercado Pago"}
+                </button>
+              ) : null}
+            </div>
           </div>
         ) : null}
 

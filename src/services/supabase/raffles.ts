@@ -162,3 +162,30 @@ export async function getSponsorRaffleStatus() {
     status: string;
   };
 }
+
+export async function startSponsorMercadoPagoConnect() {
+  const token = localStorage.getItem("sponsor_session_token");
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sponsor-mercadopago-connect-start`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({}),
+    },
+  );
+
+  const data = (await response.json().catch(() => null)) as {
+    url?: string;
+    error?: string;
+  } | null;
+  if (!response.ok || !data?.url) {
+    throw new Error(
+      data?.error || "Não foi possível iniciar conexão com Mercado Pago.",
+    );
+  }
+  return data.url;
+}
