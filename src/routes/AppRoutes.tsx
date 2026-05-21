@@ -13,6 +13,8 @@ import SponsorSessionGuard from "./SponsorSessionGuard";
 import SponsorHomePage from "@/pages/Sponsor";
 import SponsorWeeklyAdPage from "@/pages/Sponsor/WeeklyAd";
 import SponsorBannerPage from "@/pages/Sponsor/Banner";
+import SponsorRafflesPage from "@/pages/Sponsor/Raffles";
+import PublicRafflePage from "@/pages/Raffles/PublicRaffle";
 import BingoPage from "@/pages/Bingo";
 import AdminBingoPage from "@/pages/Admin/Bingo";
 
@@ -87,6 +89,7 @@ export function AppRoutes() {
             />
 
             <Route path="/sponsor/banner" element={<SponsorBannerPage />} />
+            <Route path="/sponsor/raffles" element={<SponsorRafflesPage />} />
           </Route>
 
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
@@ -179,6 +182,7 @@ export function AppRoutes() {
             element={<ValidateProofPage />}
           />
 
+          <Route path="/raffles/:slug" element={<PublicRafflePage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
