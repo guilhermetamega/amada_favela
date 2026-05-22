@@ -48,6 +48,7 @@ export function getMercadoPagoConfig() {
     clientId: requiredEnv("MP_CLIENT_ID"),
     clientSecret: requiredEnv("MP_CLIENT_SECRET"),
     redirectUri: requiredEnv("MP_REDIRECT_URI"),
+    redirectSponsorUri: requiredEnv("MP_REDIRECT_URI_SPONSOR_CONNECT"),
     webhookSecret: requiredEnv("MP_WEBHOOK_SECRET"),
     appBaseUrl: requiredEnv("APP_BASE_URL").replace(/\/$/, ""),
     applicationFeeCents: Number(

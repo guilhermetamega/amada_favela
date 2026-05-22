@@ -51,7 +51,7 @@ serve(async (req) => {
       clientId: mp.clientId,
       clientSecret: mp.clientSecret,
       code,
-      redirectUri: `${mp.appBaseUrl}/functions/v1/sponsor-mercadopago-oauth-callback`,
+      redirectUri: mp.redirectSponsorUri,
       state,
     });
     const tokenExpiresAt = new Date(
