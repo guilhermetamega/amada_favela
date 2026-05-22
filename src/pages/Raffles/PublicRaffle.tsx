@@ -5,6 +5,7 @@ import {
   createRafflePixCheckout,
   getPublicRaffleBySlug,
 } from "@/services/supabase/raffles";
+import RafflePixModal from "@/components/raffles/RafflePixModal";
 
 const PAGE_SIZE = 250;
 
@@ -20,6 +21,7 @@ export default function PublicRafflePage() {
   const [email, setEmail] = useState("");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [checkout, setCheckout] = useState<any>(null);
+  const [pixModalOpen, setPixModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -85,6 +87,7 @@ export default function PublicRafflePage() {
       });
       console.info("[PublicRaffle] checkout success", data);
       setCheckout(data);
+      setPixModalOpen(true);
     } catch (error) {
       console.error("[PublicRaffle] checkout error", error);
       setErrorMessage(
@@ -209,15 +212,15 @@ export default function PublicRafflePage() {
                   </div>
                 </>
               )}
-              {checkout ? (
-                <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300">
-                  Pagamento gerado com sucesso. Código: {checkout.checkoutCode}
-                </div>
-              ) : null}
             </>
           </>
         )}
       </div>
+      <RafflePixModal
+        open={pixModalOpen}
+        pixData={checkout}
+        onClose={() => setPixModalOpen(false)}
+      />
     </MainLayout>
   );
 }

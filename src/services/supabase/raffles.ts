@@ -14,7 +14,10 @@ async function uploadRaffleImages(raffleId: string, files: File[]) {
     const { error } = await supabase.storage
       .from("sponsor-raffles")
       .upload(path, file, { upsert: false });
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.warn("[raffles] image upload skipped", { path, message: error.message });
+      continue;
+    }
     paths.push(path);
   }
   return paths;
