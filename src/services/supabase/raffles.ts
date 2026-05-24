@@ -1,5 +1,5 @@
 import { getSponsorProfile } from "@/lib/sponsorSession";
-import { supabase } from "@/services/supabase/client";
+import { SUPABASE_CONFIG_ERROR, supabase } from "@/services/supabase/client";
 import type {
   CreateRaffleInput,
   RafflePublicDetails,
@@ -64,6 +64,7 @@ export async function getSponsorRaffles() {
 }
 
 export async function getPublicRaffleBySlug(slug: string) {
+  if (SUPABASE_CONFIG_ERROR) throw new Error(SUPABASE_CONFIG_ERROR);
   const { data, error } = await supabase.rpc("get_public_raffle", {
     input_slug: slug,
   });
