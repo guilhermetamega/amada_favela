@@ -28,7 +28,11 @@ function listenSystemThemeChanges() {
 async function bootstrap() {
   applySystemTheme();
   listenSystemThemeChanges();
-  await loadCommunitiesFromSupabase();
+  try {
+    await loadCommunitiesFromSupabase();
+  } catch (error) {
+    console.error("[bootstrap] Falha ao carregar communities:", error);
+  }
 
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>

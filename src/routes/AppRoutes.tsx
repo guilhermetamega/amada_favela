@@ -186,6 +186,7 @@ export function AppRoutes() {
 
           <Route path="/raffles/:slug" element={<PublicRafflePage />} />
           <Route path="/sponsor/*" element={<NotFoundPage />} />
+          <Route path="/raffles/*" element={<NotFoundPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
