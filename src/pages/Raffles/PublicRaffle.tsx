@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { RafflePublicDetails } from "@/types/raffle";
 import { useParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
 import {
@@ -7,12 +8,41 @@ import {
 } from "@/services/supabase/raffles";
 import RafflePixModal from "@/components/raffles/RafflePixModal";
 
+function normalizeRaffle(raw: unknown): RafflePublicDetails {
+  if (!raw || typeof raw !== "object") throw new Error("Rifa não encontrada.");
+
+  const raffle = raw as Partial<RafflePublicDetails>;
+  const soldNumbers = Array.isArray(raffle.sold_numbers)
+    ? raffle.sold_numbers.filter((value): value is number =>
+        Number.isInteger(value),
+      )
+    : [];
+
+  return {
+    ...(raffle as RafflePublicDetails),
+    sold_numbers: soldNumbers,
+    total_numbers:
+      typeof raffle.total_numbers === "number" && raffle.total_numbers > 0
+        ? raffle.total_numbers
+        : 0,
+    number_price_cents:
+      typeof raffle.number_price_cents === "number" &&
+      raffle.number_price_cents >= 0
+        ? raffle.number_price_cents
+        : 0,
+    status:
+      raffle.status === "draft" ||
+      raffle.status === "active" ||
+      raffle.status === "closed"
+        ? raffle.status
+        : "draft",
+  };
+}
 const PAGE_SIZE = 250;
 
 export default function PublicRafflePage() {
   const { slug = "" } = useParams();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [raffle, setRaffle] = useState<any | null>(null);
+  const [raffle, setRaffle] = useState<RafflePublicDetails | null>(null);
   const [selected, setSelected] = useState<number[]>([]);
   const [page, setPage] = useState(1);
   const [name, setName] = useState("");
@@ -32,7 +62,7 @@ export default function PublicRafflePage() {
       setErrorMessage("");
       try {
         const data = await getPublicRaffleBySlug(slug);
-        setRaffle(data);
+        setRaffle(normalizeRaffle(data));
       } catch (error) {
         setRaffle(null);
         setErrorMessage(
@@ -53,7 +83,9 @@ export default function PublicRafflePage() {
     () => (raffle ? selected.length * raffle.number_price_cents : 0),
     [selected, raffle],
   );
-  const pageCount = raffle ? Math.ceil(raffle.total_numbers / PAGE_SIZE) : 0;
+  const pageCount = raffle
+    ? Math.max(1, Math.ceil(raffle.total_numbers / PAGE_SIZE))
+    : 0;
   const numbers = useMemo(() => {
     if (!raffle) return [];
     const start = (page - 1) * PAGE_SIZE + 1;
@@ -151,7 +183,7 @@ export default function PublicRafflePage() {
 
                   <div className="mt-4 grid grid-cols-5 gap-2 sm:grid-cols-10">
                     {numbers.map((n: number) => {
-                      const sold = raffle.sold_numbers.includes(n);
+                      const sold = raffle.sold_numbers?.includes(n) ?? false;
                       const active = selected.includes(n);
                       return (
                         <button
