@@ -32,24 +32,48 @@ async function sendRafflePurchaseEmail(params: {
 serve(async (req) => {
   if (req.method !== "POST")
     return new Response("method not allowed", { status: 405 });
-  const payload = await req.json();
-  const paymentId = payload?.data?.id;
+  const url = new URL(req.url);
+  const payload = await req.json().catch(() => ({}));
+  const paymentId =
+    payload?.data?.id ??
+    payload?.resource?.id ??
+    payload?.id ??
+    url.searchParams.get("data.id") ??
+    url.searchParams.get("id");
   if (!paymentId) return new Response("ok", { status: 200 });
 
   const admin = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
-  const paymentRes = await fetch(
-    `https://api.mercadopago.com/v1/payments/${paymentId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${Deno.env.get("MERCADOPAGO_ACCESS_TOKEN")}`,
+  const { data: sellers } = await admin
+    .from("sponsor_mercadopago_accounts")
+    .select("access_token")
+    .eq("status", "active");
+
+  let payment: any = null;
+  let fetched = false;
+  for (const seller of sellers ?? []) {
+    const token = seller?.access_token;
+    if (!token) continue;
+
+    const paymentRes = await fetch(
+      `https://api.mercadopago.com/v1/payments/${paymentId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       },
-    },
-  );
-  const payment = await paymentRes.json();
-  if (!paymentRes.ok) return new Response("mp error", { status: 400 });
+    );
+
+    if (!paymentRes.ok) continue;
+    payment = await paymentRes.json();
+    fetched = true;
+    break;
+  }
+
+  if (!fetched || !payment)
+    return new Response("payment not found", { status: 200 });
 
   if (payment.status === "approved") {
     const raffleId = payment.metadata?.raffle_id;
@@ -57,9 +81,21 @@ serve(async (req) => {
       ? payment.metadata.selected_numbers
       : [];
     for (const n of selectedNumbers) {
+      const ticketNumber = Number(n);
+      if (!Number.isInteger(ticketNumber)) continue;
+
+      const { data: existing } = await admin
+        .from("raffle_tickets")
+        .select("id")
+        .eq("raffle_id", raffleId)
+        .eq("ticket_number", ticketNumber)
+        .maybeSingle();
+
+      if (existing) continue;
+
       await admin.from("raffle_tickets").insert({
         raffle_id: raffleId,
-        ticket_number: n,
+        ticket_number: ticketNumber,
         buyer_name: payment.metadata?.buyer_name,
         buyer_phone: payment.metadata?.buyer_phone,
         buyer_instagram: payment.metadata?.buyer_instagram,
