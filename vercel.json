@@ -1,9 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/((?!assets/|favicon.ico|vite.svg|firebase-messaging-sw.js).*)",
-      "destination": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index"
     }
   ]
 }
