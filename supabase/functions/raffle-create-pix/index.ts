@@ -80,6 +80,7 @@ serve(async (req) => {
     }
 
     const admin = createClient(supabaseUrl, serviceRole);
+    const raffleWebhookUrl = Deno.env.get("RAFFLE_MP_WEBHOOK_URL") ?? `${supabaseUrl}/functions/v1/raffle-mercadopago-webhook`;
     const { data: raffle, error: raffleError } = await admin
       .from("sponsor_raffles")
       .select("id,sponsor_id,title,number_price_cents,sales_end_at,status")
@@ -144,6 +145,7 @@ serve(async (req) => {
             email: safeEmail,
             first_name: String(buyerName).trim().split(" ")[0] || "Comprador",
           },
+          notification_url: raffleWebhookUrl,
           metadata: {
             raffle_id: raffleId,
             selected_numbers: selectedNumbers,

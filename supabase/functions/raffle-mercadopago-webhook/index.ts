@@ -26,8 +26,14 @@ async function sendRafflePurchaseEmail(params: { to: string; raffleTitle: string
 serve(async (req) => {
   if (req.method !== "POST")
     return new Response("method not allowed", { status: 405 });
-  const payload = await req.json();
-  const paymentId = payload?.data?.id;
+  const url = new URL(req.url);
+  const payload = await req.json().catch(() => ({}));
+  const paymentId =
+    payload?.data?.id ??
+    payload?.resource?.id ??
+    payload?.id ??
+    url.searchParams.get("data.id") ??
+    url.searchParams.get("id");
   if (!paymentId) return new Response("ok", { status: 200 });
 
   const admin = createClient(
