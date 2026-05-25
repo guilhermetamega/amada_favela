@@ -30,8 +30,26 @@ async function sendRafflePurchaseEmail(params: {
 }
 
 serve(async (req) => {
-  if (req.method !== "POST")
+  if (req.method === "OPTIONS") {
+    return new Response("ok", {
+      status: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+        "Access-Control-Allow-Headers": "content-type, authorization",
+      },
+    });
+  }
+
+  // Mercado Pago pode realizar chamadas de validação/healthcheck em GET.
+  // Responder 200 evita "Falha na entrega - 405" no painel.
+  if (req.method === "GET") {
+    return new Response("ok", { status: 200 });
+  }
+
+  if (req.method !== "POST") {
     return new Response("method not allowed", { status: 405 });
+  }
   const url = new URL(req.url);
   const payload = await req.json().catch(() => ({}));
   const paymentId =
@@ -77,6 +95,7 @@ serve(async (req) => {
 
   if (payment.status === "approved") {
     const raffleId = payment.metadata?.raffle_id;
+    if (!raffleId) return new Response("ok", { status: 200 });
     const selectedNumbers = Array.isArray(payment.metadata?.selected_numbers)
       ? payment.metadata.selected_numbers
       : [];
