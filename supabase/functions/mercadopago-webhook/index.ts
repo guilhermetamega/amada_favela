@@ -134,6 +134,12 @@ serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
 
+  // Mercado Pago pode validar o endpoint com GET/HEAD.
+  // Retornar 200 evita "Falha na entrega - 405" no painel.
+  if (req.method === "GET" || req.method === "HEAD") {
+    return json(200, { ok: true, method: req.method });
+  }
+
   if (req.method !== "POST") {
     return json(405, { error: "Método não permitido." });
   }
