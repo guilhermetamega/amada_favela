@@ -2,7 +2,9 @@ import { getSponsorProfile } from "@/lib/sponsorSession";
 import { SUPABASE_CONFIG_ERROR, supabase } from "@/services/supabase/client";
 import type {
   CreateRaffleInput,
+  RafflePhoneLookupResult,
   RafflePublicDetails,
+  SponsorRaffleInsights,
   SponsorRaffle,
 } from "@/types/raffle";
 
@@ -195,4 +197,88 @@ export async function startSponsorMercadoPagoConnect() {
     );
   }
   return data.url;
+}
+
+function normalizePhone(raw: string) {
+  return raw.replace(/\D/g, "");
+}
+
+export async function getSponsorRaffleInsights(
+  raffleId: string,
+): Promise<SponsorRaffleInsights> {
+  const { data: raffle, error: raffleError } = await supabase
+    .from("sponsor_raffles")
+    .select("*")
+    .eq("id", raffleId)
+    .single();
+  if (raffleError || !raffle) throw new Error("Rifa não encontrada.");
+
+  const { data: tickets, error: ticketsError } = await supabase
+    .from("raffle_tickets")
+    .select(
+      "ticket_number,buyer_name,buyer_instagram,buyer_phone,buyer_email,created_at",
+    )
+    .eq("raffle_id", raffleId)
+    .order("created_at", { ascending: true });
+
+  if (ticketsError) throw new Error(ticketsError.message);
+  const safeTickets = tickets ?? [];
+  const totalRaisedCents = safeTickets.length * raffle.number_price_cents;
+
+  const dailyMap = new Map<string, number>();
+  for (const ticket of safeTickets) {
+    const key = new Date(ticket.created_at).toISOString().slice(0, 10);
+    dailyMap.set(key, (dailyMap.get(key) ?? 0) + raffle.number_price_cents);
+  }
+
+  const dailyRevenue = Array.from(dailyMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([day, amount_cents]) => ({ day, amount_cents }));
+
+  const winningTicket =
+    typeof raffle.winning_number === "number"
+      ? safeTickets.find((it) => it.ticket_number === raffle.winning_number)
+      : null;
+
+  return {
+    raffle,
+    total_raised_cents: totalRaisedCents,
+    daily_revenue: dailyRevenue,
+    winner: winningTicket
+      ? {
+          buyer_name: winningTicket.buyer_name,
+          buyer_instagram: winningTicket.buyer_instagram,
+          buyer_phone: winningTicket.buyer_phone,
+          buyer_email: winningTicket.buyer_email,
+          ticket_number: winningTicket.ticket_number,
+        }
+      : null,
+  };
+}
+
+export async function lookupRaffleTicketsByPhone(payload: {
+  raffleId: string;
+  phone: string;
+}): Promise<RafflePhoneLookupResult> {
+  const phone = normalizePhone(payload.phone);
+  if (!phone) throw new Error("Informe um telefone válido.");
+
+  const { data, error } = await supabase
+    .from("raffle_tickets")
+    .select("ticket_number,buyer_phone")
+    .eq("raffle_id", payload.raffleId);
+
+  if (error) throw new Error(error.message);
+
+  const ticketNumbers = (data ?? [])
+    .filter((row) => normalizePhone(row.buyer_phone ?? "") === phone)
+    .map((row) => Number(row.ticket_number))
+    .filter(Number.isInteger)
+    .sort((a, b) => a - b);
+
+  return {
+    phone: payload.phone,
+    total_tickets: ticketNumbers.length,
+    ticket_numbers: ticketNumbers,
+  };
 }

@@ -5,6 +5,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import {
   createRafflePixCheckout,
   getPublicRaffleBySlug,
+  lookupRaffleTicketsByPhone,
 } from "@/services/supabase/raffles";
 import RafflePixModal from "@/components/raffles/RafflePixModal";
 
@@ -55,6 +56,10 @@ export default function PublicRafflePage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [lookupOpen, setLookupOpen] = useState(false);
+  const [lookupPhone, setLookupPhone] = useState("");
+  const [lookupNumbers, setLookupNumbers] = useState<number[]>([]);
+  const [lookupLoading, setLookupLoading] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -74,6 +79,15 @@ export default function PublicRafflePage() {
     }
     void load();
   }, [slug]);
+
+  useEffect(() => {
+    if (!pixModalOpen && !lookupOpen) return;
+    const old = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = old;
+    };
+  }, [lookupOpen, pixModalOpen]);
 
   const closed =
     raffle &&
@@ -132,6 +146,20 @@ export default function PublicRafflePage() {
     }
   }
 
+  async function handleLookup() {
+    if (!raffle) return;
+    setLookupLoading(true);
+    try {
+      const data = await lookupRaffleTicketsByPhone({
+        raffleId: raffle.id,
+        phone: lookupPhone,
+      });
+      setLookupNumbers(data.ticket_numbers);
+    } finally {
+      setLookupLoading(false);
+    }
+  }
+
   return (
     <MainLayout className="min-h-dvh bg-zinc-50 px-4 py-6 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50 sm:py-8">
       <div className="mx-auto max-w-5xl rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8">
@@ -151,6 +179,51 @@ export default function PublicRafflePage() {
               <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
                 {raffle.description}
               </p>
+              <button
+                onClick={() => setLookupOpen(true)}
+                className="mt-4 rounded-xl border px-3 py-2 text-xs"
+              >
+                Ver meus números por telefone
+              </button>
+
+              <div className="mt-6 space-y-3">
+                <input
+                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800"
+                  placeholder="Nome completo"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+                <input
+                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800"
+                  placeholder="Whatsapp"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                />
+                <input
+                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800"
+                  placeholder="Instagram (opcional)"
+                  value={instagram}
+                  onChange={(e) => setInstagram(e.target.value)}
+                />
+                <input
+                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800"
+                  placeholder="E-mail"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+                <button
+                  disabled={submitting}
+                  onClick={checkoutPix}
+                  className="w-full rounded-2xl bg-zinc-900 px-4 py-3 font-semibold text-white disabled:opacity-60 dark:bg-white dark:text-zinc-900"
+                >
+                  {submitting
+                    ? "Gerando Pix..."
+                    : `Pagar R$ ${(total / 100).toFixed(2)}`}
+                </button>
+              </div>
 
               {closed ? (
                 <button className="mt-6 rounded-2xl border border-zinc-300 px-4 py-3 text-sm dark:border-zinc-700">
@@ -203,45 +276,6 @@ export default function PublicRafflePage() {
                       );
                     })}
                   </div>
-
-                  <div className="mt-6 space-y-3">
-                    <input
-                      className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800"
-                      placeholder="Nome completo"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      required
-                    />
-                    <input
-                      className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800"
-                      placeholder="Whatsapp"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      required
-                    />
-                    <input
-                      className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800"
-                      placeholder="Instagram (opcional)"
-                      value={instagram}
-                      onChange={(e) => setInstagram(e.target.value)}
-                    />
-                    <input
-                      className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800"
-                      placeholder="E-mail"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                    <button
-                      disabled={submitting}
-                      onClick={checkoutPix}
-                      className="w-full rounded-2xl bg-zinc-900 px-4 py-3 font-semibold text-white disabled:opacity-60 dark:bg-white dark:text-zinc-900"
-                    >
-                      {submitting
-                        ? "Gerando Pix..."
-                        : `Pagar R$ ${(total / 100).toFixed(2)}`}
-                    </button>
-                  </div>
                 </>
               )}
             </>
@@ -253,6 +287,36 @@ export default function PublicRafflePage() {
         pixData={checkout}
         onClose={() => setPixModalOpen(false)}
       />
+      {lookupOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setLookupOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl bg-white p-5 dark:bg-zinc-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold">Consultar meus números</h3>
+            <input
+              className="mt-3 w-full rounded-2xl border px-4 py-3"
+              placeholder="Seu telefone"
+              value={lookupPhone}
+              onChange={(e) => setLookupPhone(e.target.value)}
+            />
+            <button
+              onClick={handleLookup}
+              className="mt-3 w-full rounded-xl bg-zinc-900 py-2 text-white dark:bg-white dark:text-zinc-900"
+            >
+              {lookupLoading ? "Consultando..." : "Consultar"}
+            </button>
+            <p className="mt-3 text-sm">
+              {lookupNumbers.length
+                ? `Números: ${lookupNumbers.join(", ")}`
+                : "Nenhum número encontrado ainda para este telefone."}
+            </p>
+          </div>
+        </div>
+      ) : null}
     </MainLayout>
   );
 }
