@@ -21,8 +21,10 @@ import {
 } from "lucide-react";
 import type { AuthMode, LoginFormData, RegisterFormData } from "@/types/auth";
 import {
+  sendPasswordRecoveryEmail,
   signInWithIdentifier,
   signUpWithEmail,
+  updateRecoveredPassword,
 } from "@/services/supabase/auth";
 import { formatCpf } from "@/utils/cpf";
 import developedByLogo from "@/assets/developed_by_logo.png";
@@ -102,6 +104,11 @@ export default function AuthPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isRegisterFlow, setIsRegisterFlow] = useState(false);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+  const [recoveryPasswordForm, setRecoveryPasswordForm] = useState({
+    password: "",
+    confirmPassword: "",
+  });
 
   const [loginForm, setLoginForm] = useState<LoginFormData>(initialLoginForm);
   const [registerForm, setRegisterForm] =
@@ -208,12 +215,20 @@ export default function AuthPage() {
   useEffect(() => {
     if (authLoading) return;
 
-    if (user && !isRegisterFlow) {
+    if (user && !isRegisterFlow && !isPasswordRecovery) {
       navigate("/dashboard", { replace: true });
     }
-  }, [user, authLoading, isRegisterFlow, navigate]);
+  }, [user, authLoading, isRegisterFlow, isPasswordRecovery, navigate]);
 
   useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setIsPasswordRecovery(true);
+        setMode("login");
+        resetAuthMessages();
+      }
+    });
+
     void supabase.auth.getSession().then(async ({ data, error }) => {
       if (error) return;
 
@@ -230,6 +245,10 @@ export default function AuthPage() {
         await supabase.auth.signOut();
       }
     });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -487,6 +506,61 @@ export default function AuthPage() {
     }
   }
 
+  async function handlePasswordRecoveryRequest() {
+    if (loading) return;
+
+    resetAuthMessages();
+    setLoading(true);
+
+    try {
+      await sendPasswordRecoveryEmail(loginForm.identifier);
+      setSuccessMessage(
+        "Enviamos um link de recuperação para o e-mail cadastrado. Verifique sua caixa de entrada e spam.",
+      );
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível enviar o e-mail de recuperação.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRecoveredPasswordSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    if (loading) return;
+
+    resetAuthMessages();
+
+    if (recoveryPasswordForm.password !== recoveryPasswordForm.confirmPassword) {
+      setErrorMessage("As senhas não coincidem.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await updateRecoveredPassword(recoveryPasswordForm.password);
+      await supabase.auth.signOut();
+      setRecoveryPasswordForm({ password: "", confirmPassword: "" });
+      setIsPasswordRecovery(false);
+      setSuccessMessage("Senha atualizada com sucesso. Entre novamente.");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível atualizar a senha.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleRegisterSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -612,41 +686,49 @@ export default function AuthPage() {
                   </div>
 
                   <h2 className="mt-3 text-2xl font-bold text-zinc-900 dark:text-white lg:mt-2">
-                    {mode === "login" ? "Entrar na conta" : "Criar sua conta"}
+                    {isPasswordRecovery
+                      ? "Criar nova senha"
+                      : mode === "login"
+                        ? "Entrar na conta"
+                        : "Criar sua conta"}
                   </h2>
 
                   <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                    {mode === "login"
-                      ? "Use seu CPF ou e-mail para acessar."
-                      : "Preencha seus dados para continuar."}
+                    {isPasswordRecovery
+                      ? "Digite uma nova senha para finalizar a recuperação."
+                      : mode === "login"
+                        ? "Use seu CPF ou e-mail para acessar."
+                        : "Preencha seus dados para continuar."}
                   </p>
                 </div>
 
-                <div className="mb-4 grid grid-cols-2 rounded-2xl border border-zinc-200 bg-zinc-100/80 p-1 dark:border-zinc-800 dark:bg-zinc-950/70 lg:mb-3">
-                  <button
-                    type="button"
-                    onClick={switchToLogin}
-                    className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
-                      mode === "login"
-                        ? "bg-linear-to-r from-emerald-400 to-emerald-600 text-zinc-950 shadow-lg"
-                        : "text-zinc-700 hover:bg-white dark:text-zinc-300 dark:hover:bg-zinc-800/80"
-                    }`}
-                  >
-                    Login
-                  </button>
+                {!isPasswordRecovery ? (
+                  <div className="mb-4 grid grid-cols-2 rounded-2xl border border-zinc-200 bg-zinc-100/80 p-1 dark:border-zinc-800 dark:bg-zinc-950/70 lg:mb-3">
+                    <button
+                      type="button"
+                      onClick={switchToLogin}
+                      className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+                        mode === "login"
+                          ? "bg-linear-to-r from-emerald-400 to-emerald-600 text-zinc-950 shadow-lg"
+                          : "text-zinc-700 hover:bg-white dark:text-zinc-300 dark:hover:bg-zinc-800/80"
+                      }`}
+                    >
+                      Login
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={switchToRegister}
-                    className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
-                      mode === "register"
-                        ? "bg-linear-to-r from-sky-400 to-violet-500 text-white shadow-lg"
-                        : "text-zinc-700 hover:bg-white dark:text-zinc-300 dark:hover:bg-zinc-800/80"
-                    }`}
-                  >
-                    Cadastro
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      onClick={switchToRegister}
+                      className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+                        mode === "register"
+                          ? "bg-linear-to-r from-sky-400 to-violet-500 text-white shadow-lg"
+                          : "text-zinc-700 hover:bg-white dark:text-zinc-300 dark:hover:bg-zinc-800/80"
+                      }`}
+                    >
+                      Cadastro
+                    </button>
+                  </div>
+                ) : null}
 
                 {errorMessage ? (
                   <div className="mb-3 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-700 dark:text-red-200 lg:mb-2">
@@ -660,7 +742,86 @@ export default function AuthPage() {
                   </div>
                 ) : null}
 
-                {mode === "login" ? (
+                {isPasswordRecovery ? (
+                  <form
+                    onSubmit={handleRecoveredPasswordSubmit}
+                    className="space-y-3"
+                  >
+                    <div>
+                      <label
+                        className={labelClassName()}
+                        htmlFor="recovery-password"
+                      >
+                        Nova senha
+                      </label>
+                      <div className="relative">
+                        <span
+                          className={fieldIconClassName(
+                            "text-sky-600 dark:text-sky-300",
+                          )}
+                        >
+                          <LockKeyhole size={16} />
+                        </span>
+                        <input
+                          id="recovery-password"
+                          name="password"
+                          type="password"
+                          value={recoveryPasswordForm.password}
+                          onChange={(event) =>
+                            setRecoveryPasswordForm((prev) => ({
+                              ...prev,
+                              password: event.target.value,
+                            }))
+                          }
+                          className={`${inputClassName()} pl-11`}
+                          placeholder="Digite a nova senha"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label
+                        className={labelClassName()}
+                        htmlFor="recovery-confirm-password"
+                      >
+                        Confirmar nova senha
+                      </label>
+                      <div className="relative">
+                        <span
+                          className={fieldIconClassName(
+                            "text-emerald-600 dark:text-emerald-300",
+                          )}
+                        >
+                          <LockKeyhole size={16} />
+                        </span>
+                        <input
+                          id="recovery-confirm-password"
+                          name="confirmPassword"
+                          type="password"
+                          value={recoveryPasswordForm.confirmPassword}
+                          onChange={(event) =>
+                            setRecoveryPasswordForm((prev) => ({
+                              ...prev,
+                              confirmPassword: event.target.value,
+                            }))
+                          }
+                          className={`${inputClassName()} pl-11`}
+                          placeholder="Repita a nova senha"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-emerald-400 to-emerald-600 px-4 py-3 font-semibold text-zinc-950 shadow-lg transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {loading ? "Salvando..." : "Salvar nova senha"}
+                    </button>
+                  </form>
+                ) : mode === "login" ? (
                   <form onSubmit={handleLoginSubmit} className="space-y-3">
                     <div>
                       <label
@@ -725,6 +886,15 @@ export default function AuthPage() {
                     >
                       {loading ? "Entrando..." : "Entrar"}
                       {!loading ? <ArrowRight size={17} /> : null}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handlePasswordRecoveryRequest}
+                      disabled={loading}
+                      className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-800/70"
+                    >
+                      Esqueci minha senha
                     </button>
                   </form>
                 ) : (
