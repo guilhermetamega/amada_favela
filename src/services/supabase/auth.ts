@@ -176,6 +176,55 @@ export async function signInWithIdentifier({
   return authData;
 }
 
+export async function sendPasswordRecoveryEmail(identifier: string) {
+  const rawIdentifier = identifier.trim();
+
+  if (!rawIdentifier) {
+    throw new Error("Informe seu CPF ou e-mail para recuperar a senha.");
+  }
+
+  let email = rawIdentifier.toLowerCase();
+
+  if (!isEmail(rawIdentifier)) {
+    const foundEmail = await getEmailByCpf(rawIdentifier);
+
+    if (!foundEmail) {
+      throw new Error("Não encontramos uma conta com este CPF/e-mail.");
+    }
+
+    email = foundEmail;
+  }
+
+  const redirectTo =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/auth`
+      : undefined;
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo,
+  });
+
+  if (error) {
+    throw new Error(normalizeAuthErrorMessage(error.message));
+  }
+}
+
+export async function updateRecoveredPassword(newPassword: string) {
+  const sanitizedPassword = newPassword.trim();
+
+  if (sanitizedPassword.length < 6) {
+    throw new Error("A nova senha deve ter pelo menos 6 caracteres.");
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: sanitizedPassword,
+  });
+
+  if (error) {
+    throw new Error(normalizeAuthErrorMessage(error.message));
+  }
+}
+
 export async function signUpWithEmail(
   data: RegisterFormData,
   profilePictureFile?: File | null,
