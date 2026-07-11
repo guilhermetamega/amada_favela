@@ -42,8 +42,18 @@ const ADDRESS_TYPE_OPTIONS = [
   { value: "others", label: "Others (Outros)" },
 ] as const;
 
-function createEmptyAddressItem(): CommunityAddressItem {
-  return { type: "street", label: "", value: "", address_number: "" };
+type AddressItemForm = CommunityAddressItem & {
+  clientId: string;
+};
+
+function createAddressItemForm(item?: CommunityAddressItem): AddressItemForm {
+  return {
+    clientId: crypto.randomUUID(),
+    type: item?.type ?? "street",
+    label: item?.label ?? "",
+    value: item?.value ?? "",
+    address_number: item?.address_number ?? "",
+  };
 }
 
 function StripePartnerStatusBadge({
@@ -103,9 +113,9 @@ export default function SuperAdminPage() {
     addressItems: [],
   });
   const [zipcodesText, setZipcodesText] = useState("");
-  const [addressItemsForm, setAddressItemsForm] = useState<
-    CommunityAddressItem[]
-  >([createEmptyAddressItem()]);
+  const [addressItemsForm, setAddressItemsForm] = useState<AddressItemForm[]>([
+    createAddressItemForm(),
+  ]);
 
   const filteredUsers = useMemo(
     () =>
@@ -258,7 +268,7 @@ export default function SuperAdminPage() {
       addressItems: [],
     });
     setZipcodesText("");
-    setAddressItemsForm([createEmptyAddressItem()]);
+    setAddressItemsForm([createAddressItemForm()]);
     setShowCommunityModal(true);
   }
   function openEditCommunityModal(item: CommunityData) {
@@ -266,12 +276,16 @@ export default function SuperAdminPage() {
     setCommunityForm(item);
     setZipcodesText(item.zipcodes.join("\n"));
     setAddressItemsForm(
-      item.addressItems.length ? item.addressItems : [createEmptyAddressItem()],
+      item.addressItems.length
+        ? item.addressItems.map((addressItem) =>
+            createAddressItemForm(addressItem),
+          )
+        : [createAddressItemForm()],
     );
     setShowCommunityModal(true);
   }
   const addAddressItemRow = () =>
-    setAddressItemsForm((prev) => [...prev, createEmptyAddressItem()]);
+    setAddressItemsForm((prev) => [...prev, createAddressItemForm()]);
   const removeAddressItemRow = (index: number) =>
     setAddressItemsForm((prev) =>
       prev.length === 1 ? prev : prev.filter((_, i) => i !== index),
@@ -295,14 +309,13 @@ export default function SuperAdminPage() {
           .map((i) => i.trim())
           .filter(Boolean),
         addressItems: addressItemsForm
-          .map((i) => ({
-            ...i,
-            type: i.type.trim().toLowerCase(),
-            label: i.label.trim(),
-            value: i.value.trim(),
-            address_number: (i.address_number ?? "").toString().trim(),
+          .map<CommunityAddressItem>((item) => ({
+            type: item.type.trim().toLowerCase(),
+            label: item.label.trim(),
+            value: item.value.trim(),
+            address_number: (item.address_number ?? "").toString().trim(),
           }))
-          .filter((i) => i.type && i.label && i.value),
+          .filter((item) => item.type && item.label && item.value),
       };
       // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       editingCommunityKey
@@ -537,7 +550,7 @@ export default function SuperAdminPage() {
                 <div className="space-y-2">
                   {addressItemsForm.map((item, index) => (
                     <div
-                      key={`${item.value}-${index}`}
+                      key={item.clientId}
                       className="grid gap-2 rounded-xl border border-zinc-800 bg-zinc-950 p-3 md:grid-cols-[160px_1fr_1fr_120px_auto]"
                     >
                       <select
