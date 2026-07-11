@@ -51,6 +51,17 @@ export type ResidenceProof = {
   created_at: string;
 };
 
+export type PublicResidenceProof = {
+  validation_code: string;
+  integrity_hash: string;
+  status: ResidenceProof["status"];
+  full_name_snapshot: string;
+  cpf_masked: string;
+  address_snapshot: string;
+  issued_at: string;
+  expires_at: string;
+};
+
 export type ProofEligibility = {
   allowed: boolean;
   reason: string | null;
@@ -71,7 +82,7 @@ export type CreateResidenceProofInput = {
 export type ValidateResidenceProofResult = {
   valid: boolean;
   reason: string | null;
-  record: ResidenceProof | null;
+  record: PublicResidenceProof | null;
 };
 
 export type PartnerRow = {

@@ -9,6 +9,7 @@ import type {
   ProofUserProfileRow,
   ResidenceProof,
   ValidateResidenceProofResult,
+  PublicResidenceProof,
 } from "@/types/proof_of_residence";
 import { buildUserAddress } from "@/utils/proof_of_residence";
 import { getMyProfile } from "./user_profile";
@@ -270,13 +271,37 @@ export async function createResidenceProofRecord(
 export async function validateResidenceProof(
   validationCode: string,
 ): Promise<ValidateResidenceProofResult> {
-  const { data, error } = await supabase
-    .from("residence_proof")
-    .select("*")
-    .eq("validation_code", validationCode)
-    .single();
+  const normalizedCode = validationCode.trim().toUpperCase();
 
-  if (error || !data) {
+  if (!normalizedCode) {
+    return {
+      valid: false,
+      reason: "Código de validação ausente.",
+      record: null,
+    };
+  }
+
+  const { data, error } = await supabase
+    .rpc("validate_residence_proof_public", {
+      p_validation_code: normalizedCode,
+    })
+    .maybeSingle();
+
+  if (error) {
+    console.error("[validateResidenceProof] RPC error", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+    });
+
+    return {
+      valid: false,
+      reason: "Não foi possível consultar o documento.",
+      record: null,
+    };
+  }
+
+  if (!data) {
     return {
       valid: false,
       reason: "Documento não encontrado.",
@@ -284,7 +309,7 @@ export async function validateResidenceProof(
     };
   }
 
-  const record = data as ResidenceProof;
+  const record = data as PublicResidenceProof;
 
   if (record.status === "revoked") {
     return {
@@ -294,7 +319,10 @@ export async function validateResidenceProof(
     };
   }
 
-  if (new Date(record.expires_at).getTime() < Date.now()) {
+  if (
+    record.status === "expired" ||
+    new Date(record.expires_at).getTime() < Date.now()
+  ) {
     return {
       valid: false,
       reason: "Documento expirado.",

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { validateResidenceProof } from "@/services/supabase/proof_of_residence";
 import type { ValidateResidenceProofResult } from "@/types/proof_of_residence";
-import { formatDateTime, maskCpf } from "@/utils/proof_of_residence";
+import { formatDateTime } from "@/utils/proof_of_residence";
 import MainLayout from "@/components/layout/MainLayout";
 
 export default function ValidateProofPage() {
@@ -19,6 +19,14 @@ export default function ValidateProofPage() {
       try {
         const data = await validateResidenceProof(validationCode);
         setResult(data);
+      } catch (error) {
+        console.error("[ValidateProofPage] validation error", error);
+
+        setResult({
+          valid: false,
+          reason: "Não foi possível validar o documento.",
+          record: null,
+        });
       } finally {
         setLoading(false);
       }
@@ -89,7 +97,7 @@ export default function ValidateProofPage() {
                       CPF
                     </p>
                     <p className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                      {maskCpf(result.record.cpf_snapshot)}
+                      {result.record.cpf_masked}
                     </p>
                   </div>
 

@@ -16,6 +16,7 @@ import { buildAddressLine } from "@/utils/address";
 import MainLayout from "@/components/layout/MainLayout";
 import { CreditCard, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { buildPublicAppUrl } from "@/lib/env";
 
 export default function ProofOfResidencePage() {
   const [eligibility, setEligibility] = useState<ProofEligibility | null>(null);
@@ -66,7 +67,10 @@ export default function ProofOfResidencePage() {
       const expiresAt = addDays(new Date(), 30).toISOString();
 
       const validationCode = await generateValidationCode();
-      const verificationUrl = `${window.location.origin}/validate-proof/${validationCode}`;
+
+      const verificationUrl = buildPublicAppUrl(
+        `/validate-proof/${encodeURIComponent(validationCode)}`,
+      );
 
       const integrityHash = await buildResidenceProofHash({
         userId: eligibility.user.id,
