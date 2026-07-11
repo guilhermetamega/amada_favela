@@ -6,7 +6,7 @@ import type {
   AssociationRow,
   AssociationStripeOnboardingResponse,
   AssociationStripeStatusResponse,
-  AssociationUpdateInput,
+  AssociationSaveInput,
   CurrentAssociationAccess,
   CurrentProfileAssociationRow,
   MercadoPagoSellerStatus,
@@ -22,6 +22,26 @@ export type AssociationPublicData = {
 
 const COMMUNITY_IMAGE_BUCKET = "community_image";
 const ASSOCIATION_SIGNATURES_BUCKET = "association_signatures";
+const ASSOCIATION_SELECT = `
+  id,
+  name,
+  cnpj,
+  phone,
+  community,
+  headquarters_address,
+  headquarters_number,
+  headquarters_complement,
+  headquarters_neighborhood,
+  headquarters_city,
+  headquarters_state,
+  headquarters_zipcode,
+  logo_path,
+  signature_path,
+  president_name,
+  president_role,
+  is_active,
+  monthly_fee
+`;
 
 function normalizeNullableText(value: string | null | undefined) {
   return value?.trim() ?? "";
@@ -188,40 +208,18 @@ function mapAssociationRowToFormData(
 
 async function getAssociationRowByCommunity(
   community: string,
-): Promise<AssociationRow> {
+): Promise<AssociationRow | null> {
   const { data, error } = await supabase
     .from("association")
-    .select(
-      `
-        id,
-        name,
-        cnpj,
-        phone,
-        community,
-        headquarters_address,
-        headquarters_number,
-        headquarters_complement,
-        headquarters_neighborhood,
-        headquarters_city,
-        headquarters_state,
-        headquarters_zipcode,
-        logo_path,
-        signature_path,
-        president_name,
-        president_role,
-        is_active,
-        monthly_fee
-      `,
-    )
+    .select(ASSOCIATION_SELECT)
     .eq("community", community)
-    .eq("is_active", true)
-    .single();
+    .maybeSingle();
 
-  if (error || !data) {
-    throw new Error("Não foi possível carregar os dados da associação.");
+  if (error) {
+    throw new Error(`Não foi possível carregar a associação: ${error.message}`);
   }
 
-  return data as AssociationRow;
+  return data ? (data as AssociationRow) : null;
 }
 
 async function buildAssociationFormDataFromRow(row: AssociationRow) {
@@ -233,16 +231,25 @@ async function buildAssociationFormDataFromRow(row: AssociationRow) {
   return mapAssociationRowToFormData(row, logoUrl, signatureUrl);
 }
 
-export async function getMyAssociation(): Promise<AssociationFormData> {
+export async function getMyAssociation(): Promise<AssociationFormData | null> {
   const access = await getCurrentAssociationAccess();
 
-  if (!access.allowed || !access.community) {
+  if (!access.allowed) {
     throw new Error(
       access.reason || "Você não tem permissão para editar a associação.",
     );
   }
 
+  if (!access.community) {
+    throw new Error("Comunidade do usuário não encontrada.");
+  }
+
   const row = await getAssociationRowByCommunity(access.community);
+
+  if (!row) {
+    return null;
+  }
+
   return buildAssociationFormDataFromRow(row);
 }
 
@@ -303,45 +310,70 @@ export async function uploadAssociationSignature(
   };
 }
 
-export async function updateAssociation(
-  input: AssociationUpdateInput,
+export async function saveAssociation(
+  input: AssociationSaveInput,
 ): Promise<AssociationFormData> {
   const access = await getCurrentAssociationAccess();
 
   if (!access.allowed) {
-    throw new Error("Você não tem permissão para editar a associação.");
+    throw new Error("Você não tem permissão para salvar a associação.");
   }
 
   if (!access.community) {
     throw new Error("Comunidade do usuário não encontrada.");
   }
 
-  const currentAssociation = await getAssociationRowByCommunity(
-    access.community,
-  );
+  const name = input.name.trim();
+  const cnpj = input.cnpj.trim();
+  const headquartersAddress = input.headquarters_address.trim();
+  const headquartersCity = input.headquarters_city.trim();
+  const headquartersState = input.headquarters_state.trim().toUpperCase();
+  const headquartersZipcode = input.headquarters_zipcode.trim();
+  const presidentName = input.president_name.trim();
 
-  if (!currentAssociation) {
-    throw new Error("Associação não encontrada.");
+  if (!name) {
+    throw new Error("Informe o nome da associação.");
   }
 
-  if (access.role !== "admin" && currentAssociation.id !== input.id) {
-    throw new Error("Você não pode editar outra associação.");
+  if (!cnpj) {
+    throw new Error("Informe o CNPJ da associação.");
+  }
+
+  if (!headquartersAddress) {
+    throw new Error("Informe o endereço da sede.");
+  }
+
+  if (!headquartersCity) {
+    throw new Error("Informe a cidade da associação.");
+  }
+
+  if (headquartersState.length !== 2) {
+    throw new Error("Informe uma UF válida.");
+  }
+
+  if (!headquartersZipcode) {
+    throw new Error("Informe o CEP da associação.");
+  }
+
+  if (!presidentName) {
+    throw new Error("Informe o nome da presidência.");
   }
 
   const payload = {
-    name: input.name.trim(),
-    cnpj: input.cnpj.trim(),
+    community: access.community,
+    name,
+    cnpj,
     phone: input.phone.trim() || null,
-    headquarters_address: input.headquarters_address.trim(),
+    headquarters_address: headquartersAddress,
     headquarters_number: input.headquarters_number.trim() || null,
     headquarters_complement: input.headquarters_complement.trim() || null,
     headquarters_neighborhood: input.headquarters_neighborhood.trim() || null,
-    headquarters_city: input.headquarters_city.trim(),
-    headquarters_state: input.headquarters_state.trim().toUpperCase(),
-    headquarters_zipcode: input.headquarters_zipcode.trim(),
+    headquarters_city: headquartersCity,
+    headquarters_state: headquartersState,
+    headquarters_zipcode: headquartersZipcode,
     logo_path: input.logo_path.trim() || null,
     signature_path: input.signature_path.trim() || null,
-    president_name: input.president_name.trim(),
+    president_name: presidentName,
     president_role: input.president_role.trim() || "Presidente",
     is_active: input.is_active,
     monthly_fee: parseMonthlyFeeValue(input.monthly_fee),
@@ -349,34 +381,34 @@ export async function updateAssociation(
 
   const { data, error } = await supabase
     .from("association")
-    .update(payload)
-    .eq("id", input.id)
-    .select(
-      `
-        id,
-        name,
-        cnpj,
-        phone,
-        community,
-        headquarters_address,
-        headquarters_number,
-        headquarters_complement,
-        headquarters_neighborhood,
-        headquarters_city,
-        headquarters_state,
-        headquarters_zipcode,
-        logo_path,
-        signature_path,
-        president_name,
-        president_role,
-        is_active,
-        monthly_fee
-      `,
-    )
+    .upsert(payload, {
+      onConflict: "community",
+    })
+    .select(ASSOCIATION_SELECT)
     .single();
 
   if (error || !data) {
-    throw new Error("Não foi possível salvar os dados da associação.");
+    console.error("[saveAssociation] error", {
+      code: error?.code,
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint,
+      community: access.community,
+    });
+
+    if (error?.code === "23505") {
+      throw new Error("Já existe uma associação vinculada a esta comunidade.");
+    }
+
+    if (error?.code === "42501") {
+      throw new Error(
+        "Você não possui permissão para criar ou atualizar esta associação.",
+      );
+    }
+
+    throw new Error(
+      error?.message || "Não foi possível salvar os dados da associação.",
+    );
   }
 
   return buildAssociationFormDataFromRow(data as AssociationRow);

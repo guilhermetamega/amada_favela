@@ -6,28 +6,32 @@ import {
   type FormEvent,
 } from "react";
 import { useSearchParams } from "react-router-dom";
+
 import DashboardLayout from "@/components/layout/Layout";
+import MainLayout from "@/components/layout/MainLayout";
 import AssociationHero from "@/components/associationSettings/Hero";
 import AssociationFeedback from "@/components/associationSettings/Feedback";
 import AssociationPageSkeleton from "@/components/associationSettings/PageSkeleton";
 import SettingsForm from "@/components/associationSettings/SettingsForm";
 import InstitutionalPreview from "@/components/associationSettings/InstitutionalPreview";
+
 import type { AssociationFormData } from "@/types/association";
+
 import {
   createAssociationMercadoPagoConnect,
   createAssociationStripeOnboarding,
   getCurrentAssociationAccess,
   getMyAssociation,
+  saveAssociation,
   syncAssociationMercadoPagoStatus,
   syncAssociationStripeOnboardingStatus,
-  updateAssociation,
   uploadAssociationLogo,
   uploadAssociationSignature,
 } from "@/services/supabase/association";
-import { invalidateAssociationContactCache } from "@/services/supabase/association_public";
-import MainLayout from "@/components/layout/MainLayout";
 
-const initialForm: AssociationFormData = {
+import { invalidateAssociationContactCache } from "@/services/supabase/association_public";
+
+const INITIAL_FORM: AssociationFormData = {
   id: "",
   name: "",
   cnpj: "",
@@ -62,11 +66,18 @@ function onlyDigits(value: string) {
 function formatCnpj(value: string) {
   const digits = onlyDigits(value).slice(0, 14);
 
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 5) return digits.replace(/^(\d{2})(\d+)/, "$1.$2");
+  if (digits.length <= 2) {
+    return digits;
+  }
+
+  if (digits.length <= 5) {
+    return digits.replace(/^(\d{2})(\d+)/, "$1.$2");
+  }
+
   if (digits.length <= 8) {
     return digits.replace(/^(\d{2})(\d{3})(\d+)/, "$1.$2.$3");
   }
+
   if (digits.length <= 12) {
     return digits.replace(/^(\d{2})(\d{3})(\d{3})(\d+)/, "$1.$2.$3/$4");
   }
@@ -80,7 +91,9 @@ function formatCnpj(value: string) {
 function formatZipcode(value: string) {
   const digits = onlyDigits(value).slice(0, 8);
 
-  if (digits.length <= 5) return digits;
+  if (digits.length <= 5) {
+    return digits;
+  }
 
   return digits.replace(/^(\d{5})(\d+)/, "$1-$2");
 }
@@ -88,8 +101,14 @@ function formatZipcode(value: string) {
 function formatPhone(value: string) {
   const digits = onlyDigits(value).slice(0, 11);
 
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 6) return digits.replace(/^(\d{2})(\d+)/, "($1) $2");
+  if (digits.length <= 2) {
+    return digits;
+  }
+
+  if (digits.length <= 6) {
+    return digits.replace(/^(\d{2})(\d+)/, "($1) $2");
+  }
+
   if (digits.length <= 10) {
     return digits.replace(/^(\d{2})(\d{4})(\d+)/, "($1) $2-$3");
   }
@@ -99,31 +118,50 @@ function formatPhone(value: string) {
 
 export default function AssociationSettingsPage() {
   const [searchParams] = useSearchParams();
-  const [form, setForm] = useState<AssociationFormData>(initialForm);
+
+  const [form, setForm] = useState<AssociationFormData>({
+    ...INITIAL_FORM,
+  });
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingSignature, setUploadingSignature] = useState(false);
+
   const [stripeOnboardingLoading, setStripeOnboardingLoading] = useState(false);
+
   const [stripeStatusSyncing, setStripeStatusSyncing] = useState(false);
+
   const [mercadopagoConnectLoading, setMercadopagoConnectLoading] =
     useState(false);
+
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [accessDenied, setAccessDenied] = useState(false);
 
+  /*
+   * Carregamento inicial.
+   *
+   * Quando a comunidade ainda não possui uma associação, a tela não deve
+   * apresentar erro. O formulário é inicializado com a comunidade do
+   * usuário e passa a funcionar no modo de criação.
+   */
   useEffect(() => {
     let active = true;
 
-    async function load() {
+    async function loadAssociation() {
       setLoading(true);
       setErrorMessage("");
       setSuccessMessage("");
+      setAccessDenied(false);
 
       try {
         const access = await getCurrentAssociationAccess();
 
-        if (!active) return;
+        if (!active) {
+          return;
+        }
 
         if (!access.allowed) {
           setAccessDenied(true);
@@ -134,17 +172,45 @@ export default function AssociationSettingsPage() {
           return;
         }
 
+        if (!access.community) {
+          throw new Error("Sua conta não possui uma comunidade vinculada.");
+        }
+
         const association = await getMyAssociation();
 
-        if (!active) return;
+        if (!active) {
+          return;
+        }
 
-        setAccessDenied(false);
+        /*
+         * Não existe associação: abre formulário para criação.
+         *
+         * Não tentamos sincronizar Stripe ou Mercado Pago porque as Edge
+         * Functions dependem de uma associação já persistida.
+         */
+        if (!association) {
+          setForm({
+            ...INITIAL_FORM,
+            community: access.community,
+          });
+
+          return;
+        }
+
         setForm(association);
 
+        /*
+         * Sincronização do Mercado Pago.
+         *
+         * Uma falha na sincronização do gateway não deve impedir o
+         * carregamento dos dados institucionais.
+         */
         try {
           const mercadoPagoStatus = await syncAssociationMercadoPagoStatus();
 
-          if (!active) return;
+          if (!active) {
+            return;
+          }
 
           setForm((current) => ({
             ...current,
@@ -153,16 +219,24 @@ export default function AssociationSettingsPage() {
             mercadopago_connected_at:
               mercadoPagoStatus.mercadopago_connected_at,
           }));
-        } catch {
-          // noop
+        } catch (error) {
+          console.error(
+            "[AssociationSettingsPage] Mercado Pago sync error",
+            error,
+          );
         }
 
+        /*
+         * Sincronização da Stripe.
+         */
         setStripeStatusSyncing(true);
 
         try {
           const stripeStatus = await syncAssociationStripeOnboardingStatus();
 
-          if (!active) return;
+          if (!active) {
+            return;
+          }
 
           setForm((current) => ({
             ...current,
@@ -171,15 +245,17 @@ export default function AssociationSettingsPage() {
             stripe_onboarding_completed:
               stripeStatus.stripe_onboarding_completed,
           }));
-        } catch {
-          // noop
+        } catch (error) {
+          console.error("[AssociationSettingsPage] Stripe sync error", error);
         } finally {
           if (active) {
             setStripeStatusSyncing(false);
           }
         }
       } catch (error) {
-        if (!active) return;
+        if (!active) {
+          return;
+        }
 
         setErrorMessage(
           error instanceof Error
@@ -193,13 +269,16 @@ export default function AssociationSettingsPage() {
       }
     }
 
-    void load();
+    void loadAssociation();
 
     return () => {
       active = false;
     };
   }, []);
 
+  /*
+   * Sincroniza os gateways após retorno dos fluxos externos.
+   */
   useEffect(() => {
     const stripeFlowState = searchParams.get("stripe");
     const mercadoPagoFlowState = searchParams.get("mercadopago");
@@ -210,15 +289,29 @@ export default function AssociationSettingsPage() {
 
     let active = true;
 
+    function clearGatewayQueryParams() {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     async function syncAfterReturn() {
+      /*
+       * Retorno do Mercado Pago.
+       */
       if (mercadoPagoFlowState === "success") {
         try {
-          const [association, mercadoPagoStatus] = await Promise.all([
-            getMyAssociation(),
-            syncAssociationMercadoPagoStatus(),
-          ]);
+          const association = await getMyAssociation();
 
-          if (!active) return;
+          if (!association) {
+            throw new Error(
+              "Associação não encontrada após o retorno do Mercado Pago.",
+            );
+          }
+
+          const mercadoPagoStatus = await syncAssociationMercadoPagoStatus();
+
+          if (!active) {
+            return;
+          }
 
           setForm((current) => ({
             ...association,
@@ -232,7 +325,9 @@ export default function AssociationSettingsPage() {
 
           setSuccessMessage("Conta Mercado Pago conectada com sucesso.");
         } catch (error) {
-          if (!active) return;
+          if (!active) {
+            return;
+          }
 
           setErrorMessage(
             error instanceof Error
@@ -241,17 +336,16 @@ export default function AssociationSettingsPage() {
           );
         } finally {
           if (active) {
-            window.history.replaceState(
-              {},
-              document.title,
-              window.location.pathname,
-            );
+            clearGatewayQueryParams();
           }
         }
 
         return;
       }
 
+      /*
+       * Retorno da Stripe.
+       */
       if (!stripeFlowState) {
         return;
       }
@@ -259,15 +353,28 @@ export default function AssociationSettingsPage() {
       setStripeStatusSyncing(true);
 
       try {
+        const association = await getMyAssociation();
+
+        if (!association) {
+          throw new Error(
+            "Associação não encontrada após o retorno da Stripe.",
+          );
+        }
+
         const stripeStatus = await syncAssociationStripeOnboardingStatus();
 
-        if (!active) return;
+        if (!active) {
+          return;
+        }
 
         setForm((current) => ({
-          ...current,
+          ...association,
           stripe_connected_account_id:
             stripeStatus.stripe_connected_account_id ?? "",
           stripe_onboarding_completed: stripeStatus.stripe_onboarding_completed,
+          mercadopago_user_id: current.mercadopago_user_id,
+          mercadopago_status: current.mercadopago_status,
+          mercadopago_connected_at: current.mercadopago_connected_at,
         }));
 
         setSuccessMessage(
@@ -276,7 +383,9 @@ export default function AssociationSettingsPage() {
             : "Conta Stripe criada. Continue o onboarding para habilitar os pagamentos.",
         );
       } catch (error) {
-        if (!active) return;
+        if (!active) {
+          return;
+        }
 
         setErrorMessage(
           error instanceof Error
@@ -286,11 +395,7 @@ export default function AssociationSettingsPage() {
       } finally {
         if (active) {
           setStripeStatusSyncing(false);
-          window.history.replaceState(
-            {},
-            document.title,
-            window.location.pathname,
-          );
+          clearGatewayQueryParams();
         }
       }
     }
@@ -338,7 +443,17 @@ export default function AssociationSettingsPage() {
   async function handleLogoChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
 
-    if (!file || !form.community) return;
+    if (!file) {
+      return;
+    }
+
+    if (!form.community) {
+      setErrorMessage(
+        "A comunidade precisa estar definida antes de enviar a logo.",
+      );
+      event.target.value = "";
+      return;
+    }
 
     setUploadingLogo(true);
     setErrorMessage("");
@@ -369,7 +484,17 @@ export default function AssociationSettingsPage() {
   async function handleSignatureChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
 
-    if (!file || !form.community) return;
+    if (!file) {
+      return;
+    }
+
+    if (!form.community) {
+      setErrorMessage(
+        "A comunidade precisa estar definida antes de enviar a assinatura.",
+      );
+      event.target.value = "";
+      return;
+    }
 
     setUploadingSignature(true);
     setErrorMessage("");
@@ -384,7 +509,7 @@ export default function AssociationSettingsPage() {
         signature_url: uploaded.signatureUrl,
       }));
 
-      setSuccessMessage("Assinatura atualizada no formulário.");
+      setSuccessMessage("Assinatura institucional atualizada no formulário.");
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -402,12 +527,18 @@ export default function AssociationSettingsPage() {
       return;
     }
 
+    if (!form.id) {
+      setErrorMessage("Salve a associação antes de conectar a conta Stripe.");
+      return;
+    }
+
     setStripeOnboardingLoading(true);
     setErrorMessage("");
     setSuccessMessage("");
 
     try {
       const result = await createAssociationStripeOnboarding();
+
       window.open(result.url, "_blank", "noopener,noreferrer");
     } catch (error) {
       setErrorMessage(
@@ -425,6 +556,11 @@ export default function AssociationSettingsPage() {
       return;
     }
 
+    if (!form.id) {
+      setErrorMessage("Salve a associação antes de conectar o Mercado Pago.");
+      return;
+    }
+
     setMercadopagoConnectLoading(true);
     setErrorMessage("");
     setSuccessMessage("");
@@ -436,10 +572,12 @@ export default function AssociationSettingsPage() {
           "_blank",
           "noopener,noreferrer",
         );
+
         return;
       }
 
       const result = await createAssociationMercadoPagoConnect();
+
       window.open(result.url, "_blank", "noopener,noreferrer");
     } catch (error) {
       setErrorMessage(
@@ -455,15 +593,18 @@ export default function AssociationSettingsPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (saving || accessDenied) return;
+    if (saving || accessDenied) {
+      return;
+    }
+
+    const isCreating = !form.id;
 
     setSaving(true);
     setErrorMessage("");
     setSuccessMessage("");
 
     try {
-      const updated = await updateAssociation({
-        id: form.id,
+      const savedAssociation = await saveAssociation({
         name: form.name,
         cnpj: form.cnpj,
         headquarters_address: form.headquarters_address,
@@ -482,8 +623,13 @@ export default function AssociationSettingsPage() {
         monthly_fee: form.monthly_fee,
       });
 
+      /*
+       * O retorno do service contém os dados persistidos, inclusive o ID
+       * criado. Preservamos apenas os status dos gateways, pois eles não
+       * fazem parte do payload institucional.
+       */
       setForm((current) => ({
-        ...updated,
+        ...savedAssociation,
         stripe_connected_account_id: current.stripe_connected_account_id,
         stripe_onboarding_completed: current.stripe_onboarding_completed,
         mercadopago_user_id: current.mercadopago_user_id,
@@ -491,11 +637,13 @@ export default function AssociationSettingsPage() {
         mercadopago_connected_at: current.mercadopago_connected_at,
       }));
 
-      if (updated.community) {
-        invalidateAssociationContactCache(updated.community);
-      }
+      invalidateAssociationContactCache(savedAssociation.community);
 
-      setSuccessMessage("Dados da associação atualizados com sucesso.");
+      setSuccessMessage(
+        isCreating
+          ? "Associação criada com sucesso."
+          : "Dados da associação atualizados com sucesso.",
+      );
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -522,7 +670,7 @@ export default function AssociationSettingsPage() {
 
           {!loading && accessDenied ? (
             <div className="rounded-3xl border border-amber-500/20 bg-amber-500/10 p-6 text-sm text-amber-700 dark:text-amber-300">
-              Apenas president e admin podem acessar esta área.
+              Apenas presidentes e administradores podem acessar esta área.
             </div>
           ) : null}
 
@@ -537,8 +685,12 @@ export default function AssociationSettingsPage() {
                 stripeStatusSyncing={stripeStatusSyncing}
                 mercadopagoConnectLoading={mercadopagoConnectLoading}
                 onFieldChange={updateField}
-                onLogoChange={(event) => void handleLogoChange(event)}
-                onSignatureChange={(event) => void handleSignatureChange(event)}
+                onLogoChange={(event) => {
+                  void handleLogoChange(event);
+                }}
+                onSignatureChange={(event) => {
+                  void handleSignatureChange(event);
+                }}
                 onSubmit={handleSubmit}
                 onStripeOnboardingClick={() => {
                   void handleStripeOnboardingClick();

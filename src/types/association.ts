@@ -61,8 +61,7 @@ export type AssociationRow = {
   monthly_fee: number | string | null;
 };
 
-export type AssociationUpdateInput = {
-  id: string;
+export type AssociationSaveInput = {
   name: string;
   cnpj: string;
   headquarters_address: string;
