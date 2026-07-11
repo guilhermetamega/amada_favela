@@ -9,9 +9,6 @@ const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const kayoAccountId = Deno.env.get("STRIPE_KAYO_ACCOUNT_ID");
 
 const LOG_PREFIX = "[stripe-webhook]";
-const PLATFORM_RETAINED_CENTS = 250;
-const PLATFORM_TRANSFER_CENTS = 250;
-const THIRD_PARTY_TRANSFER_CENTS = 100;
 
 if (!stripeSecret || !webhookSecret || !supabaseUrl || !serviceRoleKey) {
   throw new Error("Secrets obrigatórios do webhook não configurados.");
@@ -21,7 +18,9 @@ const stripe = new Stripe(stripeSecret);
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
 const admin = createClient(supabaseUrl, serviceRoleKey, {
-  auth: { persistSession: false },
+  auth: {
+    persistSession: false,
+  },
 });
 
 type JsonObject = Record<string, unknown>;
@@ -100,7 +99,9 @@ function log(step: string, payload?: unknown) {
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+    },
   });
 }
 
@@ -143,31 +144,53 @@ function determinePaymentMethodType(charge: Stripe.Charge): string {
   if (details.type === "card") {
     const walletType = details.card?.wallet?.type;
 
-    if (walletType === "apple_pay") return "apple_pay";
-    if (walletType === "google_pay") return "google_pay";
+    if (walletType === "apple_pay") {
+      return "apple_pay";
+    }
+
+    if (walletType === "google_pay") {
+      return "google_pay";
+    }
+
     return "card";
   }
 
-  if (details.type === "boleto") return "boleto";
-  if (details.type === "pix") return "pix";
-  if (details.type === "link") return "link";
+  if (details.type === "boleto") {
+    return "boleto";
+  }
+
+  if (details.type === "pix") {
+    return "pix";
+  }
+
+  if (details.type === "link") {
+    return "link";
+  }
 
   return "unknown";
 }
 
-function getSplitConfig(hasThirdParty: boolean) {
-  return {
-    platformRetainedCents: PLATFORM_RETAINED_CENTS,
-    platformTransferCents: PLATFORM_TRANSFER_CENTS,
-    thirdPartyTransferCents: hasThirdParty ? THIRD_PARTY_TRANSFER_CENTS : 0,
-  };
+function normalizeSnapshotCents(value: unknown, fieldName: string) {
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 0) {
+    throw new Error(`Snapshot financeiro inválido: ${fieldName}.`);
+  }
+
+  return parsed;
 }
 
 async function getBillingConfig(associationId: string): Promise<BillingConfig> {
   const { data: associationData, error: associationError } = await admin
     .from("association")
     .select(
-      "id, name, community, stripe_third_party_account_id, stripe_third_party_label",
+      `
+        id,
+        name,
+        community,
+        stripe_third_party_account_id,
+        stripe_third_party_label
+      `,
     )
     .eq("id", associationId)
     .single();
@@ -183,7 +206,13 @@ async function getBillingConfig(associationId: string): Promise<BillingConfig> {
     await admin
       .from("connected_accounts")
       .select(
-        "id, stripe_account_id, onboarding_completed, payouts_enabled, charges_enabled",
+        `
+        id,
+        stripe_account_id,
+        onboarding_completed,
+        payouts_enabled,
+        charges_enabled
+      `,
       )
       .eq("association_id", associationId)
       .single();
@@ -319,7 +348,9 @@ async function getLatestPaymentBySubscription(subscriptionId: string) {
     .select(PAYMENT_SELECT)
     .eq("stripe_subscription_id", subscriptionId)
     .eq("purpose", "partner_membership")
-    .order("created_at", { ascending: false })
+    .order("created_at", {
+      ascending: false,
+    })
     .limit(1)
     .maybeSingle();
 
@@ -338,7 +369,9 @@ async function getLatestOpenSubscriptionPaymentByCustomer(customerId: string) {
     .eq("purpose", "partner_membership")
     .eq("checkout_mode", "subscription")
     .in("status", ["pending", "processing", "requires_action"])
-    .order("created_at", { ascending: false })
+    .order("created_at", {
+      ascending: false,
+    })
     .limit(1)
     .maybeSingle();
 
@@ -409,12 +442,16 @@ async function getOrCreatePaymentForInvoice(
       status: "processing",
       currency: latestPayment.currency || "brl",
       amount_total: amountTotal,
-      amount_platform_fee:
-        latestPayment.amount_platform_fee || PLATFORM_RETAINED_CENTS,
-      amount_platform_transfer:
-        latestPayment.amount_platform_transfer || PLATFORM_TRANSFER_CENTS,
-      amount_third_party_transfer:
-        latestPayment.amount_third_party_transfer || 0,
+
+      /*
+       * Snapshot financeiro:
+       * cobranças recorrentes herdam a taxa
+       * registrada no pagamento anterior.
+       */
+      amount_platform_fee: latestPayment.amount_platform_fee,
+      amount_platform_transfer: latestPayment.amount_platform_transfer,
+      amount_third_party_transfer: latestPayment.amount_third_party_transfer,
+
       amount_association_transfer: 0,
       amount_stripe_fee: 0,
       reference_month: referenceMonth,
@@ -543,6 +580,7 @@ async function resolvePaymentIntentIdFromInvoice(
       invoiceId: invoice.id,
       paymentIntentId: direct,
     });
+
     return direct;
   }
 
@@ -577,6 +615,7 @@ async function resolveInvoiceFromInvoicePayment(
     log("invoice-payment:missing-invoice-id", {
       invoicePaymentId: invoicePayment.id,
     });
+
     return null;
   }
 
@@ -668,7 +707,9 @@ async function markLatestPartnerPastDueBySubscription(subscriptionId: string) {
     .select("id, status, expires_at")
     .eq("stripe_subscription_id", subscriptionId)
     .in("status", ["active", "past_due"])
-    .order("expires_at", { ascending: false })
+    .order("expires_at", {
+      ascending: false,
+    })
     .limit(1)
     .maybeSingle();
 
@@ -714,7 +755,9 @@ async function cancelPartnersBySubscription(subscriptionId: string) {
     throw new Error(error.message);
   }
 
-  log("partner:cancelled", { subscriptionId });
+  log("partner:cancelled", {
+    subscriptionId,
+  });
 }
 
 async function ensureTransfersAndPersist(params: {
@@ -730,10 +773,6 @@ async function ensureTransfersAndPersist(params: {
 }) {
   const billingConfig = await getBillingConfig(params.payment.association_id);
 
-  if (!kayoAccountId) {
-    throw new Error("STRIPE_KAYO_ACCOUNT_ID não configurado.");
-  }
-
   const balanceTx = params.charge.balance_transaction as
     | Stripe.BalanceTransaction
     | string
@@ -747,32 +786,76 @@ async function ensureTransfersAndPersist(params: {
   const gross = params.charge.amount;
   const net = gross - fee;
 
-  const split = getSplitConfig(
-    Boolean(billingConfig.association.stripe_third_party_account_id),
+  /*
+   * Os valores abaixo são snapshots gravados
+   * quando o checkout/pagamento foi criado.
+   * O webhook não consulta a taxa atual da
+   * associação, evitando alteração retroativa.
+   */
+  const platformRetainedCents = normalizeSnapshotCents(
+    params.payment.amount_platform_fee,
+    "amount_platform_fee",
+  );
+
+  const platformTransferCents = normalizeSnapshotCents(
+    params.payment.amount_platform_transfer,
+    "amount_platform_transfer",
+  );
+
+  const thirdPartyTransferCents = normalizeSnapshotCents(
+    params.payment.amount_third_party_transfer,
+    "amount_third_party_transfer",
   );
 
   const associationTransferCents =
     net -
-    split.platformRetainedCents -
-    split.platformTransferCents -
-    split.thirdPartyTransferCents;
+    platformRetainedCents -
+    platformTransferCents -
+    thirdPartyTransferCents;
 
-  if (associationTransferCents < 0) {
+  if (associationTransferCents <= 0) {
     throw new Error(
       "Valor líquido insuficiente para executar o split configurado.",
     );
   }
 
+  const platformDestination =
+    params.payment.platform_transfer_destination_account_id ?? kayoAccountId;
+
+  const thirdPartyDestination =
+    params.payment.third_party_transfer_destination_account_id ??
+    billingConfig.association.stripe_third_party_account_id;
+
+  const associationDestination =
+    params.payment.association_transfer_destination_account_id ??
+    billingConfig.connectedAccount.stripe_account_id;
+
+  if (platformTransferCents > 0 && !platformDestination) {
+    throw new Error(
+      "Conta de destino do parceiro da plataforma não configurada.",
+    );
+  }
+
+  if (thirdPartyTransferCents > 0 && !thirdPartyDestination) {
+    throw new Error("Conta de destino do terceiro não configurada.");
+  }
+
+  if (!associationDestination) {
+    throw new Error("Conta de destino da associação não configurada.");
+  }
+
   let platformTransferId = params.payment.stripe_platform_transfer_id;
+
   let thirdPartyTransferId = params.payment.stripe_third_party_transfer_id;
+
   let associationTransferId = params.payment.stripe_association_transfer_id;
 
-  if (!platformTransferId) {
+  if (platformTransferCents > 0 && !platformTransferId) {
     const transfer = await stripe.transfers.create(
       {
-        amount: split.platformTransferCents,
+        amount: platformTransferCents,
         currency: "brl",
-        destination: kayoAccountId,
+        destination: platformDestination!,
         transfer_group:
           params.payment.transfer_group ??
           `partner_membership_${params.payment.user_id}_${Date.now()}`,
@@ -791,15 +874,15 @@ async function ensureTransfersAndPersist(params: {
   }
 
   if (
-    split.thirdPartyTransferCents > 0 &&
-    billingConfig.association.stripe_third_party_account_id &&
+    thirdPartyTransferCents > 0 &&
+    thirdPartyDestination &&
     !thirdPartyTransferId
   ) {
     const transfer = await stripe.transfers.create(
       {
-        amount: split.thirdPartyTransferCents,
+        amount: thirdPartyTransferCents,
         currency: "brl",
-        destination: billingConfig.association.stripe_third_party_account_id,
+        destination: thirdPartyDestination,
         transfer_group:
           params.payment.transfer_group ??
           `partner_membership_${params.payment.user_id}_${Date.now()}`,
@@ -822,7 +905,7 @@ async function ensureTransfersAndPersist(params: {
       {
         amount: associationTransferCents,
         currency: "brl",
-        destination: billingConfig.connectedAccount.stripe_account_id!,
+        destination: associationDestination,
         transfer_group:
           params.payment.transfer_group ??
           `partner_membership_${params.payment.user_id}_${Date.now()}`,
@@ -844,9 +927,9 @@ async function ensureTransfersAndPersist(params: {
 
   const updatedPayment = await updatePaymentById(params.payment.id, {
     amount_total: gross,
-    amount_platform_fee: split.platformRetainedCents,
-    amount_platform_transfer: split.platformTransferCents,
-    amount_third_party_transfer: split.thirdPartyTransferCents,
+    amount_platform_fee: platformRetainedCents,
+    amount_platform_transfer: platformTransferCents,
+    amount_third_party_transfer: thirdPartyTransferCents,
     amount_association_transfer: associationTransferCents,
     amount_stripe_fee: fee,
     payment_method_type: paymentMethodType,
@@ -865,17 +948,18 @@ async function ensureTransfersAndPersist(params: {
     stripe_platform_transfer_id: platformTransferId,
     stripe_third_party_transfer_id: thirdPartyTransferId,
     stripe_association_transfer_id: associationTransferId,
-    platform_transfer_destination_account_id: kayoAccountId,
-    third_party_transfer_destination_account_id:
-      billingConfig.association.stripe_third_party_account_id,
-    association_transfer_destination_account_id:
-      billingConfig.connectedAccount.stripe_account_id,
+    platform_transfer_destination_account_id: platformDestination,
+    third_party_transfer_destination_account_id: thirdPartyDestination,
+    association_transfer_destination_account_id: associationDestination,
     gateway_response: {
       ...(params.payment.gateway_response ?? {}),
       last_processed_event_id: params.eventId,
       charge_id: params.charge.id,
       balance_transaction_id: balanceTx.id,
       payment_method_type: paymentMethodType,
+      snapshot_platform_retained_cents: platformRetainedCents,
+      snapshot_platform_transfer_cents: platformTransferCents,
+      snapshot_third_party_transfer_cents: thirdPartyTransferCents,
     },
   });
 
@@ -889,6 +973,10 @@ async function ensureTransfersAndPersist(params: {
     platformTransferId,
     thirdPartyTransferId,
     associationTransferId,
+    platformRetainedCents,
+    platformTransferCents,
+    thirdPartyTransferCents,
+    associationTransferCents,
   });
 
   return updatedPayment;
@@ -930,7 +1018,9 @@ serve(async (req) => {
     const signature = req.headers.get("Stripe-Signature");
 
     if (!signature) {
-      return json(400, { error: "Assinatura ausente." });
+      return json(400, {
+        error: "Assinatura ausente.",
+      });
     }
 
     const body = await req.text();
@@ -957,7 +1047,11 @@ serve(async (req) => {
         log("checkout.session.completed:payment-not-found", {
           sessionId: session.id,
         });
-        return json(200, { received: true, skipped: true });
+
+        return json(200, {
+          received: true,
+          skipped: true,
+        });
       }
 
       const updatedPayment = await updatePaymentById(payment.id, {
@@ -1002,10 +1096,15 @@ serve(async (req) => {
             paymentId: updatedPayment.id,
             sessionId: session.id,
           });
-          return json(200, { received: true, skipped: true });
+
+          return json(200, {
+            received: true,
+            skipped: true,
+          });
         }
 
         const charge = await resolveChargeFromPaymentIntent(paymentIntentId);
+
         const paidAt = nowIso();
         const periodStart = paidAt;
         const periodEnd = addMonthIso(periodStart);
@@ -1024,13 +1123,18 @@ serve(async (req) => {
 
     if (event.type === "checkout.session.async_payment_succeeded") {
       const session = event.data.object as Stripe.Checkout.Session;
+
       const payment = await getPaymentByCheckoutSession(session.id);
 
       if (!payment) {
         log("checkout.session.async_payment_succeeded:payment-not-found", {
           sessionId: session.id,
         });
-        return json(200, { received: true, skipped: true });
+
+        return json(200, {
+          received: true,
+          skipped: true,
+        });
       }
 
       const paymentIntentId =
@@ -1043,10 +1147,15 @@ serve(async (req) => {
           paymentId: payment.id,
           sessionId: session.id,
         });
-        return json(200, { received: true, skipped: true });
+
+        return json(200, {
+          received: true,
+          skipped: true,
+        });
       }
 
       const charge = await resolveChargeFromPaymentIntent(paymentIntentId);
+
       const paidAt = nowIso();
       const periodStart = paidAt;
       const periodEnd = addMonthIso(periodStart);
@@ -1064,13 +1173,18 @@ serve(async (req) => {
 
     if (event.type === "checkout.session.async_payment_failed") {
       const session = event.data.object as Stripe.Checkout.Session;
+
       const payment = await getPaymentByCheckoutSession(session.id);
 
       if (!payment) {
         log("checkout.session.async_payment_failed:payment-not-found", {
           sessionId: session.id,
         });
-        return json(200, { received: true, skipped: true });
+
+        return json(200, {
+          received: true,
+          skipped: true,
+        });
       }
 
       await updatePaymentById(payment.id, {
@@ -1087,13 +1201,18 @@ serve(async (req) => {
 
     if (event.type === "checkout.session.expired") {
       const session = event.data.object as Stripe.Checkout.Session;
+
       const payment = await getPaymentByCheckoutSession(session.id);
 
       if (!payment) {
         log("checkout.session.expired:payment-not-found", {
           sessionId: session.id,
         });
-        return json(200, { received: true, skipped: true });
+
+        return json(200, {
+          received: true,
+          skipped: true,
+        });
       }
 
       await updatePaymentById(payment.id, {
@@ -1110,6 +1229,7 @@ serve(async (req) => {
 
     if (event.type === "invoice.paid") {
       const invoice = event.data.object as Stripe.Invoice;
+
       const subscriptionId =
         typeof invoice.subscription === "string" ? invoice.subscription : null;
 
@@ -1118,7 +1238,11 @@ serve(async (req) => {
           eventId: event.id,
           invoiceId: invoice.id,
         });
-        return json(200, { received: true, skipped: true });
+
+        return json(200, {
+          received: true,
+          skipped: true,
+        });
       }
 
       log("invoice.paid:start", {
@@ -1138,7 +1262,11 @@ serve(async (req) => {
           invoiceId: invoice.id,
           subscriptionId,
         });
-        return json(200, { received: true, skipped: true });
+
+        return json(200, {
+          received: true,
+          skipped: true,
+        });
       }
 
       const paymentIntentId = await resolvePaymentIntentIdFromInvoice(invoice);
@@ -1163,7 +1291,10 @@ serve(async (req) => {
           },
         });
 
-        return json(200, { received: true, skipped: true });
+        return json(200, {
+          received: true,
+          skipped: true,
+        });
       }
 
       const charge = await resolveChargeFromPaymentIntent(paymentIntentId);
@@ -1213,10 +1344,14 @@ serve(async (req) => {
       const resolved = await resolveInvoiceFromInvoicePayment(invoicePayment);
 
       if (!resolved) {
-        return json(200, { received: true, skipped: true });
+        return json(200, {
+          received: true,
+          skipped: true,
+        });
       }
 
       const { invoice, paymentIntentId } = resolved;
+
       const subscriptionId =
         typeof invoice.subscription === "string" ? invoice.subscription : null;
 
@@ -1228,7 +1363,11 @@ serve(async (req) => {
           subscriptionId,
           paymentIntentId,
         });
-        return json(200, { received: true, skipped: true });
+
+        return json(200, {
+          received: true,
+          skipped: true,
+        });
       }
 
       const payment = await getOrCreatePaymentForInvoice(
@@ -1243,7 +1382,11 @@ serve(async (req) => {
           invoiceId: invoice.id,
           subscriptionId,
         });
-        return json(200, { received: true, skipped: true });
+
+        return json(200, {
+          received: true,
+          skipped: true,
+        });
       }
 
       const charge = await resolveChargeFromPaymentIntent(paymentIntentId);
@@ -1294,6 +1437,7 @@ serve(async (req) => {
 
     if (event.type === "invoice.payment_failed") {
       const invoice = event.data.object as Stripe.Invoice;
+
       const subscriptionId =
         typeof invoice.subscription === "string" ? invoice.subscription : null;
 
@@ -1341,6 +1485,7 @@ serve(async (req) => {
 
     if (event.type === "customer.subscription.deleted") {
       const subscription = event.data.object as Stripe.Subscription;
+
       const subscriptionId = subscription.id;
 
       await admin
@@ -1360,7 +1505,9 @@ serve(async (req) => {
       });
     }
 
-    return json(200, { received: true });
+    return json(200, {
+      received: true,
+    });
   } catch (error) {
     log("fatal", {
       message: error instanceof Error ? error.message : "Webhook inválido.",

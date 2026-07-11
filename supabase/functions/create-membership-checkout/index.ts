@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14?target=denonext";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  buildPlatformSplit,
+  getMinimumGrossCents,
+  type PlatformSplit,
+} from "../_shared/plataform-fee.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,9 +16,6 @@ const corsHeaders = {
 };
 
 const LOG_PREFIX = "[create-membership-checkout]";
-const PLATFORM_RETAINED_CENTS = 250;
-const PLATFORM_TRANSFER_CENTS = 250;
-const THIRD_PARTY_TRANSFER_CENTS = 100;
 
 type RequestBody = {
   recurring?: boolean;
@@ -32,6 +34,7 @@ type AssociationRow = {
   name: string;
   community: string;
   monthly_fee: number | string | null;
+  platform_fee_cents: number;
   stripe_third_party_account_id: string | null;
   is_active: boolean;
 };
@@ -94,24 +97,6 @@ function toCents(value: number | string | null | undefined) {
   }
 
   return Math.round(normalized * 100);
-}
-
-function getStaticSplit(hasThirdParty: boolean) {
-  return {
-    platformRetainedCents: PLATFORM_RETAINED_CENTS,
-    platformTransferCents: PLATFORM_TRANSFER_CENTS,
-    thirdPartyTransferCents: hasThirdParty ? THIRD_PARTY_TRANSFER_CENTS : 0,
-  };
-}
-
-function getMinimumGrossCents(hasThirdParty: boolean) {
-  const split = getStaticSplit(hasThirdParty);
-  return (
-    split.platformRetainedCents +
-    split.platformTransferCents +
-    split.thirdPartyTransferCents +
-    100
-  );
 }
 
 async function cancelAbandonedPendingPayments(params: {
@@ -316,6 +301,7 @@ serve(async (req) => {
 
     const successUrl =
       configuredSuccessUrl?.trim() || fallbackUrls?.successUrl || null;
+
     const cancelUrl =
       configuredCancelUrl?.trim() || fallbackUrls?.cancelUrl || null;
 
@@ -355,6 +341,7 @@ serve(async (req) => {
     }
 
     const body = ((await req.json().catch(() => ({}))) ?? {}) as RequestBody;
+
     const recurring = body.recurring !== false;
 
     log("request", {
@@ -375,20 +362,32 @@ serve(async (req) => {
     const user = userData as UserRow;
 
     if (!user.comunity) {
-      return json(400, { error: "Usuário sem comunidade vinculada." });
+      return json(400, {
+        error: "Usuário sem comunidade vinculada.",
+      });
     }
 
     const { data: associationData, error: associationError } = await admin
       .from("association")
       .select(
-        "id, name, community, monthly_fee, stripe_third_party_account_id, is_active",
+        `
+          id,
+          name,
+          community,
+          monthly_fee,
+          platform_fee_cents,
+          stripe_third_party_account_id,
+          is_active
+        `,
       )
       .eq("community", user.comunity)
       .eq("is_active", true)
       .single();
 
     if (associationError || !associationData) {
-      return json(404, { error: "Associação não encontrada." });
+      return json(404, {
+        error: "Associação não encontrada.",
+      });
     }
 
     const association = associationData as AssociationRow;
@@ -398,14 +397,14 @@ serve(async (req) => {
         .from("connected_accounts")
         .select(
           `
-            id,
-            stripe_account_id,
-            onboarding_completed,
-            charges_enabled,
-            payouts_enabled,
-            details_submitted,
-            requirements_currently_due
-          `,
+          id,
+          stripe_account_id,
+          onboarding_completed,
+          charges_enabled,
+          payouts_enabled,
+          details_submitted,
+          requirements_currently_due
+        `,
         )
         .eq("association_id", association.id)
         .maybeSingle();
@@ -449,13 +448,33 @@ serve(async (req) => {
     }
 
     const hasThirdParty = Boolean(association.stripe_third_party_account_id);
-    const split = getStaticSplit(hasThirdParty);
-    const minimumGrossCents = getMinimumGrossCents(hasThirdParty);
+
+    let split: PlatformSplit;
+    let minimumGrossCents: number;
+
+    try {
+      split = buildPlatformSplit({
+        platformFeeCents: association.platform_fee_cents,
+        hasThirdParty,
+      });
+
+      minimumGrossCents = getMinimumGrossCents({
+        platformFeeCents: association.platform_fee_cents,
+        hasThirdParty,
+      });
+    } catch (error) {
+      return json(400, {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Configuração da taxa da plataforma inválida.",
+      });
+    }
 
     if (amountTotalCents < minimumGrossCents) {
       return json(400, {
         error:
-          "Mensalidade muito baixa para suportar a configuração financeira atual.",
+          "Mensalidade muito baixa para suportar a taxa da plataforma e os repasses configurados.",
       });
     }
 
@@ -546,7 +565,9 @@ serve(async (req) => {
 
       await admin
         .from("users")
-        .update({ stripe_customer_id: stripeCustomerId })
+        .update({
+          stripe_customer_id: stripeCustomerId,
+        })
         .eq("id", user.id);
 
       log("customer:created", {
@@ -556,6 +577,7 @@ serve(async (req) => {
     }
 
     const transferGroup = `partner_membership_${user.id}_${Date.now()}`;
+
     const paymentMethods = recurring ? ["card"] : ["card", "boleto"];
 
     const commonMetadata = {
@@ -566,6 +588,10 @@ serve(async (req) => {
       transfer_group: transferGroup,
       checkout_mode: recurring ? "subscription" : "payment",
       has_third_party_destination: String(hasThirdParty),
+      platform_fee_total_cents: String(split.platformFeeCents),
+      platform_retained_cents: String(split.platformRetainedCents),
+      platform_transfer_cents: String(split.platformTransferCents),
+      third_party_transfer_cents: String(split.thirdPartyTransferCents),
     };
 
     const session = await stripe.checkout.sessions.create({
@@ -664,6 +690,10 @@ serve(async (req) => {
         community: association.community,
         transfer_group: transferGroup,
         has_third_party_destination: hasThirdParty,
+        platform_fee_total_cents: split.platformFeeCents,
+        platform_retained_cents: split.platformRetainedCents,
+        platform_transfer_cents: split.platformTransferCents,
+        third_party_transfer_cents: split.thirdPartyTransferCents,
       },
       gateway_response: {
         initial_checkout_mode: session.mode,
@@ -705,6 +735,7 @@ serve(async (req) => {
       userId: user.id,
       associationId: association.id,
       connectedAccountId: connectedAccount.id,
+      platformFeeTotalCents: split.platformFeeCents,
     });
 
     return json(200, {

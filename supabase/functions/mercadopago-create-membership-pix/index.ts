@@ -12,6 +12,7 @@ import {
   splitFullName,
   toMoneyNumberFromCents,
 } from "../_shared/mercadopago.ts";
+import { normalizePlatformFeeCents } from "../_shared/plataform-fee.ts";
 
 const LOG_PREFIX = "[mercadopago-create-membership-pix]";
 
@@ -72,28 +73,41 @@ function getPixTransactionData(source: unknown) {
 function isValidCpf(value: string | null | undefined) {
   const cpf = String(value ?? "").replace(/\D/g, "");
 
-  if (cpf.length !== 11) return false;
-  if (/^(\d)\1{10}$/.test(cpf)) return false;
+  if (cpf.length !== 11) {
+    return false;
+  }
+
+  if (/^(\d)\1{10}$/.test(cpf)) {
+    return false;
+  }
 
   let sum = 0;
 
-  for (let i = 0; i < 9; i += 1) {
-    sum += Number(cpf[i]) * (10 - i);
+  for (let index = 0; index < 9; index += 1) {
+    sum += Number(cpf[index]) * (10 - index);
   }
 
   let firstDigit = 11 - (sum % 11);
-  if (firstDigit >= 10) firstDigit = 0;
 
-  if (firstDigit !== Number(cpf[9])) return false;
+  if (firstDigit >= 10) {
+    firstDigit = 0;
+  }
+
+  if (firstDigit !== Number(cpf[9])) {
+    return false;
+  }
 
   sum = 0;
 
-  for (let i = 0; i < 10; i += 1) {
-    sum += Number(cpf[i]) * (11 - i);
+  for (let index = 0; index < 10; index += 1) {
+    sum += Number(cpf[index]) * (11 - index);
   }
 
   let secondDigit = 11 - (sum % 11);
-  if (secondDigit >= 10) secondDigit = 0;
+
+  if (secondDigit >= 10) {
+    secondDigit = 0;
+  }
 
   return secondDigit === Number(cpf[10]);
 }
@@ -122,7 +136,9 @@ function buildMercadoPagoPayer(params: {
 
 function buildWebhookOnlyNotificationUrl(baseUrl: string) {
   const url = new URL(baseUrl);
+
   url.searchParams.set("source_news", "webhooks");
+
   return url.toString();
 }
 
@@ -154,9 +170,11 @@ async function refreshSellerIfNeeded(params: {
   seller: Record<string, unknown>;
 }) {
   const mp = getMercadoPagoConfig();
+
   const tokenExpiresAt = new Date(
     String(params.seller.token_expires_at),
   ).getTime();
+
   const refreshWindowMs = 30 * 24 * 60 * 60 * 1000;
 
   if (tokenExpiresAt > Date.now() + refreshWindowMs) {
@@ -227,10 +245,15 @@ function buildExistingPixResponse(paymentRow: {
 
 serve(async (req) => {
   const cors = handleCors(req);
-  if (cors) return cors;
+
+  if (cors) {
+    return cors;
+  }
 
   if (req.method !== "POST") {
-    return json(405, { error: "Método não permitido." });
+    return json(405, {
+      error: "Método não permitido.",
+    });
   }
 
   try {
@@ -245,7 +268,9 @@ serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
+
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
@@ -255,6 +280,7 @@ serve(async (req) => {
     }
 
     const mp = getMercadoPagoConfig();
+
     const webhookOnlyUrl = buildWebhookOnlyNotificationUrl(mp.webhookUrl);
 
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
@@ -263,11 +289,15 @@ serve(async (req) => {
           Authorization: authHeader,
         },
       },
-      auth: { persistSession: false },
+      auth: {
+        persistSession: false,
+      },
     });
 
     const admin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false },
+      auth: {
+        persistSession: false,
+      },
     });
 
     const {
@@ -316,7 +346,16 @@ serve(async (req) => {
 
     const { data: association, error: associationError } = await admin
       .from("association")
-      .select("id, name, community, monthly_fee, is_active")
+      .select(
+        `
+          id,
+          name,
+          community,
+          monthly_fee,
+          platform_fee_cents,
+          is_active
+        `,
+      )
       .eq("community", user.comunity)
       .eq("is_active", true)
       .single();
@@ -326,6 +365,23 @@ serve(async (req) => {
         error: "Associação ativa não encontrada.",
         code: "association_not_found",
         debugStep: "load-association",
+      });
+    }
+
+    let platformFeeCents: number;
+
+    try {
+      platformFeeCents = normalizePlatformFeeCents(
+        association.platform_fee_cents,
+      );
+    } catch (error) {
+      return json(400, {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Taxa da plataforma inválida.",
+        code: "invalid_platform_fee",
+        debugStep: "validate-platform-fee",
       });
     }
 
@@ -359,7 +415,6 @@ serve(async (req) => {
       });
     }
 
-    // Busca o pagamento mais recente do tipo Pix para tentar reaproveitar.
     const { data: latestPayment, error: latestPaymentError } = await admin
       .from("payments")
       .select(
@@ -380,7 +435,9 @@ serve(async (req) => {
       .eq("purpose", "partner_membership")
       .eq("user_id", user.id)
       .eq("association_id", association.id)
-      .order("created_at", { ascending: false })
+      .order("created_at", {
+        ascending: false,
+      })
       .limit(1)
       .maybeSingle();
 
@@ -394,10 +451,11 @@ serve(async (req) => {
       const expiresAtMs = latestPayment.expires_at
         ? new Date(latestPayment.expires_at).getTime()
         : 0;
+
       const isNotExpired = expiresAtMs > Date.now();
+
       const cachedResponse = buildExistingPixResponse(latestPayment);
 
-      // Se ainda está válido e já temos dados do QR em cache, reaproveita.
       if (
         isNotExpired &&
         isOpenProviderStatus(latestPayment.provider_status) &&
@@ -414,7 +472,6 @@ serve(async (req) => {
         return json(200, cachedResponse);
       }
 
-      // Se existe payment id externo, sincroniza com o Mercado Pago antes de decidir criar outro.
       if (latestPayment.provider_payment_id && isNotExpired) {
         try {
           const mpPayment = await fetchPayment({
@@ -425,6 +482,7 @@ serve(async (req) => {
           const internalStatus = normalizeInternalPaymentStatus(
             mpPayment.status,
           );
+
           const transactionData = getPixTransactionData(mpPayment);
 
           const { error: syncError } = await admin
@@ -472,7 +530,6 @@ serve(async (req) => {
             });
           }
 
-          // Se o pagamento já terminou, segue para criar um novo.
           if (isTerminalProviderStatus(mpPayment.status)) {
             log("latest-pix-terminal-status", {
               internalPaymentId: latestPayment.id,
@@ -490,7 +547,6 @@ serve(async (req) => {
                 : String(syncRemoteError),
           });
 
-          // Se a row local ainda tem dados de QR e não expirou, devolve mesmo assim.
           if (
             isNotExpired &&
             (cachedResponse.qrCode ||
@@ -505,16 +561,18 @@ serve(async (req) => {
 
     const amountTotalCents = toCents(association.monthly_fee);
 
-    if (amountTotalCents <= mp.applicationFeeCents) {
+    if (amountTotalCents <= platformFeeCents) {
       return json(400, {
-        error: "Mensalidade insuficiente para a taxa fixa da plataforma.",
+        error: "Mensalidade insuficiente para a taxa da plataforma.",
         code: "monthly_fee_too_low",
         debugStep: "validate-monthly-fee",
       });
     }
 
     const externalReference = `mp_membership_${crypto.randomUUID()}`;
+
     const expiresAt = addMinutesIso(mp.pixExpirationMinutes);
+
     const { firstName, lastName } = splitFullName(user.fullname);
 
     const { data: insertedPayment, error: insertError } = await admin
@@ -528,10 +586,17 @@ serve(async (req) => {
         status: "pending",
         currency: "brl",
         amount_total: amountTotalCents,
-        amount_platform_fee: mp.applicationFeeCents,
+
+        /*
+         * No Mercado Pago, a taxa
+         * completa é enviada como
+         * application_fee.
+         */
+        amount_platform_fee: platformFeeCents,
         amount_platform_transfer: 0,
         amount_third_party_transfer: 0,
-        amount_association_transfer: amountTotalCents - mp.applicationFeeCents,
+
+        amount_association_transfer: amountTotalCents - platformFeeCents,
         amount_stripe_fee: 0,
         description: `Mensalidade - ${association.name}`,
         external_reference: externalReference,
@@ -542,6 +607,7 @@ serve(async (req) => {
           association_id: association.id,
           mp_seller_user_id: seller.mp_user_id,
           notification_url: webhookOnlyUrl,
+          platform_fee_total_cents: platformFeeCents,
         },
         gateway_response: {},
         created_by: user.id,
@@ -565,7 +631,7 @@ serve(async (req) => {
           description: `Mensalidade - ${association.name}`,
           transaction_amount: toMoneyNumberFromCents(amountTotalCents),
           payment_method_id: "pix",
-          application_fee: toMoneyNumberFromCents(mp.applicationFeeCents),
+          application_fee: toMoneyNumberFromCents(platformFeeCents),
           date_of_expiration: expiresAt,
           external_reference: externalReference,
           notification_url: webhookOnlyUrl,
@@ -579,6 +645,7 @@ serve(async (req) => {
       });
 
       const internalStatus = normalizeInternalPaymentStatus(payment.status);
+
       const transactionData = getPixTransactionData(payment);
 
       const { error: updateError } = await admin
@@ -603,6 +670,7 @@ serve(async (req) => {
         internalPaymentId: insertedPayment.id,
         mpPaymentId: payment.id,
         associationId: association.id,
+        platformFeeCents,
         hasQrCode: Boolean(transactionData.qrCode),
         hasQrCodeBase64: Boolean(transactionData.qrCodeBase64),
       });

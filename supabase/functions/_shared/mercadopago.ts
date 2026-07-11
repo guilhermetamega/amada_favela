@@ -51,9 +51,6 @@ export function getMercadoPagoConfig() {
     redirectSponsorUri: requiredEnv("MP_REDIRECT_URI_SPONSOR_CONNECT"),
     webhookSecret: requiredEnv("MP_WEBHOOK_SECRET"),
     appBaseUrl: requiredEnv("APP_BASE_URL").replace(/\/$/, ""),
-    applicationFeeCents: Number(
-      Deno.env.get("MP_APPLICATION_FEE_CENTS") ?? "500",
-    ),
     pixExpirationMinutes: Number(
       Deno.env.get("MP_PIX_EXPIRATION_MINUTES") ?? "30",
     ),
@@ -69,11 +66,13 @@ export function buildMercadoPagoAuthorizationUrl(params: {
   state: string;
 }) {
   const url = new URL("https://auth.mercadopago.com.br/authorization");
+
   url.searchParams.set("client_id", params.clientId);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("platform_id", "mp");
   url.searchParams.set("redirect_uri", params.redirectUri);
   url.searchParams.set("state", params.state);
+
   return url.toString();
 }
 
@@ -234,7 +233,9 @@ export function splitFullName(fullName: string | null | undefined) {
 
 export function addMinutesIso(minutes: number) {
   const date = new Date();
+
   date.setMinutes(date.getMinutes() + minutes);
+
   return date.toISOString();
 }
 
@@ -246,16 +247,20 @@ export function normalizeInternalPaymentStatus(mpStatus: string) {
   switch (mpStatus) {
     case "approved":
       return "succeeded";
+
     case "pending":
     case "in_process":
     case "authorized":
       return "pending";
+
     case "cancelled":
       return "cancelled";
+
     case "rejected":
     case "refunded":
     case "charged_back":
       return "failed";
+
     default:
       return "pending";
   }
@@ -281,7 +286,10 @@ async function hmacSha256Hex(secret: string, payload: string) {
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
+    {
+      name: "HMAC",
+      hash: "SHA-256",
+    },
     false,
     ["sign"],
   );
@@ -299,6 +307,7 @@ async function hmacSha256Hex(secret: string, payload: string) {
 
 export async function verifyWebhookSignature(req: Request, secret: string) {
   const signature = parseSignatureHeader(req.headers.get("x-signature"));
+
   const ts = signature.ts;
   const v1 = signature.v1;
   const requestId = req.headers.get("x-request-id") ?? "";
@@ -310,6 +319,7 @@ export async function verifyWebhookSignature(req: Request, secret: string) {
   }
 
   const manifest = `id:${dataId};request-id:${requestId};ts:${ts};`;
+
   const calculated = await hmacSha256Hex(secret, manifest);
 
   return calculated === v1;
