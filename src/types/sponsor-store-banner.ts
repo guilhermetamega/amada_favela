@@ -1,9 +1,15 @@
 export type SponsorStoreBanner = {
   id: string;
   sponsor_id: string;
+  community: string;
   image_url: string;
   created_at: string;
   updated_at: string;
+};
+
+export type SponsorAdCommunityOption = {
+  key: string;
+  label: string;
 };
 
 export type SponsorStoreBannerFeatureOption = {
@@ -20,6 +26,8 @@ export type SponsorStoreBannerGetResponse = {
   item?: SponsorStoreBanner | null;
   selectedFeatureKeys?: string[];
   availableFeatures?: SponsorStoreBannerFeatureOption[];
+  availableCommunities?: SponsorAdCommunityOption[];
+  defaultCommunity?: string | null;
   message?: string;
 };
 

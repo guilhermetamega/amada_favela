@@ -1,4 +1,5 @@
 import { getSponsorSessionToken } from "@/lib/sponsorSession";
+
 import type {
   SponsorStoreBannerDeleteResponse,
   SponsorStoreBannerGetResponse,
@@ -8,44 +9,75 @@ import type {
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-async function request(path: string, options: RequestInit = {}) {
+type ErrorResponse = {
+  message?: string;
+};
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getSponsorSessionToken();
 
   if (!token) {
     throw new Error("Sessão do patrocinador não encontrada.");
   }
 
+  const headers = new Headers(options.headers);
+
+  headers.set("apikey", anonKey);
+  headers.set("Authorization", `Bearer ${token}`);
+
   const response = await fetch(`${supabaseUrl}/functions/v1/${path}`, {
     ...options,
-    headers: {
-      apikey: anonKey,
-      Authorization: `Bearer ${token}`,
-      ...(options.headers ?? {}),
-    },
+    headers,
   });
 
-  const data = await response.json();
+  const data = (await response.json().catch(() => null)) as
+    | T
+    | ErrorResponse
+    | null;
 
   if (!response.ok) {
-    throw new Error(data?.message || "Erro na requisição.");
+    throw new Error(
+      typeof data === "object" &&
+        data !== null &&
+        "message" in data &&
+        typeof data.message === "string"
+        ? data.message
+        : "Erro na requisição.",
+    );
   }
 
-  return data;
+  if (!data) {
+    throw new Error("A função não retornou uma resposta válida.");
+  }
+
+  return data as T;
 }
 
 export async function getSponsorStoreBanner() {
-  const data = await request("sponsor-store-banner-get", {
+  return request<SponsorStoreBannerGetResponse>("sponsor-store-banner-get", {
     method: "GET",
   });
-
-  return data as SponsorStoreBannerGetResponse;
 }
 
 export async function saveSponsorStoreBanner(input: {
+  community: string;
   selectedFeatureKeys: string[];
   image?: File | null;
 }) {
+  const community = input.community.trim();
+
+  if (!community) {
+    throw new Error("Selecione a comunidade da propaganda.");
+  }
+
+  if (input.selectedFeatureKeys.length === 0) {
+    throw new Error("Selecione ao menos uma função para o banner.");
+  }
+
   const formData = new FormData();
+
+  formData.append("community", community);
+
   formData.append(
     "selectedFeatureKeys",
     JSON.stringify(input.selectedFeatureKeys),
@@ -55,18 +87,17 @@ export async function saveSponsorStoreBanner(input: {
     formData.append("image", input.image);
   }
 
-  const data = await request("sponsor-store-banner-save", {
+  return request<SponsorStoreBannerSaveResponse>("sponsor-store-banner-save", {
     method: "POST",
     body: formData,
   });
-
-  return data as SponsorStoreBannerSaveResponse;
 }
 
 export async function deleteSponsorStoreBanner() {
-  const data = await request("sponsor-store-banner-delete", {
-    method: "DELETE",
-  });
-
-  return data as SponsorStoreBannerDeleteResponse;
+  return request<SponsorStoreBannerDeleteResponse>(
+    "sponsor-store-banner-delete",
+    {
+      method: "DELETE",
+    },
+  );
 }

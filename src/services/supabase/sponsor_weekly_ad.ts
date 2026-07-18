@@ -1,52 +1,80 @@
-import type { SponsorWeeklyAdResponse } from "@/types/sponsor-weekly-ad";
 import { getSponsorSessionToken } from "@/lib/sponsorSession";
+
+import type { SponsorWeeklyAdResponse } from "@/types/sponsor-weekly-ad";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-async function request(path: string, options: RequestInit = {}) {
+type ErrorResponse = {
+  message?: string;
+};
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getSponsorSessionToken();
 
   if (!token) {
     throw new Error("Sessão do patrocinador não encontrada.");
   }
 
+  const headers = new Headers(options.headers);
+
+  headers.set("apikey", anonKey);
+
+  headers.set("Authorization", `Bearer ${token}`);
+
   const response = await fetch(`${supabaseUrl}/functions/v1/${path}`, {
     ...options,
-    headers: {
-      apikey: anonKey,
-      Authorization: `Bearer ${token}`,
-      ...(options.headers ?? {}),
-    },
+    headers,
   });
 
-  const data = await response.json();
+  const data = (await response.json().catch(() => null)) as
+    | T
+    | ErrorResponse
+    | null;
 
   if (!response.ok) {
-    throw new Error(data?.message || "Erro na requisição.");
+    throw new Error(
+      data && typeof data === "object" && "message" in data && typeof data.message === "string"
+        ? data.message
+        : "Erro na requisição.",
+    );
   }
 
-  return data;
+  if (!data) {
+    throw new Error("A função não retornou uma resposta válida.");
+  }
+
+  return data as T;
 }
 
 export async function getSponsorWeeklyAd() {
-  const data = await request("sponsor-weekly-ad-get", {
+  return request<SponsorWeeklyAdResponse>("sponsor-weekly-ad-get", {
     method: "GET",
   });
-
-  return data as SponsorWeeklyAdResponse;
 }
 
 export async function saveSponsorWeeklyAd(input: {
+  community: string;
   storeName: string;
   phone: string;
   validUntil: string;
   imagePrimary?: File | null;
   imageSecondary?: File | null;
 }) {
+  const community = input.community.trim();
+
+  if (!community) {
+    throw new Error("Selecione a comunidade da propaganda.");
+  }
+
   const formData = new FormData();
-  formData.append("storeName", input.storeName);
-  formData.append("phone", input.phone);
+
+  formData.append("community", community);
+
+  formData.append("storeName", input.storeName.trim());
+
+  formData.append("phone", input.phone.trim());
+
   formData.append("validUntil", input.validUntil);
 
   if (input.imagePrimary) {
@@ -57,30 +85,33 @@ export async function saveSponsorWeeklyAd(input: {
     formData.append("imageSecondary", input.imageSecondary);
   }
 
-  const data = await request("sponsor-weekly-ad-save", {
+  return request<SponsorWeeklyAdResponse>("sponsor-weekly-ad-save", {
     method: "POST",
     body: formData,
   });
-
-  return data as SponsorWeeklyAdResponse;
 }
 
 export async function deleteSponsorWeeklyAd() {
-  const data = await request("sponsor-weekly-ad-delete", {
+  return request<SponsorWeeklyAdResponse>("sponsor-weekly-ad-delete", {
     method: "DELETE",
   });
-
-  return data as SponsorWeeklyAdResponse;
 }
 
 export function buildWhatsappUrl(phone: string | null) {
   const rawDigits = (phone ?? "").replace(/\D/g, "");
 
-  if (!rawDigits) return "null";
+  if (!rawDigits) {
+    return "#";
+  }
 
   const digits = rawDigits.startsWith("55") ? rawDigits : `55${rawDigits}`;
-  const message =
-    "Olá, vim pelo aplicativo da associação de moradores. Gostaria de obter mais informações sobre o anúncio do banner.";
 
-  return `https://api.whatsapp.com/send?phone=${digits}&text=${encodeURIComponent(message)}`;
+  const message =
+    "Olá, vim pelo aplicativo da associação de moradores. Gostaria de obter mais informações sobre o anúncio.";
+
+  return (
+    "https://api.whatsapp.com/send" +
+    `?phone=${digits}` +
+    `&text=${encodeURIComponent(message)}`
+  );
 }

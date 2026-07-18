@@ -7,6 +7,7 @@ export type Sponsor = {
   birth: string;
   role: string;
   profession: string | null;
+  default_community: string | null;
   created_at: string;
   expires_at: string;
   status: "active" | "inactive" | "blocked";
@@ -27,7 +28,10 @@ export type SponsorFeature = {
 export type SponsorLoginSuccess = {
   ok: true;
   token: string;
-  sponsor: Pick<Sponsor, "id" | "name" | "email" | "role" | "expires_at">;
+  sponsor: Pick<
+    Sponsor,
+    "id" | "name" | "email" | "role" | "expires_at" | "default_community"
+  >;
   features: SponsorFeature[];
 };
 

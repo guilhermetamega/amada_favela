@@ -5,55 +5,91 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react";
-import MainLayout from "@/components/layout/MainLayout";
+
 import DashboardHeader from "@/components/layout/DashboardHeader";
+import MainLayout from "@/components/layout/MainLayout";
+
 import {
   deleteSponsorStoreBanner,
   getSponsorStoreBanner,
   saveSponsorStoreBanner,
 } from "@/services/supabase/sponsor_store_banner";
+
 import type {
+  SponsorAdCommunityOption,
   SponsorStoreBanner,
   SponsorStoreBannerFeatureOption,
 } from "@/types/sponsor-store-banner";
 
+function revokeObjectUrl(value: string) {
+  if (value.startsWith("blob:")) {
+    URL.revokeObjectURL(value);
+  }
+}
+
 export default function SponsorBannerPage() {
   const [loading, setLoading] = useState(true);
+
   const [saving, setSaving] = useState(false);
+
   const [deleting, setDeleting] = useState(false);
 
   const [currentBanner, setCurrentBanner] = useState<SponsorStoreBanner | null>(
     null,
   );
+
   const [availableFeatures, setAvailableFeatures] = useState<
     SponsorStoreBannerFeatureOption[]
   >([]);
+
   const [selectedFeatureKeys, setSelectedFeatureKeys] = useState<string[]>([]);
 
+  const [availableCommunities, setAvailableCommunities] = useState<
+    SponsorAdCommunityOption[]
+  >([]);
+
+  const [community, setCommunity] = useState("");
+
   const [imageFile, setImageFile] = useState<File | null>(null);
+
   const [imagePreview, setImagePreview] = useState("");
 
   const [errorMessage, setErrorMessage] = useState("");
+
   const [successMessage, setSuccessMessage] = useState("");
 
-  const isEditing = !!currentBanner;
+  const isEditing = Boolean(currentBanner);
 
   useEffect(() => {
     async function loadData() {
       try {
         setLoading(true);
+        setErrorMessage("");
+
         const response = await getSponsorStoreBanner();
 
         setAvailableFeatures(response.availableFeatures ?? []);
+
         setSelectedFeatureKeys(response.selectedFeatureKeys ?? []);
+
+        setAvailableCommunities(response.availableCommunities ?? []);
+
+        const initialCommunity =
+          response.item?.community ?? response.defaultCommunity ?? "";
+
+        setCommunity(initialCommunity);
 
         if (response.item) {
           setCurrentBanner(response.item);
+
           setImagePreview(response.item.image_url);
+        } else {
+          setCurrentBanner(null);
+          setImagePreview("");
         }
       } catch (error) {
         setErrorMessage(
-          error instanceof Error ? error.message : "Erro ao carregar banner.",
+          error instanceof Error ? error.message : "Erro ao carregar o banner.",
         );
       } finally {
         setLoading(false);
@@ -63,24 +99,53 @@ export default function SponsorBannerPage() {
     void loadData();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      revokeObjectUrl(imagePreview);
+    };
+  }, [imagePreview]);
+
   function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
+
     setImageFile(file);
 
-    if (file) {
-      setImagePreview(URL.createObjectURL(file));
+    if (!file) {
+      setImagePreview(currentBanner?.image_url ?? "");
+
+      return;
     }
+
+    setImagePreview(URL.createObjectURL(file));
   }
 
-  function toggleFeature(key: string) {
-    setSelectedFeatureKeys((prev) =>
-      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key],
-    );
+  function selectFeature(key: string) {
+    /*
+     * O banner representa uma única função.
+     * O backend mantém array porque a tabela
+     * relacional aceita vários vínculos.
+     */
+    setSelectedFeatureKeys([key]);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (saving) return;
+
+    if (saving) {
+      return;
+    }
+
+    if (!community.trim()) {
+      setErrorMessage("Selecione a comunidade da propaganda.");
+
+      return;
+    }
+
+    if (selectedFeatureKeys.length === 0) {
+      setErrorMessage("Selecione a função exibida ao clicar no banner.");
+
+      return;
+    }
 
     setSaving(true);
     setErrorMessage("");
@@ -88,16 +153,25 @@ export default function SponsorBannerPage() {
 
     try {
       const response = await saveSponsorStoreBanner({
+        community,
         selectedFeatureKeys,
         image: imageFile,
       });
 
       if (response.item) {
         setCurrentBanner(response.item);
+
+        setCommunity(response.item.community);
+
         setImagePreview(response.item.image_url);
       }
 
+      if (response.selectedFeatureKeys) {
+        setSelectedFeatureKeys(response.selectedFeatureKeys);
+      }
+
       setImageFile(null);
+
       setSuccessMessage(
         isEditing
           ? "Banner atualizado com sucesso."
@@ -105,7 +179,7 @@ export default function SponsorBannerPage() {
       );
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Erro ao salvar banner.",
+        error instanceof Error ? error.message : "Erro ao salvar o banner.",
       );
     } finally {
       setSaving(false);
@@ -117,7 +191,9 @@ export default function SponsorBannerPage() {
       "Deseja realmente excluir o banner publicado?",
     );
 
-    if (!confirmed || deleting) return;
+    if (!confirmed || deleting) {
+      return;
+    }
 
     setDeleting(true);
     setErrorMessage("");
@@ -130,10 +206,11 @@ export default function SponsorBannerPage() {
       setImageFile(null);
       setImagePreview("");
       setSelectedFeatureKeys([]);
+
       setSuccessMessage("Banner excluído com sucesso.");
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Erro ao excluir banner.",
+        error instanceof Error ? error.message : "Erro ao excluir o banner.",
       );
     } finally {
       setDeleting(false);
@@ -142,8 +219,13 @@ export default function SponsorBannerPage() {
 
   const selectedFeatures = useMemo(() => {
     const selectedSet = new Set(selectedFeatureKeys);
+
     return availableFeatures.filter((item) => selectedSet.has(item.key));
   }, [availableFeatures, selectedFeatureKeys]);
+
+  const selectedCommunity = useMemo(() => {
+    return availableCommunities.find((item) => item.key === community) ?? null;
+  }, [availableCommunities, community]);
 
   if (loading) {
     return (
@@ -177,9 +259,40 @@ export default function SponsorBannerPage() {
         <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[1fr_0.95fr]">
           <section className="h-fit rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8">
             <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label
+                  htmlFor="bannerCommunity"
+                  className="mb-2 block text-sm font-medium"
+                >
+                  Comunidade da propaganda
+                </label>
+
+                <select
+                  id="bannerCommunity"
+                  value={community}
+                  onChange={(event) => setCommunity(event.target.value)}
+                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800"
+                  required
+                >
+                  <option value="">Selecione uma comunidade</option>
+
+                  {availableCommunities.map((item) => (
+                    <option key={item.key} value={item.key}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+
+                <p className="mt-2 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+                  O banner será exibido somente aos usuários da comunidade
+                  selecionada.
+                </p>
+              </div>
+
               <div className="w-full sm:flex sm:flex-col sm:items-center sm:justify-center sm:text-center">
-                <div className="w-full sm:w-fit flex-col items-center justify-center gap-2 sm:flex">
+                <div className="w-full flex-col items-center justify-center gap-2 sm:flex sm:w-fit">
                   <label htmlFor="bannerImage">Imagem do banner</label>
+
                   <input
                     id="bannerImage"
                     type="file"
@@ -188,6 +301,7 @@ export default function SponsorBannerPage() {
                     className="w-full text-zinc-700 file:mr-3 file:w-full file:items-center file:justify-center file:rounded-xl file:border-0 file:bg-emerald-500 file:px-4 file:py-2 file:font-medium file:text-white dark:text-zinc-300 dark:file:bg-emerald-500 dark:file:text-white"
                     required={!currentBanner}
                   />
+
                   <p className="mt-2 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
                     Use uma imagem horizontal com boa leitura em mobile e
                     desktop.
@@ -200,6 +314,7 @@ export default function SponsorBannerPage() {
                   <h2 className="text-sm font-medium">
                     Função exibida ao clicar no banner
                   </h2>
+
                   <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
                     Selecione a função que este banner representa.
                   </p>
@@ -221,15 +336,22 @@ export default function SponsorBannerPage() {
                         >
                           <input
                             type="radio"
+                            name="bannerFeature"
                             checked={checked}
-                            onChange={() => toggleFeature(feature.key)}
-                            className="size-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500"
+                            onChange={() => selectFeature(feature.key)}
+                            className="size-4 border-zinc-300 text-emerald-600 focus:ring-emerald-500"
                           />
 
-                          <div className="flex gap-8 justify-center items-center">
+                          <div>
                             <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                               {feature.label}
                             </p>
+
+                            {feature.description ? (
+                              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                {feature.description}
+                              </p>
+                            ) : null}
                           </div>
                         </label>
                       );
@@ -246,8 +368,8 @@ export default function SponsorBannerPage() {
               <div className="flex flex-col gap-3 pt-2 sm:flex-row">
                 <button
                   type="submit"
-                  disabled={saving}
-                  className="rounded-2xl bg-zinc-900 px-5 py-3 font-semibold text-white transition hover:opacity-90 disabled:opacity-60 dark:bg-white dark:text-zinc-900"
+                  disabled={saving || deleting}
+                  className="rounded-2xl bg-zinc-900 px-5 py-3 font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-zinc-900"
                 >
                   {saving
                     ? "Salvando..."
@@ -259,9 +381,11 @@ export default function SponsorBannerPage() {
                 {currentBanner ? (
                   <button
                     type="button"
-                    onClick={handleDelete}
-                    disabled={deleting}
-                    className="rounded-2xl border border-red-200 px-5 py-3 font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-60 dark:border-red-900/40 dark:text-red-300 dark:hover:bg-red-950/30"
+                    onClick={() => {
+                      void handleDelete();
+                    }}
+                    disabled={deleting || saving}
+                    className="rounded-2xl border border-red-200 px-5 py-3 font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-900/40 dark:text-red-300 dark:hover:bg-red-950/30"
                   >
                     {deleting ? "Excluindo..." : "Excluir banner"}
                   </button>
@@ -272,9 +396,7 @@ export default function SponsorBannerPage() {
 
           <section className="rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8">
             <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold">Preview</h2>
-              </div>
+              <h2 className="text-lg font-semibold">Preview</h2>
 
               {currentBanner ? (
                 <span className="rounded-full border border-zinc-200 px-3 py-1 text-xs font-medium dark:border-zinc-700">
@@ -298,7 +420,15 @@ export default function SponsorBannerPage() {
             </div>
 
             <div className="mt-6 rounded-3xl border border-zinc-200 p-4 dark:border-zinc-800">
-              <h3 className="text-lg font-semibold">Funções selecionadas</h3>
+              <h3 className="text-lg font-semibold">Comunidade</h3>
+
+              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+                {selectedCommunity?.label ?? "Nenhuma comunidade selecionada."}
+              </p>
+            </div>
+
+            <div className="mt-4 rounded-3xl border border-zinc-200 p-4 dark:border-zinc-800">
+              <h3 className="text-lg font-semibold">Função selecionada</h3>
 
               {selectedFeatures.length > 0 ? (
                 <div className="mt-4 flex flex-wrap gap-2">

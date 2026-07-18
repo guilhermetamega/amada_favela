@@ -65,7 +65,17 @@ export async function getSponsorFromRequest(req: Request) {
 
   const { data: sponsor, error: sponsorError } = await supabase
     .from("sponsors")
-    .select("id, name, email, role, status, expires_at")
+    .select(
+      `
+    id,
+    name,
+    email,
+    role,
+    status,
+    expires_at,
+    default_community
+  `,
+    )
     .eq("id", session.sponsor_id)
     .maybeSingle();
 
