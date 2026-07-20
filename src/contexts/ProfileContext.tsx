@@ -1,23 +1,26 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
-  useCallback,
   type ReactNode,
 } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import {
-  getCurrentUserProfile,
-  getPartnerStatus,
-} from "@/services/supabase/profile";
+import { getPartnerStatus } from "@/services/supabase/profile";
+import { getCurrentUserAccessContext } from "@/services/supabase/access";
 import { buildPermissions, type Permissions } from "@/lib/permissions";
 import { ProfileContext } from "./profile-context";
 
 export type ProfileContextType = {
   permissions: Permissions | null;
   loading: boolean;
+  error: string | null;
+
   community: string | null;
+  associationId: string | null;
   isPartnerActive: boolean;
+  passwordChangeRequired: boolean;
+
   refreshPermissions: () => Promise<void>;
 };
 
@@ -29,40 +32,67 @@ export function ProfileProvider({ children }: ProfileProviderProps) {
   const { user, loading: authLoading } = useAuth();
 
   const [permissions, setPermissions] = useState<Permissions | null>(null);
+
   const [community, setCommunity] = useState<string | null>(null);
+
+  const [associationId, setAssociationId] = useState<string | null>(null);
+
   const [isPartnerActive, setIsPartnerActive] = useState(false);
+
+  const [passwordChangeRequired, setPasswordChangeRequired] = useState(false);
+
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const resetContext = useCallback(() => {
+    setPermissions(null);
+    setCommunity(null);
+    setAssociationId(null);
+    setIsPartnerActive(false);
+    setPasswordChangeRequired(false);
+    setError(null);
+  }, []);
 
   const loadPermissions = useCallback(async () => {
     if (!user) {
-      setPermissions(null);
-      setCommunity(null);
-      setIsPartnerActive(false);
+      resetContext();
       setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
+      setError(null);
 
-      const profile = await getCurrentUserProfile(user.id);
-      const partnerActive = await getPartnerStatus(user.id);
+      const [accessContext, partnerActive] = await Promise.all([
+        getCurrentUserAccessContext(),
+        getPartnerStatus(user.id),
+      ]);
 
-      setCommunity(profile.comunity ?? null);
+      setCommunity(accessContext.community);
+      setAssociationId(accessContext.associationId);
       setIsPartnerActive(partnerActive);
-      setPermissions(buildPermissions(profile.role, partnerActive));
-    } catch (error) {
-      console.error("Erro ao carregar permissões:", error);
-      setPermissions(null);
-      setCommunity(null);
-      setIsPartnerActive(false);
+      setPasswordChangeRequired(accessContext.passwordChangeRequired);
+
+      setPermissions(buildPermissions(accessContext, partnerActive));
+    } catch (loadError) {
+      console.error("Erro ao carregar contexto de acesso:", loadError);
+
+      resetContext();
+
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Não foi possível carregar suas permissões.",
+      );
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [resetContext, user]);
 
   useEffect(() => {
     if (authLoading) return;
+
     void loadPermissions();
   }, [authLoading, loadPermissions]);
 
@@ -70,16 +100,24 @@ export function ProfileProvider({ children }: ProfileProviderProps) {
     () => ({
       permissions,
       loading: authLoading || loading,
+      error,
+
       community,
+      associationId,
       isPartnerActive,
+      passwordChangeRequired,
+
       refreshPermissions: loadPermissions,
     }),
     [
       permissions,
-      loading,
       authLoading,
+      loading,
+      error,
       community,
+      associationId,
       isPartnerActive,
+      passwordChangeRequired,
       loadPermissions,
     ],
   );
