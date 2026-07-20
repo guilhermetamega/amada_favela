@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
 import RoleGuard from "./RoleGuard";
+import PermissionGuard from "./PermissionGuard";
 import RequiredPasswordChangeGuard from "./RequiredPasswordChangeGuard";
 import RouteSkeleton from "@/components/ui/RouteSkeleton";
 import PollsPage from "@/pages/Polls";
@@ -24,11 +25,16 @@ const GarbageSchedulesPublicPage = lazy(
 );
 
 const AuthPage = lazy(() => import("@/pages/Auth"));
+
 const DashboardPage = lazy(() => import("@/pages/Dashboard"));
 
 const RequiredPasswordChangePage = lazy(
   () => import("@/pages/Security/RequiredPasswordChange"),
 );
+
+const AdminUsersPage = lazy(() => import("@/pages/Admin/Users"));
+
+const AdminUserDetailsPage = lazy(() => import("@/pages/Admin/Users/Details"));
 
 const MercadoPagoOAuthCallbackPage = lazy(
   () => import("@/pages/MercadoPagoOAuthCallback"),
@@ -94,6 +100,7 @@ export function AppRoutes() {
       <Suspense fallback={<RouteSkeleton />}>
         <Routes>
           <Route path="/" element={<AuthPage />} />
+
           <Route path="/auth" element={<AuthPage />} />
 
           <Route path="/sponsor/login" element={<SponsorLoginPage />} />
@@ -175,6 +182,22 @@ export function AppRoutes() {
                 path="/social-projects/:id"
                 element={<SocialProjectsDetailsPage />}
               />
+
+              <Route
+                element={
+                  <PermissionGuard
+                    permission="canAccessUserAdministration"
+                    redirectTo="/admin"
+                  />
+                }
+              >
+                <Route path="/admin/users" element={<AdminUsersPage />} />
+
+                <Route
+                  path="/admin/users/:userId"
+                  element={<AdminUserDetailsPage />}
+                />
+              </Route>
 
               <Route
                 element={
