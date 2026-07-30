@@ -9,28 +9,64 @@ export type OAuthTokenResponse = {
   scope: string;
 };
 
+export type MercadoPagoFeeDetail = {
+  type?: string;
+  amount?: number;
+  fee_payer?: string;
+};
+
 export type MercadoPagoPaymentResponse = {
-  id: number;
+  id: number | string;
+
   status: string;
-  status_detail?: string;
-  date_created?: string;
-  date_last_updated?: string;
-  date_of_expiration?: string;
+  status_detail?: string | null;
+
+  date_created?: string | null;
+  date_last_updated?: string | null;
+  date_approved?: string | null;
+  date_of_expiration?: string | null;
+
   transaction_amount?: number;
-  external_reference?: string;
+  application_fee?: number | null;
+
+  external_reference?: string | null;
+
   payer?: {
-    email?: string;
+    id?: string | number;
+    email?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
+
     identification?: {
-      type?: string;
-      number?: string;
+      type?: string | null;
+      number?: string | null;
     };
   };
-  transaction_data?: {
-    qr_code?: string;
-    qr_code_base64?: string;
-    ticket_url?: string;
+
+  point_of_interaction?: {
+    type?: string;
+
+    transaction_data?: {
+      qr_code?: string | null;
+      qr_code_base64?: string | null;
+      ticket_url?: string | null;
+    };
   };
-  fee_details?: Array<Record<string, unknown>>;
+
+  transaction_data?: {
+    qr_code?: string | null;
+    qr_code_base64?: string | null;
+    ticket_url?: string | null;
+  };
+
+  transaction_details?: {
+    net_received_amount?: number | null;
+    total_paid_amount?: number | null;
+    overpaid_amount?: number | null;
+    installment_amount?: number | null;
+  };
+
+  fee_details?: MercadoPagoFeeDetail[];
 };
 
 function requiredEnv(name: string) {
@@ -46,14 +82,21 @@ function requiredEnv(name: string) {
 export function getMercadoPagoConfig() {
   return {
     clientId: requiredEnv("MP_CLIENT_ID"),
+
     clientSecret: requiredEnv("MP_CLIENT_SECRET"),
+
     redirectUri: requiredEnv("MP_REDIRECT_URI"),
+
     redirectSponsorUri: requiredEnv("MP_REDIRECT_URI_SPONSOR_CONNECT"),
+
     webhookSecret: requiredEnv("MP_WEBHOOK_SECRET"),
+
     appBaseUrl: requiredEnv("APP_BASE_URL").replace(/\/$/, ""),
+
     pixExpirationMinutes: Number(
       Deno.env.get("MP_PIX_EXPIRATION_MINUTES") ?? "30",
     ),
+
     webhookUrl:
       Deno.env.get("MP_WEBHOOK_URL") ??
       `${requiredEnv("SUPABASE_URL")}/functions/v1/mercadopago-webhook`,
@@ -68,9 +111,13 @@ export function buildMercadoPagoAuthorizationUrl(params: {
   const url = new URL("https://auth.mercadopago.com.br/authorization");
 
   url.searchParams.set("client_id", params.clientId);
+
   url.searchParams.set("response_type", "code");
+
   url.searchParams.set("platform_id", "mp");
+
   url.searchParams.set("redirect_uri", params.redirectUri);
+
   url.searchParams.set("state", params.state);
 
   return url.toString();
@@ -85,19 +132,27 @@ export async function exchangeAuthorizationCode(params: {
 }) {
   const body = new URLSearchParams({
     client_id: params.clientId,
+
     client_secret: params.clientSecret,
+
     grant_type: "authorization_code",
+
     code: params.code,
+
     redirect_uri: params.redirectUri,
+
     state: params.state,
   });
 
   const response = await fetch("https://api.mercadopago.com/oauth/token", {
     method: "POST",
+
     headers: {
       accept: "application/json",
+
       "content-type": "application/x-www-form-urlencoded",
     },
+
     body,
   });
 
@@ -122,17 +177,23 @@ export async function refreshAuthorization(params: {
 }) {
   const body = new URLSearchParams({
     client_id: params.clientId,
+
     client_secret: params.clientSecret,
+
     grant_type: "refresh_token",
+
     refresh_token: params.refreshToken,
   });
 
   const response = await fetch("https://api.mercadopago.com/oauth/token", {
     method: "POST",
+
     headers: {
       accept: "application/json",
+
       "content-type": "application/x-www-form-urlencoded",
     },
+
     body,
   });
 
@@ -157,12 +218,17 @@ export async function createPixPayment(params: {
 }) {
   const response = await fetch("https://api.mercadopago.com/v1/payments", {
     method: "POST",
+
     headers: {
       accept: "application/json",
+
       "content-type": "application/json",
+
       Authorization: `Bearer ${params.sellerAccessToken}`,
+
       "X-Idempotency-Key": params.idempotencyKey,
     },
+
     body: JSON.stringify(params.body),
   });
 
@@ -188,8 +254,10 @@ export async function fetchPayment(params: {
     `https://api.mercadopago.com/v1/payments/${params.paymentId}`,
     {
       method: "GET",
+
       headers: {
         accept: "application/json",
+
         Authorization: `Bearer ${params.sellerAccessToken}`,
       },
     },
@@ -219,6 +287,7 @@ export function splitFullName(fullName: string | null | undefined) {
   if (!cleaned) {
     return {
       firstName: "Morador",
+
       lastName: "AMA",
     };
   }
@@ -227,6 +296,7 @@ export function splitFullName(fullName: string | null | undefined) {
 
   return {
     firstName,
+
     lastName: rest.join(" ") || "AMA",
   };
 }
@@ -271,7 +341,9 @@ function parseSignatureHeader(value: string | null) {
 
   for (const piece of String(value ?? "").split(",")) {
     const [rawKey, rawValue] = piece.split("=", 2);
+
     const key = rawKey?.trim();
+
     const val = rawValue?.trim();
 
     if (key && val) {
@@ -285,18 +357,24 @@ function parseSignatureHeader(value: string | null) {
 async function hmacSha256Hex(secret: string, payload: string) {
   const key = await crypto.subtle.importKey(
     "raw",
+
     new TextEncoder().encode(secret),
+
     {
       name: "HMAC",
       hash: "SHA-256",
     },
+
     false,
+
     ["sign"],
   );
 
   const signature = await crypto.subtle.sign(
     "HMAC",
+
     key,
+
     new TextEncoder().encode(payload),
   );
 
@@ -309,9 +387,13 @@ export async function verifyWebhookSignature(req: Request, secret: string) {
   const signature = parseSignatureHeader(req.headers.get("x-signature"));
 
   const ts = signature.ts;
+
   const v1 = signature.v1;
+
   const requestId = req.headers.get("x-request-id") ?? "";
+
   const url = new URL(req.url);
+
   const dataId = (url.searchParams.get("data.id") ?? "").toLowerCase();
 
   if (!ts || !v1 || !requestId || !dataId) {

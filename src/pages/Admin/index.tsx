@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users } from "lucide-react";
+import { BarChart3, Users } from "lucide-react";
 import DashboardLayout from "@/components/layout/Layout";
 import MainLayout from "@/components/layout/MainLayout";
 import AdminModuleGrid from "@/components/admin/ModuleGrid";
@@ -28,15 +28,28 @@ export default function AdminPage() {
             <AdminPageSkeleton />
           ) : (
             <div className="space-y-4">
-              {permissions?.canAccessUserAdministration ? (
+              {permissions?.canAccessUserAdministration ||
+              permissions?.canViewFinancialDashboard ? (
                 <section className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  <NavigationButton
-                    label="Central de Usuários"
-                    description="Consulte usuários, vínculos e pagamentos da comunidade."
-                    icon={Users}
-                    onClick={() => navigate("/admin/users")}
-                    color={getNavigationButtonTheme("cyan")}
-                  />
+                  {permissions.canViewFinancialDashboard ? (
+                    <NavigationButton
+                      label="Indicadores da Associação"
+                      description="Acompanhe arrecadação, pagamentos, sócios e desempenho por rua."
+                      icon={BarChart3}
+                      onClick={() => navigate("/admin/analytics")}
+                      color={getNavigationButtonTheme("emerald")}
+                    />
+                  ) : null}
+
+                  {permissions.canAccessUserAdministration ? (
+                    <NavigationButton
+                      label="Central de Usuários"
+                      description="Consulte usuários, vínculos e pagamentos da comunidade."
+                      icon={Users}
+                      onClick={() => navigate("/admin/users")}
+                      color={getNavigationButtonTheme("cyan")}
+                    />
+                  ) : null}
                 </section>
               ) : null}
 

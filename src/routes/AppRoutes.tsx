@@ -36,6 +36,8 @@ const AdminUsersPage = lazy(() => import("@/pages/Admin/Users"));
 
 const AdminUserDetailsPage = lazy(() => import("@/pages/Admin/Users/Details"));
 
+const AdminAnalyticsPage = lazy(() => import("@/pages/Admin/Analytics"));
+
 const MercadoPagoOAuthCallbackPage = lazy(
   () => import("@/pages/MercadoPagoOAuthCallback"),
 );
@@ -182,6 +184,20 @@ export function AppRoutes() {
                 path="/social-projects/:id"
                 element={<SocialProjectsDetailsPage />}
               />
+
+              <Route
+                element={
+                  <PermissionGuard
+                    permission="canViewFinancialDashboard"
+                    redirectTo="/admin"
+                  />
+                }
+              >
+                <Route
+                  path="/admin/analytics"
+                  element={<AdminAnalyticsPage />}
+                />
+              </Route>
 
               <Route
                 element={
