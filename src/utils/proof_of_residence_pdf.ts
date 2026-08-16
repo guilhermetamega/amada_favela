@@ -343,6 +343,10 @@ export async function generateResidenceProofPdf(
   });
 
   const assocAddress = buildAssociationAddress(input.association);
+  const residentComplement = input.user.address_2?.trim() || null;
+  const residenceAddress = [assocAddress, residentComplement]
+    .filter(Boolean)
+    .join(", ");
   const headerAddress = drawWrappedText(page, {
     text: assocAddress,
     x: headerTextX,
@@ -386,7 +390,7 @@ export async function generateResidenceProofPdf(
   const legalText =
     `A ${safeText(input.association.name)}, inscrita no CNPJ sob o nº ${maskCnpj(input.association.cnpj)}, ` +
     `declara, para os devidos fins, que ${safeText(input.user.fullname)}, inscrito(a) no CPF sob o nº ${maskCpf(input.user.cpf)}, ` +
-    `encontra-se cadastrado(a) junto à associação no seguinte endereço institucional ${assocAddress}.`;
+    `encontra-se cadastrado(a) junto à associação no seguinte endereço institucional ${residenceAddress}.`;
 
   const body = drawWrappedText(page, {
     text: legalText,
@@ -442,7 +446,7 @@ export async function generateResidenceProofPdf(
 
   drawLabeledValue(page, {
     label: "ENDEREÇO COMPLETO",
-    value: assocAddress,
+    value: residenceAddress,
     x: leftColX,
     y: infoBoxTop - 64,
     width: contentWidth - 32,
