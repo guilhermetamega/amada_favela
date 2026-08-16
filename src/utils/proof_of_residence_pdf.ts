@@ -7,6 +7,7 @@ import {
 } from "pdf-lib";
 import QRCode from "qrcode";
 import type { Association, ProofUserProfile } from "@/types/proof_of_residence";
+import { getCommunityLabelByKey } from "@/utils/communities";
 import {
   buildAssociationAddress,
   formatDate,
@@ -344,7 +345,20 @@ export async function generateResidenceProofPdf(
 
   const assocAddress = buildAssociationAddress(input.association);
   const residentComplement = input.user.address_2?.trim() || null;
-  const residenceAddress = [assocAddress, residentComplement]
+  const communityLabel = getCommunityLabelByKey(input.user.community);
+  const associationStreet = [
+    input.association.headquarters_address.trim(),
+    input.association.headquarters_number?.trim() || null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  const residenceAddress = [
+    associationStreet,
+    residentComplement,
+    communityLabel,
+    input.association.headquarters_neighborhood?.trim() || null,
+    input.association.headquarters_city.trim(),
+  ]
     .filter(Boolean)
     .join(", ");
   const headerAddress = drawWrappedText(page, {
