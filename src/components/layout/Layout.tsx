@@ -17,7 +17,7 @@ export default function Layout({ children, hasLogo = false }: Props) {
         <SideBar />
       </div>
 
-      <div className="lg:pl-0 sm:pl-76">
+      <div>
         <div className={`min-h-screen ${hasLogo ? "pb-0" : "pb-56"} md:pb-0`}>
           {children}
         </div>

@@ -1,9 +1,65 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "trailingSlash": false,
   "rewrites": [
+    { "source": "/auth", "destination": "/index.html" },
+    { "source": "/sponsor", "destination": "/index.html" },
+    { "source": "/sponsor/login", "destination": "/index.html" },
+    { "source": "/sponsor/weekly-ad", "destination": "/index.html" },
+    { "source": "/sponsor/banner", "destination": "/index.html" },
+    { "source": "/sponsor/raffles", "destination": "/index.html" },
+    { "source": "/privacy", "destination": "/index.html" },
+    { "source": "/terms", "destination": "/index.html" },
+    { "source": "/child-policy", "destination": "/index.html" },
+    { "source": "/delete-account", "destination": "/index.html" },
+    { "source": "/payment/result", "destination": "/index.html" },
     {
-      "source": "/(.*)",
+      "source": "/payments/mercadopago/oauth/callback",
       "destination": "/index.html"
-    }
+    },
+    {
+      "source": "/security/change-password",
+      "destination": "/index.html"
+    },
+    { "source": "/dashboard", "destination": "/index.html" },
+    { "source": "/profile", "destination": "/index.html" },
+    { "source": "/lost-and-found", "destination": "/index.html" },
+    { "source": "/missing", "destination": "/index.html" },
+    { "source": "/home-rent", "destination": "/index.html" },
+    { "source": "/polls", "destination": "/index.html" },
+    { "source": "/bingo", "destination": "/index.html" },
+    { "source": "/service-orders", "destination": "/index.html" },
+    { "source": "/mails", "destination": "/index.html" },
+    { "source": "/member-card", "destination": "/index.html" },
+    { "source": "/proof-of-residence", "destination": "/index.html" },
+    { "source": "/resume-builder", "destination": "/index.html" },
+    { "source": "/social-projects", "destination": "/index.html" },
+    { "source": "/social-projects/:id", "destination": "/index.html" },
+    { "source": "/garbage-schedules", "destination": "/index.html" },
+    { "source": "/admin", "destination": "/index.html" },
+    { "source": "/admin/analytics", "destination": "/index.html" },
+    { "source": "/admin/users", "destination": "/index.html" },
+    { "source": "/admin/users/:userId", "destination": "/index.html" },
+    {
+      "source": "/admin/service-orders",
+      "destination": "/index.html"
+    },
+    { "source": "/admin/polls", "destination": "/index.html" },
+    { "source": "/admin/bingo", "destination": "/index.html" },
+    { "source": "/admin/mail", "destination": "/index.html" },
+    { "source": "/admin/association", "destination": "/index.html" },
+    { "source": "/admin/create-warnings", "destination": "/index.html" },
+    { "source": "/admin/social-projects", "destination": "/index.html" },
+    { "source": "/admin/welcome-banner", "destination": "/index.html" },
+    {
+      "source": "/admin/association/garbage-schedules",
+      "destination": "/index.html"
+    },
+    { "source": "/super-admin", "destination": "/index.html" },
+    {
+      "source": "/validate-proof/:validationCode",
+      "destination": "/index.html"
+    },
+    { "source": "/raffles/:slug", "destination": "/index.html" }
   ]
 }
