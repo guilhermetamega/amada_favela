@@ -19,6 +19,7 @@ import SponsorRafflesPage from "@/pages/Sponsor/Raffles";
 import PublicRafflePage from "@/pages/Raffles/PublicRaffle";
 import BingoPage from "@/pages/Bingo";
 import AdminBingoPage from "@/pages/Admin/Bingo";
+import RouteAccessibility from "@/components/accessibility/RouteAccessibility";
 
 const GarbageSchedulesPublicPage = lazy(
   () => import("@/pages/GarbageSchedules"),
@@ -99,8 +100,10 @@ const NotFoundPage = lazy(() => import("@/pages/NotFound"));
 export function AppRoutes() {
   return (
     <BrowserRouter>
-      <Suspense fallback={<RouteSkeleton />}>
-        <Routes>
+      <RouteAccessibility />
+      <div id="app-content" tabIndex={-1}>
+        <Suspense fallback={<RouteSkeleton />}>
+          <Routes>
           <Route path="/" element={<AuthPage />} />
 
           <Route path="/auth" element={<AuthPage />} />
@@ -279,8 +282,9 @@ export function AppRoutes() {
           <Route path="/raffles/*" element={<NotFoundPage />} />
 
           <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </Suspense>
+          </Routes>
+        </Suspense>
+      </div>
     </BrowserRouter>
   );
 }

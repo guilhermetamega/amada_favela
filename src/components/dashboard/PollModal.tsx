@@ -1,4 +1,5 @@
 import type { Poll } from "@/types/polls";
+import { useAccessibleDialog } from "@/hooks/useAccessibleDialog";
 
 type Props = {
   open: boolean;
@@ -13,20 +14,29 @@ export default function DashboardPollModal({
   onClose,
   onVote,
 }: Props) {
+  const { dialogRef, titleId } = useAccessibleDialog(open, onClose);
+
   if (!open || !poll) return null;
 
   const canVote = poll.voting_open && !poll.has_voted;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 sm:items-center">
-      <div className="w-full max-w-lg rounded-[28px] border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="w-full max-w-lg rounded-[28px] border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 sm:p-6"
+      >
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Enquete
             </p>
 
-            <h2 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+            <h2 id={titleId} className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
               {poll.title}
             </h2>
 
@@ -74,6 +84,11 @@ export default function DashboardPollModal({
 
                   <div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
                     <div
+                      role="progressbar"
+                      aria-label={`Resultado: ${option.label}`}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={percentage}
                       className="h-full rounded-full bg-zinc-900 transition-all dark:bg-zinc-100"
                       style={{ width: `${percentage}%` }}
                     />
@@ -111,6 +126,11 @@ export default function DashboardPollModal({
 
                 <div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
                   <div
+                    role="progressbar"
+                    aria-label={`Resultado: ${option.label}`}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={percentage}
                     className={`h-full rounded-full transition-all ${
                       isUserVote
                         ? "bg-emerald-500"

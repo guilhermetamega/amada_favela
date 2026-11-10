@@ -13,6 +13,7 @@ type Props = {
   open: boolean;
   loading: boolean;
   errorMessage: string;
+  months: number;
   pixData: MembershipPixCheckout | null;
   onClose: () => void;
   onGeneratePix: () => void;
@@ -48,6 +49,7 @@ export default function PartnerPixModal({
   open,
   loading,
   errorMessage,
+  months,
   pixData,
   onClose,
   onGeneratePix,
@@ -55,6 +57,14 @@ export default function PartnerPixModal({
   const [copied, setCopied] = useState(false);
 
   const isSuccess = pixData?.status === "succeeded";
+  const paymentAmountCents = pixData?.amountTotalCents ?? null;
+  const paymentMonths = pixData?.membershipMonths ?? months;
+  const formattedAmount = paymentAmountCents === null
+    ? null
+    : new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      }).format(paymentAmountCents / 100);
 
   const qrCodeImageSrc = useMemo(() => {
     if (!pixData?.qrCodeBase64) return null;
@@ -118,7 +128,8 @@ export default function PartnerPixModal({
                   </div>
 
                   <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
-                    Clique abaixo para gerar o QR Code Pix da mensalidade.
+                    Gere um Pix para {months} {months === 1 ? "mês" : "meses"}
+                    {formattedAmount ? ` no valor total de ${formattedAmount}` : ""}.
                   </p>
 
                   <button
@@ -170,6 +181,24 @@ export default function PartnerPixModal({
                     ) : null}
 
                     <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                          Período do pagamento
+                        </p>
+                        <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">
+                          {paymentMonths} {paymentMonths === 1 ? "mês" : "meses"}
+                        </p>
+                      </div>
+                      {formattedAmount ? (
+                        <div>
+                          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                            Valor do Pix
+                          </p>
+                          <p className="mt-1 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                            {formattedAmount}
+                          </p>
+                        </div>
+                      ) : null}
                       <div>
                         <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                           Expira em

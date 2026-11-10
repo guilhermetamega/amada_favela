@@ -186,27 +186,35 @@ export async function updateUserCommunityAsAdmin(
   communityKey: string | null,
 ) {
   const profile = await getCurrentProfile();
-
-  if (profile.role !== "admin") {
-    throw new Error("Acesso não autorizado.");
+  if (profile.role !== "admin") throw new Error("Acesso não autorizado.");
+  if (!communityKey) {
+    throw new Error("Selecione uma comunidade ativa para este usuário.");
   }
 
-  const { error: targetError } = await supabase
-    .from("users")
-    .select("id, role")
-    .eq("id", targetUserId)
-    .single();
-
-  if (targetError) {
-    throw new Error(targetError.message);
-  }
-  const { error } = await supabase
-    .from("users")
-    .update({ comunity: communityKey || null })
-    .eq("id", targetUserId);
+  const { data, error } = await supabase.functions.invoke("admin-update-user", {
+    body: {
+      targetUserId,
+      mode: "community",
+      data: { community: communityKey },
+      verificationMethod: "existing_registration_confirmation",
+      reason: "Realocação administrativa de comunidade no painel Super Admin.",
+    },
+  });
 
   if (error) {
-    throw new Error(error.message);
+    const context = (error as Error & { context?: Response }).context;
+    if (context) {
+      try {
+        const payload = await context.json();
+        if (typeof payload?.error === "string") throw new Error(payload.error);
+      } catch (parseError) {
+        if (parseError instanceof Error && parseError.message !== "Unexpected end of JSON input") throw parseError;
+      }
+    }
+    throw new Error(error.message || "Não foi possível alterar a comunidade.");
+  }
+  if (data?.success !== true) {
+    throw new Error(data?.error || "A atualização retornou uma resposta inválida.");
   }
 }
 export async function getPlatformThirdPartyStripeStatus(): Promise<PlatformThirdPartyStripeStatus> {

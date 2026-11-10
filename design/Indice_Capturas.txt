@@ -1,0 +1,16 @@
+AMA da Favela — índice das capturas
+Data: 09/11/2026
+Origem: https://amada-favela.vercel.app
+Arquivo organizado por viewport: Mobile (sessão observada originalmente em 506×900) e Desktop (viewport 1440×1000). As capturas são de página inteira, em JPG.
+
+Nomes: termos em português descrevem a área/rota. Os prefixos redirecionamento_* registram que / e /auth levaram ao dashboard porque a sessão já estava autenticada.
+
+Cobertura: início/dashboard; login de patrocinador; políticas públicas (privacidade, termos, política infantil e exclusão de conta); resultado de pagamento; páginas do morador (perfil, ordens de serviço, achados e perdidos, desaparecidos, imóveis, enquetes, bingo, cartas, carteirinha, declaração de residência, currículos, projetos sociais, coleta de lixo); detalhe do primeiro projeto social disponível; administração (painel, indicadores, usuários, ocorrências, enquetes, bingo, cartas, associação, criação de avisos, projetos sociais, banner e coleta); super administração; página 404.
+
+Acesso observado: esta sessão abre as páginas do morador e da administração. As rotas /sponsor, /sponsor/weekly-ad, /sponsor/banner e /sponsor/raffles redirecionam ao login do patrocinador; os arquivos com esses nomes mostram o login requerido, não o conteúdo interno. O perfil observado consta como sócio expirado; mensagens e serviços restritos refletem a conta atual.
+
+Rotas dinâmicas não enumeradas: /admin/users/:userId, /validate-proof/:validationCode e /raffles/:slug dependem de identificadores específicos. O callback OAuth do Mercado Pago requer estado de autorização próprio. Não foram acionados formulários, pagamentos, votos, publicações ou ações de envio.
+
+As capturas de áreas autenticadas podem conter dados exibidos pela conta ativa. Revise antes de compartilhar os JPGs.
+
+Rota adicional não capturada: /security/change-password. A captura não acionou fluxo de troca de credencial.

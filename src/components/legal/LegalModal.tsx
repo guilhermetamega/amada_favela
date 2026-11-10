@@ -2,6 +2,7 @@ import { ExternalLink, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import LegalDocument from "@/components/legal/LegalDocument";
 import { PRIVACY_POLICY_CONTENT, TERMS_OF_USE_CONTENT } from "@/lib/legal";
+import { useAccessibleDialog } from "@/hooks/useAccessibleDialog";
 
 type Props = {
   open: boolean;
@@ -10,6 +11,8 @@ type Props = {
 };
 
 export default function LegalModal({ open, type, onClose }: Props) {
+  const { dialogRef, titleId } = useAccessibleDialog(open, onClose);
+
   if (!open) return null;
 
   const isPrivacy = type === "privacy";
@@ -18,13 +21,20 @@ export default function LegalModal({ open, type, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-90 flex items-center justify-center bg-black/60 px-4 py-6">
-      <div className="relative flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-zinc-200 bg-zinc-50 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="relative flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-zinc-200 bg-zinc-50 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950"
+      >
         <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-800 sm:px-6">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
               Acesso público
             </p>
-            <h2 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+            <h2 id={titleId} className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
               {content.shortTitle}
             </h2>
           </div>

@@ -19,6 +19,7 @@ const LOG_PREFIX = "[create-membership-checkout]";
 
 type RequestBody = {
   recurring?: boolean;
+  months?: number;
 };
 
 type UserRow = {
@@ -97,6 +98,16 @@ function toCents(value: number | string | null | undefined) {
   }
 
   return Math.round(normalized * 100);
+}
+
+function addMonthsIso(baseIso: string, months: number) {
+  const date = new Date(baseIso);
+  const day = date.getUTCDate();
+  date.setUTCDate(1);
+  date.setUTCMonth(date.getUTCMonth() + months);
+  const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+  date.setUTCDate(Math.min(day, lastDay));
+  return date.toISOString();
 }
 
 async function cancelAbandonedPendingPayments(params: {
@@ -343,10 +354,15 @@ serve(async (req) => {
     const body = ((await req.json().catch(() => ({}))) ?? {}) as RequestBody;
 
     const recurring = body.recurring !== false;
+    const months = recurring ? 1 : Number(body.months ?? 1);
+    if (!Number.isInteger(months) || months < 1 || months > 12) {
+      return json(400, { error: "Selecione entre 1 e 12 meses." });
+    }
 
     log("request", {
       authUserId: authUser.id,
       recurring,
+      months,
     });
 
     const { data: userData, error: userError } = await admin
@@ -440,7 +456,7 @@ serve(async (req) => {
     let amountTotalCents: number;
 
     try {
-      amountTotalCents = toCents(association.monthly_fee);
+      amountTotalCents = toCents(association.monthly_fee) * months;
     } catch {
       return json(400, {
         error: "Mensalidade da associação inválida.",
@@ -502,6 +518,25 @@ serve(async (req) => {
             "Já existe um vínculo recorrente ativo ou em atraso para este associado.",
         });
       }
+    }
+
+    let membershipPeriodEnd: string | null = null;
+    if (!recurring) {
+      const { data: currentPartner, error: currentPartnerError } = await admin
+        .from("partners")
+        .select("expires_at")
+        .eq("user_id", user.id)
+        .eq("association_id", association.id)
+        .in("status", ["active", "past_due"])
+        .order("expires_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (currentPartnerError) {
+        return json(500, { error: `Erro ao validar vínculo atual: ${currentPartnerError.message}` });
+      }
+
+      membershipPeriodEnd = currentPartner?.expires_at ?? null;
     }
 
     await cancelAbandonedPendingPayments({
@@ -586,6 +621,8 @@ serve(async (req) => {
       community: association.community,
       recurring: String(recurring),
       transfer_group: transferGroup,
+      months: String(months),
+      membership_period_end: membershipPeriodEnd ?? "",
       checkout_mode: recurring ? "subscription" : "payment",
       has_third_party_destination: String(hasThirdParty),
       platform_fee_total_cents: String(split.platformFeeCents),
@@ -673,7 +710,7 @@ serve(async (req) => {
       period_end: null,
       description: recurring
         ? `Mensalidade - ${association.name}`
-        : `Pagamento avulso - ${association.name}`,
+        : `Mensalidade (${months} ${months === 1 ? "mês" : "meses"}) - ${association.name}`,
       paid_at: null,
       stripe_payment_intent_id: null,
       stripe_checkout_session_id: session.id,
@@ -689,6 +726,8 @@ serve(async (req) => {
         association_id: association.id,
         community: association.community,
         transfer_group: transferGroup,
+        membership_months: months,
+        membership_period_end: membershipPeriodEnd,
         has_third_party_destination: hasThirdParty,
         platform_fee_total_cents: split.platformFeeCents,
         platform_retained_cents: split.platformRetainedCents,

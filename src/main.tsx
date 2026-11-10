@@ -4,7 +4,6 @@ import App from "./App";
 import "./index.css";
 import "@/styles/globals.css";
 import { AppProviders } from "@/providers/AppProviders";
-import { loadCommunitiesFromSupabase } from "@/lib/communities";
 
 function applySystemTheme() {
   const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -25,14 +24,9 @@ function listenSystemThemeChanges() {
   }
 }
 
-async function bootstrap() {
+function bootstrap() {
   applySystemTheme();
   listenSystemThemeChanges();
-  try {
-    await loadCommunitiesFromSupabase();
-  } catch (error) {
-    console.error("[bootstrap] Falha ao carregar communities:", error);
-  }
 
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
@@ -43,4 +37,4 @@ async function bootstrap() {
   );
 }
 
-void bootstrap();
+bootstrap();

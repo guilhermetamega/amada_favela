@@ -8,3 +8,43 @@ body {
   margin: 0;
   min-width: 320px;
 }
+
+/* Mantém a navegação por teclado visível mesmo em controles que removem o
+   outline padrão para aplicar seus estilos visuais. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid rgb(16 185 129);
+  outline-offset: 3px;
+}
+
+#app-content:focus {
+  outline: none;
+}
+
+.skip-link {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  z-index: 9999;
+  translate: 0 -200%;
+  border-radius: 0.75rem;
+  background: rgb(24 24 27);
+  color: white;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  transition: translate 150ms ease;
+}
+
+.skip-link:focus {
+  translate: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -371,23 +371,28 @@ function mapRowToCommunity(row: CommunityRow): CommunityData {
   };
 }
 
-export async function loadCommunitiesFromSupabase() {
-  const { data, error } = await supabase
+export async function loadCommunitiesFromSupabase(signal?: AbortSignal) {
+  let query = supabase
     .from("communities")
     .select("key, label, active, zipcodes, address_items")
     .order("label", { ascending: true });
 
+  if (signal) {
+    query = query.abortSignal(signal);
+  }
+
+  const { data, error } = await query;
+
   if (error) {
-    console.error("Erro ao carregar communities do Supabase:", error);
-    return;
+    throw error;
   }
 
-  if (!data?.length) {
-    COMMUNITIES = DEFAULT_COMMUNITIES.map(normalizeCommunityData);
-    return;
-  }
+  const nextCommunities = data?.length
+    ? data.map((row) => mapRowToCommunity(row as CommunityRow))
+    : DEFAULT_COMMUNITIES.map(normalizeCommunityData);
 
-  COMMUNITIES = data.map((row) => mapRowToCommunity(row as CommunityRow));
+  COMMUNITIES = nextCommunities;
+  return nextCommunities;
 }
 
 export function getDefaultCommunities(): CommunityData[] {

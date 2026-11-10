@@ -1,7 +1,7 @@
 import type { Poll } from "@/types/polls";
 
-const POLLS_CACHE_KEY = "polls:list";
-const ADMIN_POLLS_CACHE_KEY = "polls:admin:list";
+const POLLS_CACHE_PREFIX = "polls:list:";
+const ADMIN_POLLS_CACHE_PREFIX = "polls:admin:list:";
 const TTL_MS = 1000 * 60 * 5;
 
 type CachePayload = {
@@ -40,23 +40,41 @@ function write(key: string, value: Poll[]) {
   }
 }
 
-export function readPollsCache() {
-  return read(POLLS_CACHE_KEY);
+function getScopedKey(prefix: string, userId: string) {
+  return `${prefix}${userId}`;
 }
 
-export function writePollsCache(value: Poll[]) {
-  write(POLLS_CACHE_KEY, value);
+export function readPollsCache(userId: string) {
+  return read(getScopedKey(POLLS_CACHE_PREFIX, userId));
 }
 
-export function readAdminPollsCache() {
-  return read(ADMIN_POLLS_CACHE_KEY);
+export function writePollsCache(userId: string, value: Poll[]) {
+  write(getScopedKey(POLLS_CACHE_PREFIX, userId), value);
 }
 
-export function writeAdminPollsCache(value: Poll[]) {
-  write(ADMIN_POLLS_CACHE_KEY, value);
+export function readAdminPollsCache(userId: string) {
+  return read(getScopedKey(ADMIN_POLLS_CACHE_PREFIX, userId));
+}
+
+export function writeAdminPollsCache(userId: string, value: Poll[]) {
+  write(getScopedKey(ADMIN_POLLS_CACHE_PREFIX, userId), value);
 }
 
 export function invalidatePollsCache() {
-  localStorage.removeItem(POLLS_CACHE_KEY);
-  localStorage.removeItem(ADMIN_POLLS_CACHE_KEY);
+  const keysToRemove: string[] = [];
+
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (
+      key &&
+      (key.startsWith(POLLS_CACHE_PREFIX) ||
+        key.startsWith(ADMIN_POLLS_CACHE_PREFIX) ||
+        key === "polls:list" ||
+        key === "polls:admin:list")
+    ) {
+      keysToRemove.push(key);
+    }
+  }
+
+  keysToRemove.forEach((key) => localStorage.removeItem(key));
 }

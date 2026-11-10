@@ -13,7 +13,7 @@ const LOG_PREFIX = "[admin-update-user]";
 
 type UserRole = "admin" | "president" | "employee" | "user";
 
-type UpdateMode = "basic" | "sensitive";
+type UpdateMode = "basic" | "sensitive" | "community";
 
 type VerificationMethod =
   | "document_with_photo"
@@ -400,6 +400,14 @@ function normalizeSensitiveChanges(
   return changes;
 }
 
+function normalizeCommunityChange(
+  data: Record<string, unknown>,
+  target: TargetRow,
+) {
+  const community = getRequiredString(data.community, "Comunidade").toLowerCase();
+  return community !== target.comunity ? { comunity: community } : {};
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", {
@@ -442,6 +450,13 @@ serve(async (req) => {
     });
 
     const admin = createClient(supabaseUrl, serviceRoleKey, {
+      // Pin the backend JWT on every PostgREST request. The SQL routine checks
+      // request.jwt.claim.role explicitly and must never receive the caller JWT.
+      global: {
+        headers: {
+          Authorization: `Bearer ${serviceRoleKey}`,
+        },
+      },
       auth: {
         persistSession: false,
       },
@@ -465,7 +480,7 @@ serve(async (req) => {
       "Tipo de alteração",
     ) as UpdateMode;
 
-    if (mode !== "basic" && mode !== "sensitive") {
+    if (mode !== "basic" && mode !== "sensitive" && mode !== "community") {
       throw new HttpError(400, "Tipo de alteração inválido.");
     }
 
@@ -595,10 +610,16 @@ serve(async (req) => {
       );
     }
 
+    if (mode === "community" && actor.role !== "admin") {
+      throw new HttpError(403, "Apenas o Super Admin pode alterar a comunidade.");
+    }
+
     const changes =
       mode === "basic"
         ? normalizeBasicChanges(body.data, target)
-        : normalizeSensitiveChanges(body.data, actor, target);
+        : mode === "community"
+          ? normalizeCommunityChange(body.data, target)
+          : normalizeSensitiveChanges(body.data, actor, target);
 
     const changedFields = Object.keys(changes);
 
@@ -680,7 +701,10 @@ serve(async (req) => {
       changeSummary[field] = buildSummary(field, beforeValue, afterValue);
     }
 
-    const actionType = getActionType(mode, changedFields);
+    const actionType = getActionType(
+      mode === "community" ? "sensitive" : mode,
+      changedFields,
+    );
 
     let previousAuthEmail: string | null = null;
 
@@ -711,6 +735,8 @@ serve(async (req) => {
       authEmailWasChanged = true;
     }
 
+    // This database RPC explicitly accepts only service_role. Authorization
+    // of the human operator is checked above using their authenticated JWT.
     const { data: updateResult, error: updateError } = await admin.rpc(
       "admin_apply_user_update",
       {

@@ -1,10 +1,11 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { LoaderCircle, MailPlus, X } from "lucide-react";
 import {
   createMail,
   type MailItem,
   type MailRecipient,
 } from "@/services/supabase/mail";
+import { useAccessibleDialog } from "@/hooks/useAccessibleDialog";
 
 type CreateMailModalProps = {
   isOpen: boolean;
@@ -23,20 +24,20 @@ export default function CreateMailModal({
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-
-  useEffect(() => {
-    if (!isOpen) {
-      setTitle("");
-      setDescription("");
-      setErrorMessage("");
-      setLoading(false);
-    }
-  }, [isOpen]);
+  const { dialogRef, titleId } = useAccessibleDialog(isOpen, handleClose);
 
   if (!isOpen || !recipient) return null;
 
+  function resetForm() {
+    setTitle("");
+    setDescription("");
+    setErrorMessage("");
+    setLoading(false);
+  }
+
   function handleClose() {
     if (loading) return;
+    resetForm();
     onClose();
   }
 
@@ -57,6 +58,7 @@ export default function CreateMailModal({
       });
 
       onCreated(created);
+      resetForm();
       onClose();
     } catch (error) {
       const message =
@@ -70,7 +72,14 @@ export default function CreateMailModal({
   return (
     <div className="fixed inset-0 z-70 bg-black/60 backdrop-blur-[2px]">
       <div className="flex min-h-dvh items-center justify-center p-4 sm:p-6">
-        <div className="flex w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
+        <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          tabIndex={-1}
+          className="flex w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-900"
+        >
           <div className="relative border-b border-zinc-200 px-4 py-5 dark:border-zinc-800 sm:px-6">
             <button
               type="button"
@@ -82,7 +91,7 @@ export default function CreateMailModal({
             </button>
 
             <div className="mx-auto max-w-xl text-center">
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 sm:text-xl">
+              <h2 id={titleId} className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 sm:text-xl">
                 Nova carta
               </h2>
               <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
@@ -93,12 +102,19 @@ export default function CreateMailModal({
 
           <div className="p-4 sm:p-6">
             {errorMessage ? (
-              <div className="mb-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300">
+              <div
+                role="alert"
+                className="mb-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300"
+              >
                 {errorMessage}
               </div>
             ) : null}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form
+              onSubmit={handleSubmit}
+              className="space-y-5"
+              aria-busy={loading}
+            >
               <div>
                 <label
                   className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300"

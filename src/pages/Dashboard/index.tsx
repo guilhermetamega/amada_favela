@@ -24,6 +24,7 @@ import {
   getOpenMembershipPayment,
 } from "@/services/supabase/membership";
 import type { OpenMembershipPayment } from "@/types/membership";
+import { useRefreshOnVisible } from "@/hooks/useRefreshOnVisible";
 
 export default function DashboardPage() {
   const {
@@ -135,18 +136,14 @@ export default function DashboardPage() {
     void refreshOpenMembershipPayment();
   }, [refreshOpenMembershipPayment]);
 
-  useEffect(() => {
-    function handleFocus() {
-      void refreshOpenMembershipPayment();
-      void refreshPermissions();
-    }
-
-    window.addEventListener("focus", handleFocus);
-
-    return () => {
-      window.removeEventListener("focus", handleFocus);
-    };
+  const refreshDashboardOnReturn = useCallback(async () => {
+    await Promise.allSettled([
+      refreshOpenMembershipPayment(),
+      refreshPermissions(),
+    ]);
   }, [refreshOpenMembershipPayment, refreshPermissions]);
+
+  useRefreshOnVisible(refreshDashboardOnReturn);
 
   useEffect(() => {
     if (pollsLoading || queueDismissed) return;

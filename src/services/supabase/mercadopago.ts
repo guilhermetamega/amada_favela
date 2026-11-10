@@ -18,6 +18,8 @@ export type MembershipPixCheckout = {
   qrCodeBase64: string | null;
   ticketUrl: string | null;
   paidAt?: string | null;
+  amountTotalCents?: number;
+  membershipMonths?: number;
 };
 
 function getPixTransactionData(source: unknown) {
@@ -53,7 +55,7 @@ function getPixTransactionData(source: unknown) {
   };
 }
 
-export async function createMembershipPixCheckout() {
+export async function createMembershipPixCheckout(months = 1) {
   const {
     data: { session },
     error: sessionError,
@@ -73,7 +75,7 @@ export async function createMembershipPixCheckout() {
       headers: {
         Authorization: `Bearer ${session.access_token}`,
       },
-      body: {},
+      body: { months },
     },
   );
 
@@ -81,7 +83,13 @@ export async function createMembershipPixCheckout() {
     throw new Error(error.message || "Não foi possível gerar o pagamento Pix.");
   }
 
-  return data as MembershipPixCheckout;
+  return {
+    ...(data as MembershipPixCheckout),
+    amountTotalCents:
+      typeof data?.amountTotalCents === "number" ? data.amountTotalCents : undefined,
+    membershipMonths:
+      typeof data?.membershipMonths === "number" ? data.membershipMonths : months,
+  };
 }
 
 export async function getMembershipPixCheckoutStatus(

@@ -2,7 +2,6 @@ import { supabase } from "@/services/supabase/client";
 import type {
   CreatePollInput,
   Poll,
-  PollOption,
   UpdatePollInput,
 } from "@/types/polls";
 import {
@@ -17,32 +16,6 @@ type ProfileRow = {
   id: string;
   role: string;
   comunity: string;
-};
-
-type PollRow = {
-  id: string;
-  community: string;
-  title: string;
-  description: string | null;
-  status: "active" | "archived";
-  created_by: string;
-  voting_ends_at: string;
-  visible_until: string;
-  created_at: string;
-  updated_at: string;
-};
-
-type PollOptionRow = {
-  id: string;
-  poll_id: string;
-  label: string;
-  position: number;
-};
-
-type PollVoteRow = {
-  poll_id: string;
-  option_id: string;
-  user_id: string;
 };
 
 async function getCurrentProfile(): Promise<ProfileRow> {
@@ -67,124 +40,47 @@ async function getCurrentProfile(): Promise<ProfileRow> {
   return data as ProfileRow;
 }
 
-function mapPolls(
-  polls: PollRow[],
-  options: PollOptionRow[],
-  votes: PollVoteRow[],
-  currentUserId: string,
-) {
-  return polls.map((poll): Poll => {
-    const pollOptions = options
-      .filter((option) => option.poll_id === poll.id)
-      .sort((a, b) => a.position - b.position);
+async function getCurrentUserId() {
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
 
-    const pollVotes = votes.filter((vote) => vote.poll_id === poll.id);
-    const totalVotes = pollVotes.length;
-    const userVote = pollVotes.find((vote) => vote.user_id === currentUserId);
+  if (error) throw new Error(error.message);
+  if (!session?.user) throw new Error("Usuário não autenticado.");
 
-    const mappedOptions: PollOption[] = pollOptions.map((option) => {
-      const votesCount = pollVotes.filter(
-        (vote) => vote.option_id === option.id,
-      ).length;
-
-      return {
-        ...option,
-        votes_count: votesCount,
-        percentage:
-          totalVotes > 0 ? Math.round((votesCount / totalVotes) * 100) : 0,
-      };
-    });
-
-    const now = new Date();
-
-    return {
-      ...poll,
-      options: mappedOptions,
-      total_votes: totalVotes,
-      has_voted: !!userVote,
-      user_vote_option_id: userVote?.option_id ?? null,
-      voting_open:
-        new Date(poll.voting_ends_at) >= now && poll.status === "active",
-      visible_now: new Date(poll.visible_until) >= now,
-    };
-  });
+  return session.user.id;
 }
 
-async function fetchPollsBase() {
-  const profile = await getCurrentProfile();
+async function fetchPollsWithResults(manageable: boolean) {
+  const { data, error } = await supabase.rpc("get_polls_with_results", {
+    input_manageable: manageable,
+  });
 
-  const { data: pollsData, error: pollsError } = await supabase
-    .from("polls")
-    .select("*")
-    .eq("community", profile.comunity)
-    .gte("visible_until", new Date().toISOString())
-    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  if (!Array.isArray(data)) return [];
 
-  if (pollsError) throw new Error(pollsError.message);
-
-  const polls = (pollsData ?? []) as PollRow[];
-
-  if (polls.length === 0) {
-    return {
-      profile,
-      polls: [],
-      options: [],
-      votes: [],
-    };
-  }
-
-  const pollIds = polls.map((poll) => poll.id);
-
-  const [
-    { data: optionsData, error: optionsError },
-    { data: votesData, error: votesError },
-  ] = await Promise.all([
-    supabase
-      .from("poll_options")
-      .select("*")
-      .in("poll_id", pollIds)
-      .order("position", { ascending: true }),
-    supabase
-      .from("poll_votes")
-      .select("poll_id, option_id, user_id")
-      .in("poll_id", pollIds),
-  ]);
-
-  if (optionsError) throw new Error(optionsError.message);
-  if (votesError) throw new Error(votesError.message);
-
-  return {
-    profile,
-    polls,
-    options: (optionsData ?? []) as PollOptionRow[],
-    votes: (votesData ?? []) as PollVoteRow[],
-  };
+  return data as Poll[];
 }
 
 export async function getVisiblePolls() {
-  const cached = readPollsCache();
+  const userId = await getCurrentUserId();
+  const cached = readPollsCache(userId);
   if (cached) return cached;
 
-  const { profile, polls, options, votes } = await fetchPollsBase();
-  const mapped = mapPolls(polls, options, votes, profile.id);
-  writePollsCache(mapped);
-  return mapped;
+  const polls = await fetchPollsWithResults(false);
+  writePollsCache(userId, polls);
+  return polls;
 }
 
 export async function getManageablePolls() {
-  const cached = readAdminPollsCache();
+  const userId = await getCurrentUserId();
+  const cached = readAdminPollsCache(userId);
   if (cached) return cached;
 
-  const profile = await getCurrentProfile();
-
-  if (!["employee", "president", "admin"].includes(profile.role)) {
-    throw new Error("Acesso não autorizado.");
-  }
-
-  const { profile: actor, polls, options, votes } = await fetchPollsBase();
-  const mapped = mapPolls(polls, options, votes, actor.id);
-  writeAdminPollsCache(mapped);
-  return mapped;
+  const polls = await fetchPollsWithResults(true);
+  writeAdminPollsCache(userId, polls);
+  return polls;
 }
 
 export async function createPoll(input: CreatePollInput) {

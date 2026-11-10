@@ -37,12 +37,29 @@ function log(step: string, payload?: unknown) {
   console.log(`${LOG_PREFIX} ${step}`, payload ?? "");
 }
 
-function addMonthIso(baseIso: string) {
+function addMonthsIso(baseIso: string, months: number) {
   const date = new Date(baseIso);
-
-  date.setMonth(date.getMonth() + 1);
-
+  const day = date.getUTCDate();
+  date.setUTCDate(1);
+  date.setUTCMonth(date.getUTCMonth() + months);
+  const lastDay = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  date.setUTCDate(Math.min(day, lastDay));
   return date.toISOString();
+}
+
+function getMembershipPeriodStart(baseIso: string, metadata: unknown) {
+  const record = asRecord(metadata);
+  const previousExpiry = record?.membership_period_end;
+  const paidAt = new Date(baseIso);
+  if (typeof previousExpiry !== "string" || !previousExpiry) {
+    return paidAt.toISOString();
+  }
+  const anchor = new Date(previousExpiry);
+  return Number.isNaN(anchor.getTime()) || anchor <= paidAt
+    ? paidAt.toISOString()
+    : anchor.toISOString();
 }
 
 function safeJsonParse(value: string) {
@@ -489,7 +506,8 @@ serve(async (req) => {
         amount_stripe_fee,
         gateway_response,
         paid_at,
-        expires_at
+        expires_at,
+        metadata
       `,
       )
       .eq("provider", "mercadopago")
@@ -684,7 +702,10 @@ serve(async (req) => {
 
         gateway_response: mpPayment,
 
-        metadata: financialMetadata,
+        metadata: {
+          ...asRecord(paymentRow.metadata),
+          ...financialMetadata,
+        },
 
         updated_at: now,
       })
@@ -696,8 +717,16 @@ serve(async (req) => {
 
     if (isApproved) {
       const membershipBaseDate = paidAt ?? now;
-
-      const expiresAt = addMonthIso(membershipBaseDate);
+      const paymentMetadata = asRecord(paymentRow.metadata);
+      const requestedMonths = Number(paymentMetadata?.membership_months ?? 1);
+      const months = Number.isInteger(requestedMonths)
+        ? Math.min(12, Math.max(1, requestedMonths))
+        : 1;
+      const periodStart = getMembershipPeriodStart(
+        membershipBaseDate,
+        paymentRow.metadata,
+      );
+      const expiresAt = addMonthsIso(periodStart, months);
 
       log("before-partner-upsert", {
         userId: paymentRow.user_id,

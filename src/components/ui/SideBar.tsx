@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { LogOut, Menu, X } from "lucide-react";
 import { supabase } from "@/services/supabase/client";
@@ -8,6 +8,9 @@ import { getSidebarRouteTheme } from "@/lib/route-theme";
 
 export default function Sidebar() {
   const [open, setOpen] = useState(false);
+  const openButtonRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -17,6 +20,41 @@ export default function Sidebar() {
     () => getSidebarRoutes(permissions),
     [permissions],
   );
+
+  useEffect(() => {
+    if (!open) return;
+
+    closeButtonRef.current?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+        openButtonRef.current?.focus();
+        return;
+      }
+
+      if (event.key !== "Tab" || !sidebarRef.current) return;
+
+      const focusable = Array.from(
+        sidebarRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -32,26 +70,40 @@ export default function Sidebar() {
     <>
       {/* BOTÃO MENU */}
       <button
+        ref={openButtonRef}
         type="button"
         onClick={() => setOpen(true)}
         className="fixed left-4 top-4 z-50 flex h-11 w-11 items-center justify-center rounded-2xl border border-zinc-300 bg-white/90 text-zinc-900 shadow-lg backdrop-blur transition hover:border-zinc-400 hover:bg-white dark:border-zinc-800 dark:bg-zinc-900/95 dark:text-white dark:hover:border-zinc-700 dark:hover:bg-zinc-800"
         aria-label="Abrir menu"
+        aria-controls="main-navigation"
+        aria-expanded={open}
       >
         <Menu size={20} />
       </button>
 
       {/* OVERLAY */}
-      <div
+      <button
+        type="button"
+        aria-label="Fechar menu"
+        tabIndex={open ? 0 : -1}
         className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] transition dark:bg-black/60 ${
           open
             ? "pointer-events-auto opacity-100"
             : "pointer-events-none opacity-0"
         }`}
-        onClick={() => setOpen(false)}
+        onClick={() => {
+          setOpen(false);
+          openButtonRef.current?.focus();
+        }}
       />
 
       {/* SIDEBAR */}
       <aside
+        ref={sidebarRef}
+        id="main-navigation"
+        aria-label="Navegação principal"
+        aria-hidden={!open}
+        inert={!open}
         className={`no-scrollbar fixed left-0 top-0 z-50 flex h-full w-74 transform flex-col overflow-y-auto border-r border-zinc-200 bg-white/95 p-4 shadow-2xl backdrop-blur-xl transition-transform duration-300 dark:border-zinc-800 dark:bg-zinc-950/95 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
@@ -68,8 +120,12 @@ export default function Sidebar() {
           </div>
 
           <button
+            ref={closeButtonRef}
             type="button"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setOpen(false);
+              openButtonRef.current?.focus();
+            }}
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-300 bg-white text-zinc-600 transition hover:border-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-white"
             aria-label="Fechar menu"
           >
@@ -80,7 +136,10 @@ export default function Sidebar() {
         {/* NAV */}
         <nav className="flex-1 space-y-2">
           {loading ? (
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 px-4 py-3 text-sm text-zinc-400">
+            <div
+              role="status"
+              className="rounded-2xl border border-zinc-800 bg-zinc-900/70 px-4 py-3 text-sm text-zinc-400"
+            >
               Carregando menu...
             </div>
           ) : (
@@ -98,6 +157,7 @@ export default function Sidebar() {
                   key={route.path}
                   type="button"
                   onClick={() => handleNavigate(route.path)}
+                  aria-current={isActive ? "page" : undefined}
                   className={`group relative w-full overflow-hidden rounded-2xl border px-3 py-3 text-left transition ${
                     isActive
                       ? `${theme.active}`

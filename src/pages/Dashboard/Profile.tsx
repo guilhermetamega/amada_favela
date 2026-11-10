@@ -32,6 +32,7 @@ import {
 import { supabase } from "@/services/supabase/client";
 import {
   createMembershipCheckout,
+  getMembershipPaymentMethods,
   getOpenMembershipPayment,
 } from "@/services/supabase/membership";
 import {
@@ -50,7 +51,7 @@ import type {
   UpdateLostAnimalInput,
   UpdateProfileInput,
 } from "@/types/profile";
-import { COMMUNITIES } from "@/lib/communities";
+import { useCommunities } from "@/hooks/useCommunities";
 import { translateRole } from "@/utils/roles";
 import ProfileFeedback from "@/components/profile/Feedback";
 import ProfileHero from "@/components/profile/Hero";
@@ -66,6 +67,7 @@ import ProfileLegalSection from "@/components/profile/LegalSection";
 import ProfileDeleteAccountSection from "@/components/profile/DeleteAccountSection";
 import MainLayout from "@/components/layout/MainLayout";
 import { LogOut } from "lucide-react";
+import { useRefreshOnVisible } from "@/hooks/useRefreshOnVisible";
 
 type ProfileFormState = UpdateProfileInput;
 
@@ -239,6 +241,7 @@ function shouldPollPixStatus(status: MembershipPixCheckout["status"] | null) {
 
 export default function ProfilePage() {
   const navigate = useNavigate();
+  const { communities } = useCommunities();
 
   const [profile, setProfile] = useState<ProfileUser | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -287,6 +290,13 @@ export default function ProfilePage() {
   const [listingActionId, setListingActionId] = useState<string | null>(null);
   const [isPartnerHistoryModalOpen, setIsPartnerHistoryModalOpen] =
     useState(false);
+  const [membershipMonths, setMembershipMonths] = useState(1);
+  const [loadingMembershipPaymentMethods, setLoadingMembershipPaymentMethods] =
+    useState(true);
+  const [membershipPaymentMethods, setMembershipPaymentMethods] = useState({
+    stripe: false,
+    mercadopago: false,
+  });
 
   const [legalModalType, setLegalModalType] = useState<
     "privacy" | "terms" | null
@@ -298,8 +308,14 @@ export default function ProfilePage() {
     [partnerHistory],
   );
 
-  const hasActivePartner = useMemo(
-    () => partnerHistory.some((item) => isPartnerHistoryItemActive(item)),
+  const latestMembershipExpiry = useMemo(
+    () =>
+      partnerHistory.reduce<string | null>((latest, item) => {
+        if (!latest || new Date(item.expires_at).getTime() > new Date(latest).getTime()) {
+          return item.expires_at;
+        }
+        return latest;
+      }, null),
     [partnerHistory],
   );
 
@@ -310,10 +326,10 @@ export default function ProfilePage() {
 
   const selectedCommunity = useMemo(
     () =>
-      COMMUNITIES.find(
+      communities.find(
         (community) => community.key === profile?.comunity && community.active,
       ) ?? null,
-    [profile?.comunity],
+    [communities, profile?.comunity],
   );
 
   const communityAddressItems = useMemo<AddressItem[]>(
@@ -375,7 +391,7 @@ export default function ProfilePage() {
     navigate("/auth");
   }
 
-  async function refreshOpenMembershipPayment() {
+  const refreshOpenMembershipPayment = useCallback(async () => {
     try {
       setLoadingOpenMembershipPayment(true);
 
@@ -394,15 +410,20 @@ export default function ProfilePage() {
     } finally {
       setLoadingOpenMembershipPayment(false);
     }
-  }
+  }, []);
 
   const refreshProfilePageData = useCallback(async () => {
-    const [profileData, partnerData, listingData, openPaymentData] =
+    setLoadingMembershipPaymentMethods(true);
+    const [profileData, partnerData, listingData, openPaymentData, paymentMethods] =
       await Promise.all([
         getMyProfile(),
         getMyPartnerHistory(),
         getMyListings(),
         getOpenMembershipPayment(),
+        getMembershipPaymentMethods().catch((error) => {
+          console.error("[profile] getMembershipPaymentMethods:error", error);
+          return { stripe: false, mercadopago: false };
+        }),
       ]);
 
     let nextAvatarUrl: string | null = null;
@@ -419,6 +440,8 @@ export default function ProfilePage() {
     setPartnerHistory(partnerData);
     setListings(listingData);
     setOpenMembershipPayment(openPaymentData);
+    setMembershipPaymentMethods(paymentMethods);
+    setLoadingMembershipPaymentMethods(false);
     setAvatarUrl(nextAvatarUrl);
     setProfileForm({
       fullname: profileData.fullname ?? "",
@@ -438,6 +461,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const cache = getProfileCache();
+    setLoadingMembershipPaymentMethods(true);
 
     if (cache) {
       setProfile(cache.profile);
@@ -464,12 +488,16 @@ export default function ProfilePage() {
 
         setErrorMessage("");
 
-        const [profileData, partnerData, listingData, openPaymentData] =
+        const [profileData, partnerData, listingData, openPaymentData, paymentMethods] =
           await Promise.all([
             getMyProfile(),
             getMyPartnerHistory(),
             getMyListings(),
             getOpenMembershipPayment(),
+            getMembershipPaymentMethods().catch((error) => {
+              console.error("[profile] getMembershipPaymentMethods:error", error);
+              return { stripe: false, mercadopago: false };
+            }),
           ]);
 
         let nextAvatarUrl: string | null = cache?.avatarUrl ?? null;
@@ -492,6 +520,8 @@ export default function ProfilePage() {
         setPartnerHistory(partnerData);
         setListings(listingData);
         setOpenMembershipPayment(openPaymentData);
+        setMembershipPaymentMethods(paymentMethods);
+        setLoadingMembershipPaymentMethods(false);
         setAvatarUrl(nextAvatarUrl);
         setProfileForm({
           fullname: profileData.fullname ?? "",
@@ -516,6 +546,7 @@ export default function ProfilePage() {
           );
         }
       } finally {
+        if (active) setLoadingMembershipPaymentMethods(false);
         if (active) setLoading(false);
       }
     }
@@ -548,17 +579,7 @@ export default function ProfilePage() {
     legalModalType,
   ]);
 
-  useEffect(() => {
-    function handleFocus() {
-      void refreshOpenMembershipPayment();
-    }
-
-    window.addEventListener("focus", handleFocus);
-
-    return () => {
-      window.removeEventListener("focus", handleFocus);
-    };
-  }, []);
+  useRefreshOnVisible(refreshOpenMembershipPayment);
 
   useEffect(() => {
     if (
@@ -650,7 +671,7 @@ export default function ProfilePage() {
   }
 
   async function handlePayMonthlyFeeClick() {
-    if (payingMonthlyFee || hasActivePartner || hasOpenMembershipPayment) {
+    if (payingMonthlyFee || hasOpenMembershipPayment) {
       if (hasOpenMembershipPayment) {
         setPartnerActionMessage(
           "Já existe um pagamento em processamento. Aguarde a confirmação antes de tentar novamente.",
@@ -666,7 +687,7 @@ export default function ProfilePage() {
       setPayingMonthlyFee(true);
       clearMessages();
 
-      const { url, sessionId } = await createMembershipCheckout(true);
+      const { url, sessionId } = await createMembershipCheckout(false, membershipMonths);
 
       console.info("[profile] membership-checkout:redirect-current-window", {
         sessionId,
@@ -677,7 +698,7 @@ export default function ProfilePage() {
         id: `local-${Date.now()}`,
         status: "pending",
         created_at: new Date().toISOString(),
-        checkout_mode: "subscription",
+        checkout_mode: "payment",
         stripe_checkout_session_id: sessionId,
       });
 
@@ -702,10 +723,6 @@ export default function ProfilePage() {
   }
 
   function handleOpenPixModal() {
-    if (hasActivePartner) {
-      return;
-    }
-
     setPixPaymentError("");
     setPixSuccessHandled(false);
     setIsPartnerPixModalOpen(true);
@@ -718,7 +735,7 @@ export default function ProfilePage() {
       new Date(pixCheckout.expiresAt).getTime() > Date.now() &&
       shouldPollPixStatus(pixCheckout.status);
 
-    if (hasActivePartner || loadingPixPayment || hasLivePixInMemory) {
+    if (loadingPixPayment || hasLivePixInMemory) {
       setIsPartnerPixModalOpen(true);
       return;
     }
@@ -728,7 +745,7 @@ export default function ProfilePage() {
       setPixPaymentError("");
       setPixSuccessHandled(false);
 
-      const data = await createMembershipPixCheckout();
+      const data = await createMembershipPixCheckout(membershipMonths);
       setPixCheckout(data);
       setIsPartnerPixModalOpen(true);
     } catch (error) {
@@ -1136,8 +1153,10 @@ export default function ProfilePage() {
 
                 <ProfilePartnerSection
                   partnerHistory={partnerHistory}
-                  hasActivePartner={hasActivePartner}
                   partnerBadge={partnerBadge}
+                  showStripe={membershipPaymentMethods.stripe}
+                  showMercadoPago={membershipPaymentMethods.mercadopago}
+                  loadingPaymentMethods={loadingMembershipPaymentMethods}
                   payingMonthlyFee={payingMonthlyFee}
                   hasOpenMembershipPayment={hasOpenMembershipPayment}
                   openMembershipPaymentStatus={
@@ -1147,6 +1166,13 @@ export default function ProfilePage() {
                   onPayMonthlyFeeClick={() => {
                     void handlePayMonthlyFeeClick();
                   }}
+                  months={membershipMonths}
+                  onMonthsChange={(months) => {
+                    setMembershipMonths(months);
+                    setPixCheckout(null);
+                    setPixPaymentError("");
+                  }}
+                  latestExpiry={latestMembershipExpiry}
                   onOpenHistory={() => setIsPartnerHistoryModalOpen(true)}
                   loadingPixPayment={loadingPixPayment}
                   hasOpenPixPayment={Boolean(pixCheckout)}
@@ -1220,6 +1246,7 @@ export default function ProfilePage() {
         open={isPartnerPixModalOpen}
         loading={loadingPixPayment}
         errorMessage={pixPaymentError}
+        months={membershipMonths}
         pixData={pixCheckout}
         onClose={() => {
           setIsPartnerPixModalOpen(false);

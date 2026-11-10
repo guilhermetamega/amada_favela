@@ -1,6 +1,6 @@
 # Amada Favela — Plataforma Comunitária
 
-> Aplicação web/mobile (React + Vite + Supabase) para gestão de comunidade, comunicação com moradores, serviços locais e integrações de pagamento (Stripe).
+> Aplicação web/mobile (React + Vite + Supabase) para gestão de comunidade, comunicação com moradores, serviços locais e integrações de pagamento (Stripe e Mercado Pago).
 
 ## Etapa 1 — Documento para tela inicial do GitHub
 
@@ -15,13 +15,13 @@ O sistema centraliza os principais fluxos de uma associação comunitária:
 - **Serviços da comunidade**: ordens de serviço, achados e perdidos, animais desaparecidos, aluguel e projetos sociais.
 - **Gestão administrativa**: administração por papéis (employee/admin/president/super-admin).
 - **Módulo de parceiros/patrocinadores**: autenticação própria e gestão de banners/anúncios.
-- **Financeiro**: checkout de mensalidade, webhook Stripe e sincronização de estados de pagamento.
+- **Financeiro**: checkout de mensalidade, webhooks e sincronização de estados de pagamento via Stripe e Mercado Pago.
 
 ## Arquitetura em alto nível
 
 - **Frontend**: React 19 + TypeScript + Vite + Tailwind.
 - **Backend BaaS**: Supabase (Auth, Postgres, Storage, Edge Functions).
-- **Pagamentos**: Stripe (Checkout, assinatura, onboarding de conta conectada, webhook).
+- **Pagamentos**: Stripe e Mercado Pago (checkout, assinatura, contas conectadas/OAuth, webhooks e conciliação).
 - **Aplicativo móvel**: Capacitor (Android configurado no projeto).
 
 ## Mapa de telas (rotas principais)
@@ -42,19 +42,26 @@ O sistema centraliza os principais fluxos de uma associação comunitária:
 - `/missing`
 - `/home-rent`
 - `/polls`
+- `/bingo`
 - `/service-orders`
 - `/mails`
 - `/member-card`
 - `/proof-of-residence`
+- `/resume-builder`
 - `/social-projects` e `/social-projects/:id`
+- `/garbage-schedules`
 
 ### Administrativo (employee/admin/president)
 
 - `/admin`
+- `/admin/analytics`
+- `/admin/users` e `/admin/users/:userId`
 - `/admin/service-orders`
 - `/admin/polls`
+- `/admin/bingo`
 - `/admin/mail`
 - `/admin/association`
+- `/admin/association/garbage-schedules`
 - `/admin/create-warnings`
 - `/admin/social-projects`
 - `/admin/welcome-banner`
@@ -69,6 +76,7 @@ O sistema centraliza os principais fluxos de uma associação comunitária:
 - `/sponsor`
 - `/sponsor/weekly-ad`
 - `/sponsor/banner`
+- `/sponsor/raffles`
 
 ## Organização técnica (resumo)
 
@@ -84,13 +92,15 @@ O sistema centraliza os principais fluxos de uma associação comunitária:
 - **Produto**: app único para ciclo completo do morador e operação da associação.
 - **Engenharia**: separação clara entre UI, domínio e integração com backend.
 - **Operação**: fluxos administrativos e de atendimento centralizados.
-- **Receita/financeiro**: integração de pagamentos com rastreabilidade por eventos.
+- **Receita/financeiro**: integrações de pagamento com rastreabilidade por eventos.
 
 ## Etapa 2 — Documento completo
 
 A documentação completa (dados, telas e funções importantes) está em:
 
-- [`docs/PLATAFORMA_AMADA_FAVELA.md`](docs/PLATAFORMA_AMADA_FAVELA.md)
+- [`docs/PLATAFORMA.md`](docs/PLATAFORMA.md)
+- [`docs/AUDITORIA_2026-09-10.md`](docs/AUDITORIA_2026-09-10.md) — verificação funcional, UX, performance, banco, sessão/cache e operação.
+- [`docs/PLANO_EVOLUCAO_2026-09-10.md`](docs/PLANO_EVOLUCAO_2026-09-10.md) — ações propostas, revisão do Perfil, inclusão digital, novas funcionalidades e tratamento dos Advisors do Supabase.
 
 ## Como rodar localmente
 

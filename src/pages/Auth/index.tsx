@@ -30,7 +30,7 @@ import { formatCpf } from "@/utils/cpf";
 import developedByLogo from "@/assets/developed_by_logo.png";
 import { useAuth } from "@/hooks";
 import { supabase } from "@/services/supabase/client";
-import { COMMUNITIES } from "@/lib/communities";
+import { useCommunities } from "@/hooks/useCommunities";
 import { prefetchDashboard } from "@/lib/prefetch/prefetch-dashboard";
 import LegalModal from "@/components/legal/LegalModal";
 import MainLayout from "@/components/layout/MainLayout";
@@ -98,6 +98,7 @@ function formatZipcode(value: string) {
 export default function AuthPage() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { communities } = useCommunities();
 
   const [mode, setMode] = useState<AuthMode>("login");
   const [loading, setLoading] = useState(false);
@@ -136,8 +137,8 @@ export default function AuthPage() {
   }
 
   const activeCommunities = useMemo(
-    () => COMMUNITIES.filter((community) => community.active),
-    [],
+    () => communities.filter((community) => community.active),
+    [communities],
   );
 
   const selectedCommunity = useMemo(
@@ -381,7 +382,7 @@ export default function AuthPage() {
 
     if (name === "comunity") {
       const nextCommunity =
-        COMMUNITIES.find(
+        communities.find(
           (community) => community.key === value && community.active,
         ) ?? null;
 

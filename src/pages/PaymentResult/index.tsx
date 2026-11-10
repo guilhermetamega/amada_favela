@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { getMembershipCheckoutStatus } from "@/services/supabase/membership";
+import {
+  getMembershipCheckoutStatus,
+  syncOpenMembershipPaymentState,
+} from "@/services/supabase/membership";
 import type { MembershipCheckoutStatusResponse } from "@/types/membership";
 import { usePermissions } from "@/hooks/usePermissions";
 import MainLayout from "@/components/layout/MainLayout";
@@ -122,6 +125,16 @@ export default function PaymentResultPage() {
     useState<MembershipCheckoutStatusResponse | null>(null);
   const [loading, setLoading] = useState(status === "success" && !!sessionId);
   const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    if (status !== "cancel") return;
+
+    void syncOpenMembershipPaymentState().catch((error) => {
+      console.error(`${LOG_PREFIX} cancel-sync:error`, {
+        message: error instanceof Error ? error.message : "unknown",
+      });
+    });
+  }, [status]);
 
   useEffect(() => {
     if (status !== "success" || !sessionId) {

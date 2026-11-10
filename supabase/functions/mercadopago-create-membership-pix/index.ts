@@ -16,6 +16,8 @@ import { normalizePlatformFeeCents } from "../_shared/plataform-fee.ts";
 
 const LOG_PREFIX = "[mercadopago-create-membership-pix]";
 
+type RequestBody = { months?: unknown };
+
 function log(step: string, payload?: unknown) {
   console.log(`${LOG_PREFIX} ${step}`, payload ?? "");
 }
@@ -35,6 +37,18 @@ function toCents(value: number | string | null | undefined) {
   }
 
   return Math.round(normalized * 100);
+}
+
+function addMonthsIso(baseIso: string, months: number) {
+  const date = new Date(baseIso);
+  const day = date.getUTCDate();
+  date.setUTCDate(1);
+  date.setUTCMonth(date.getUTCMonth() + months);
+  const lastDay = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  date.setUTCDate(Math.min(day, lastDay));
+  return date.toISOString();
 }
 
 function getPixTransactionData(source: unknown) {
@@ -313,6 +327,12 @@ serve(async (req) => {
       });
     }
 
+    const requestBody = (await req.json().catch(() => ({}))) as RequestBody;
+    const months = Number(requestBody.months ?? 1);
+    if (!Number.isInteger(months) || months < 1 || months > 12) {
+      return json(400, { error: "Selecione entre 1 e 12 meses." });
+    }
+
     const { data: user, error: userError } = await admin
       .from("users")
       .select("id, fullname, email, cpf, comunity")
@@ -427,7 +447,8 @@ serve(async (req) => {
           gateway_response,
           expires_at,
           checkout_url,
-          created_at
+          created_at,
+          metadata
         `,
       )
       .eq("provider", "mercadopago")
@@ -453,6 +474,10 @@ serve(async (req) => {
         : 0;
 
       const isNotExpired = expiresAtMs > Date.now();
+      const existingMonths = Number(
+        (latestPayment.metadata as Record<string, unknown> | null)
+          ?.membership_months ?? 1,
+      );
 
       const cachedResponse = buildExistingPixResponse(latestPayment);
 
@@ -461,7 +486,8 @@ serve(async (req) => {
         isOpenProviderStatus(latestPayment.provider_status) &&
         (cachedResponse.qrCode ||
           cachedResponse.qrCodeBase64 ||
-          cachedResponse.ticketUrl)
+          cachedResponse.ticketUrl) &&
+        existingMonths === months
       ) {
         log("reusing-cached-pix", {
           internalPaymentId: latestPayment.id,
@@ -469,7 +495,39 @@ serve(async (req) => {
           providerStatus: latestPayment.provider_status,
         });
 
-        return json(200, cachedResponse);
+        return json(200, {
+          ...cachedResponse,
+          amountTotalCents: Number(latestPayment.amount_total),
+          membershipMonths: existingMonths,
+        });
+      }
+
+      if (
+        isNotExpired &&
+        isOpenProviderStatus(latestPayment.provider_status) &&
+        existingMonths !== months
+      ) {
+        log("replacing-pending-pix-for-new-month-count", {
+          internalPaymentId: latestPayment.id,
+          providerPaymentId: latestPayment.provider_payment_id,
+          previousMonths: existingMonths,
+          requestedMonths: months,
+        });
+        const { error: expireOldPixError } = await admin
+          .from("payments")
+          .update({
+            status: "cancelled",
+            provider_status: "cancelled",
+            provider_status_detail: "replaced_by_new_month_selection",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", latestPayment.id);
+
+        if (expireOldPixError) {
+          return json(500, {
+            error: `Não foi possível invalidar o Pix anterior: ${expireOldPixError.message}`,
+          });
+        }
       }
 
       if (latestPayment.provider_payment_id && isNotExpired) {
@@ -527,6 +585,8 @@ serve(async (req) => {
               status: internalStatus,
               providerStatus: mpPayment.status,
               providerStatusDetail: mpPayment.status_detail ?? null,
+              amountTotalCents: Number(latestPayment.amount_total),
+              membershipMonths: existingMonths,
             });
           }
 
@@ -559,9 +619,22 @@ serve(async (req) => {
       }
     }
 
-    const amountTotalCents = toCents(association.monthly_fee);
+    const amountTotalCents = toCents(association.monthly_fee) * months;
+    const totalPlatformFeeCents = platformFeeCents * months;
 
-    if (amountTotalCents <= platformFeeCents) {
+    log("creating-pix-for-membership-period", {
+      associationId: association.id,
+      monthlyFeeCents: toCents(association.monthly_fee),
+      months,
+      amountTotalCents,
+      platformFeeCentsPerMonth: platformFeeCents,
+      totalPlatformFeeCents,
+    });
+
+    const expectedAmountDescription =
+      `${months} ${months === 1 ? "mês" : "meses"} · R$ ${(amountTotalCents / 100).toFixed(2).replace(".", ",")}`;
+
+    if (amountTotalCents <= totalPlatformFeeCents) {
       return json(400, {
         error: "Mensalidade insuficiente para a taxa da plataforma.",
         code: "monthly_fee_too_low",
@@ -572,6 +645,22 @@ serve(async (req) => {
     const externalReference = `mp_membership_${crypto.randomUUID()}`;
 
     const expiresAt = addMinutesIso(mp.pixExpirationMinutes);
+
+    const { data: currentPartner, error: currentPartnerError } = await admin
+      .from("partners")
+      .select("expires_at")
+      .eq("user_id", user.id)
+      .eq("association_id", association.id)
+      .in("status", ["active", "past_due"])
+      .order("expires_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (currentPartnerError) {
+      return json(500, {
+        error: `Erro ao validar validade atual: ${currentPartnerError.message}`,
+      });
+    }
 
     const { firstName, lastName } = splitFullName(user.fullname);
 
@@ -592,13 +681,13 @@ serve(async (req) => {
          * completa é enviada como
          * application_fee.
          */
-        amount_platform_fee: platformFeeCents,
+        amount_platform_fee: totalPlatformFeeCents,
         amount_platform_transfer: 0,
         amount_third_party_transfer: 0,
 
-        amount_association_transfer: amountTotalCents - platformFeeCents,
+        amount_association_transfer: amountTotalCents - totalPlatformFeeCents,
         amount_stripe_fee: 0,
-        description: `Mensalidade - ${association.name}`,
+        description: `Mensalidade (${expectedAmountDescription}) - ${association.name}`,
         external_reference: externalReference,
         community: association.community,
         checkout_mode: "payment",
@@ -607,7 +696,9 @@ serve(async (req) => {
           association_id: association.id,
           mp_seller_user_id: seller.mp_user_id,
           notification_url: webhookOnlyUrl,
-          platform_fee_total_cents: platformFeeCents,
+          platform_fee_total_cents: totalPlatformFeeCents,
+          membership_months: months,
+          membership_period_end: currentPartner?.expires_at ?? null,
         },
         gateway_response: {},
         created_by: user.id,
@@ -628,10 +719,10 @@ serve(async (req) => {
         sellerAccessToken: accessToken,
         idempotencyKey: crypto.randomUUID(),
         body: {
-          description: `Mensalidade - ${association.name}`,
+          description: `Mensalidade (${expectedAmountDescription}) - ${association.name}`,
           transaction_amount: toMoneyNumberFromCents(amountTotalCents),
           payment_method_id: "pix",
-          application_fee: toMoneyNumberFromCents(platformFeeCents),
+          application_fee: toMoneyNumberFromCents(totalPlatformFeeCents),
           date_of_expiration: expiresAt,
           external_reference: externalReference,
           notification_url: webhookOnlyUrl,
@@ -670,7 +761,8 @@ serve(async (req) => {
         internalPaymentId: insertedPayment.id,
         mpPaymentId: payment.id,
         associationId: association.id,
-        platformFeeCents,
+        platformFeeCents: totalPlatformFeeCents,
+        months,
         hasQrCode: Boolean(transactionData.qrCode),
         hasQrCodeBase64: Boolean(transactionData.qrCodeBase64),
       });
@@ -683,6 +775,8 @@ serve(async (req) => {
         providerStatus: payment.status,
         providerStatusDetail: payment.status_detail ?? null,
         expiresAt: payment.date_of_expiration ?? expiresAt,
+        amountTotalCents,
+        membershipMonths: months,
         qrCode: transactionData.qrCode,
         qrCodeBase64: transactionData.qrCodeBase64,
         ticketUrl: transactionData.ticketUrl,

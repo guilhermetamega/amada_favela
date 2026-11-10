@@ -365,7 +365,7 @@ export async function getMyPartnerHistory() {
     .from("partners")
     .select("id, user_id, created_at, expires_at, status")
     .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    .order("expires_at", { ascending: false });
 
   if (error) {
     throw new Error(error.message);

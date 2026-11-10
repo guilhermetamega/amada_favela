@@ -120,6 +120,33 @@ function addMonthIso(baseIso: string) {
   return date.toISOString();
 }
 
+function addMonthsIso(baseIso: string, months: number) {
+  const date = new Date(baseIso);
+  const day = date.getUTCDate();
+  date.setUTCDate(1);
+  date.setUTCMonth(date.getUTCMonth() + months);
+  const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+  date.setUTCDate(Math.min(day, lastDay));
+  return date.toISOString();
+}
+
+function getMembershipPeriodStart(baseIso: string, payment: PaymentRow) {
+  const paidAt = new Date(baseIso);
+  const existingPeriodEnd = payment.metadata?.membership_period_end;
+  if (typeof existingPeriodEnd !== "string" || !existingPeriodEnd) {
+    const fromPreviousPayment = payment.period_end;
+    if (typeof fromPreviousPayment !== "string") return paidAt.toISOString();
+    const previous = new Date(fromPreviousPayment);
+    return Number.isNaN(previous.getTime()) || previous <= paidAt
+      ? paidAt.toISOString()
+      : previous.toISOString();
+  }
+  const renewalAnchor = new Date(existingPeriodEnd);
+  return Number.isNaN(renewalAnchor.getTime()) || renewalAnchor <= paidAt
+    ? paidAt.toISOString()
+    : renewalAnchor.toISOString();
+}
+
 function buildReferenceMonth(
   periodStartIso: string | null,
   fallbackIso: string,
@@ -1106,8 +1133,17 @@ serve(async (req) => {
         const charge = await resolveChargeFromPaymentIntent(paymentIntentId);
 
         const paidAt = nowIso();
-        const periodStart = paidAt;
-        const periodEnd = addMonthIso(periodStart);
+        const requestedMonths = Number(
+          updatedPayment.metadata?.membership_months ??
+            updatedPayment.metadata?.months ??
+            session.metadata?.months ??
+            1,
+        );
+        const months = Number.isInteger(requestedMonths)
+          ? Math.min(12, Math.max(1, requestedMonths))
+          : 1;
+        const periodStart = getMembershipPeriodStart(paidAt, updatedPayment);
+        const periodEnd = addMonthsIso(periodStart, months);
 
         await processSuccessfulPayment({
           payment: updatedPayment,
@@ -1157,8 +1193,17 @@ serve(async (req) => {
       const charge = await resolveChargeFromPaymentIntent(paymentIntentId);
 
       const paidAt = nowIso();
-      const periodStart = paidAt;
-      const periodEnd = addMonthIso(periodStart);
+      const requestedMonths = Number(
+        payment.metadata?.membership_months ??
+          payment.metadata?.months ??
+          session.metadata?.months ??
+          1,
+      );
+      const months = Number.isInteger(requestedMonths)
+        ? Math.min(12, Math.max(1, requestedMonths))
+        : 1;
+      const periodStart = getMembershipPeriodStart(paidAt, payment);
+      const periodEnd = addMonthsIso(periodStart, months);
 
       await processSuccessfulPayment({
         payment,
