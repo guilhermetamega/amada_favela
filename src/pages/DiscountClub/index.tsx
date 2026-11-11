@@ -134,13 +134,13 @@ export default function DiscountClubPage() {
                         <Store className="h-12 w-12" />
                       </div>
                     )}
-                    <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-sm font-black text-white shadow-lg">
+                    <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-1 text-xs font-black text-white shadow-lg sm:left-3 sm:top-3 sm:px-3 sm:py-1.5 sm:text-sm">
                       <Percent className="h-4 w-4" />
                       {store.discount_percent}% OFF
                     </span>
                     {store.premium && (
-                      <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border border-white/30 bg-sky-600/90 px-2.5 py-1.5 text-[10px] font-bold text-white shadow-lg">
-                        <BadgeCheck className="h-3.5 w-3.5" /> Verificada
+                      <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full border border-white/30 bg-sky-600/90 px-2 py-1 text-[9px] font-bold text-white shadow-lg sm:bottom-auto sm:right-3 sm:top-3 sm:px-2.5 sm:py-1.5 sm:text-[10px]">
+                        <BadgeCheck className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Verificada
                       </span>
                     )}
                   </div>

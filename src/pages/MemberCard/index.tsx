@@ -23,6 +23,14 @@ import { useNavigate } from "react-router-dom";
 function formatDate(date: string | null | undefined) {
   if (!date) return "Não informado";
 
+  // Birthdays and database `date` values are calendar dates, not instants.
+  // Parsing YYYY-MM-DD with Date can shift the day in negative UTC offsets.
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (dateOnly) {
+    const [, year, month, day] = dateOnly;
+    return `${day}/${month}/${year}`;
+  }
+
   const parsedDate = new Date(date);
 
   if (Number.isNaN(parsedDate.getTime())) {

@@ -20,14 +20,17 @@ type CommunityDataRow = {
 function calculateAge(birth: string | null) {
   if (!birth) return null;
 
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birth);
+  const birthYear = dateOnly ? Number(dateOnly[1]) : new Date(birth).getFullYear();
+  const birthMonth = dateOnly ? Number(dateOnly[2]) - 1 : new Date(birth).getMonth();
+  const birthDay = dateOnly ? Number(dateOnly[3]) : new Date(birth).getDate();
+
+  if (![birthYear, birthMonth, birthDay].every(Number.isFinite)) return null;
+
   const today = new Date();
-  const birthDate = new Date(birth);
-
-  if (Number.isNaN(birthDate.getTime())) return null;
-
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDifference = today.getMonth() - birthDate.getMonth();
-  const dayDifference = today.getDate() - birthDate.getDate();
+  let age = today.getFullYear() - birthYear;
+  const monthDifference = today.getMonth() - birthMonth;
+  const dayDifference = today.getDate() - birthDay;
 
   if (monthDifference < 0 || (monthDifference === 0 && dayDifference < 0)) {
     age -= 1;
