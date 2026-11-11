@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   UserCircle2,
   Building2,
+  Store,
   Wrench,
   Trash2,
 } from "lucide-react";
@@ -182,6 +183,16 @@ export const appRoutes: AppRouteConfig[] = [
     canAccess: (permissions) => !!permissions,
   },
   {
+    path: "/discount-club",
+    label: "Clube de Descontos",
+    description: "Descubra descontos em lojas parceiras da sua comunidade.",
+    icon: Store,
+    colorClass: "emerald",
+    showInSidebar: true,
+    showInDashboard: true,
+    canAccess: (permissions) => !!permissions,
+  },
+  {
     path: "/polls",
     label: "Enquetes",
     description: "Vote e acompanhe resultados da sua comunidade.",
@@ -329,6 +340,19 @@ export const appRoutes: AppRouteConfig[] = [
       (permissions.isEmployee ||
         permissions.isPresident ||
         permissions.isAdmin),
+  },
+  {
+    path: "/admin/discount-club",
+    label: "Clube de Descontos",
+    description: "Gerencie lojas e benefícios da comunidade.",
+    icon: Store,
+    colorClass: "emerald",
+    showInSidebar: false,
+    showInDashboard: false,
+    showInAdmin: true,
+    canAccess: (permissions) =>
+      !!permissions &&
+      (permissions.isEmployee || permissions.isPresident || permissions.isAdmin),
   },
   {
     path: "/admin/create-warnings",

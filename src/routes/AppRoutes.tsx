@@ -53,6 +53,8 @@ const MailsPage = lazy(() => import("@/pages/Mails"));
 
 const SocialProjectsPage = lazy(() => import("@/pages/SocialProjects"));
 
+const DiscountClubPage = lazy(() => import("@/pages/DiscountClub"));
+
 const SocialProjectsDetailsPage = lazy(
   () => import("@/pages/SocialProjects/Details"),
 );
@@ -78,6 +80,8 @@ const CreateWarningsPage = lazy(() => import("@/pages/Admin/CreateWarnings"));
 const AdminSocialProjectsPage = lazy(
   () => import("@/pages/Admin/SocialProjects"),
 );
+
+const AdminDiscountClubPage = lazy(() => import("@/pages/Admin/DiscountClub"));
 
 const PrivacyPolicyPage = lazy(() => import("@/pages/Legal/Privacy"));
 
@@ -178,6 +182,8 @@ export function AppRoutes() {
 
               <Route path="/social-projects" element={<SocialProjectsPage />} />
 
+              <Route path="/discount-club" element={<DiscountClubPage />} />
+
               <Route
                 path="/garbage-schedules"
                 element={<GarbageSchedulesPublicPage />}
@@ -251,6 +257,11 @@ export function AppRoutes() {
                 <Route
                   path="/admin/social-projects"
                   element={<AdminSocialProjectsPage />}
+                />
+
+                <Route
+                  path="/admin/discount-club"
+                  element={<AdminDiscountClubPage />}
                 />
 
                 <Route

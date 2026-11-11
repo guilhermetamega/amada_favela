@@ -519,7 +519,10 @@ serve(async (req) => {
       );
     }
 
-    if (targetUserId === authUser.id) {
+    const isSelfCommunityChange =
+      mode === "community" && targetUserId === authUser.id;
+
+    if (targetUserId === authUser.id && !isSelfCommunityChange) {
       throw new HttpError(
         403,
         "Use o perfil pessoal para alterar os próprios dados.",
@@ -568,7 +571,10 @@ serve(async (req) => {
       throw new HttpError(404, "Usuário não encontrado.");
     }
 
-    if (permissionResponse.error || !permissionResponse.data) {
+    if (
+      !isSelfCommunityChange &&
+      (permissionResponse.error || !permissionResponse.data)
+    ) {
       throw new HttpError(
         403,
         permissionResponse.error?.message ||
@@ -580,10 +586,9 @@ serve(async (req) => {
 
     const target = targetResponse.data as TargetRow;
 
-    const permissionPayload =
-      permissionResponse.data as DetailPermissionPayload;
+    const permissionPayload = permissionResponse.data as DetailPermissionPayload | null;
 
-    if (target.role === "admin") {
+    if (target.role === "admin" && !isSelfCommunityChange) {
       throw new HttpError(
         403,
         "Administradores não podem ser alterados por este fluxo.",
@@ -612,6 +617,12 @@ serve(async (req) => {
 
     if (mode === "community" && actor.role !== "admin") {
       throw new HttpError(403, "Apenas o Super Admin pode alterar a comunidade.");
+    }
+    if (
+      isSelfCommunityChange &&
+      (Object.keys(body.data).length !== 1 || !Object.hasOwn(body.data, "community"))
+    ) {
+      throw new HttpError(403, "Na própria conta, o Super Admin pode alterar somente a comunidade.");
     }
 
     const changes =

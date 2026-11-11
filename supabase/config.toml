@@ -417,3 +417,8 @@ entrypoint = "./functions/get-membership-checkout-status/index.ts"
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/get-membership-payment-methods/index.ts"
+
+[functions.discount-club-catalog]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/discount-club-catalog/index.ts"
