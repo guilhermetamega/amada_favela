@@ -362,6 +362,11 @@ serve(async (req) => {
         userId: user.id,
         reason: "invalid-cpf-checksum",
       });
+      return json(400, {
+        error: "Cadastre um CPF válido no seu perfil antes de gerar o Pix.",
+        code: "missing_or_invalid_cpf",
+        debugStep: "validate-payer-cpf",
+      });
     }
 
     const { data: association, error: associationError } = await admin

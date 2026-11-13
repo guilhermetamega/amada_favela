@@ -1,6 +1,7 @@
 import type { FormEvent, ReactNode } from "react";
 import { LoaderCircle, Pencil, Save, X } from "lucide-react";
 import type { ProfileUser, UpdateProfileInput } from "@/types/profile";
+import { formatCpf } from "@/utils/cpf";
 
 type AddressItem = {
   label: string;
@@ -23,6 +24,12 @@ type Props = {
   onCancelEdit: () => void;
   onChange: (next: UpdateProfileInput) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  cpfConfirmation: string;
+  cpfValue: string;
+  savingCpf: boolean;
+  onCpfChange: (value: string) => void;
+  onCpfConfirmationChange: (value: string) => void;
+  onAddCpf: () => void;
 };
 
 export default function ProfilePersonalSection({
@@ -40,6 +47,12 @@ export default function ProfilePersonalSection({
   onCancelEdit,
   onChange,
   onSubmit,
+  cpfConfirmation,
+  cpfValue,
+  savingCpf,
+  onCpfChange,
+  onCpfConfirmationChange,
+  onAddCpf,
 }: Props) {
   function handleField<K extends keyof UpdateProfileInput>(
     key: K,
@@ -169,6 +182,69 @@ export default function ProfilePersonalSection({
               className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 disabled:cursor-default disabled:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:disabled:bg-zinc-950/60"
             />
           </Field>
+        </div>
+
+        <div
+          id="personal-section"
+          className="grid grid-cols-1 gap-4 md:grid-cols-2"
+        >
+          <Field label="CPF">
+            <input
+              value={profile.cpf ? formatCpf(profile.cpf) : ""}
+              disabled
+              placeholder={profile.cpf ? undefined : "Ainda não cadastrado"}
+              className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950/60 dark:text-zinc-400"
+            />
+            <span className="mt-1 block text-xs text-zinc-500 dark:text-zinc-400">
+              {profile.cpf
+                ? "O CPF cadastrado não pode ser alterado."
+                : "O CPF poderá ser cadastrado uma única vez."}
+            </span>
+          </Field>
+
+          {!profile.cpf && editing ? (
+            <div className="space-y-3">
+              <Field label="Novo CPF">
+                <input
+                  value={cpfValue}
+                  onChange={(event) =>
+                    onCpfChange(formatCpf(event.target.value))
+                  }
+                  inputMode="numeric"
+                  autoComplete="off"
+                  maxLength={14}
+                  placeholder="000.000.000-00"
+                  className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                />
+              </Field>
+              <Field label="Confirme o CPF">
+                <input
+                  value={cpfConfirmation}
+                  onChange={(event) =>
+                    onCpfConfirmationChange(formatCpf(event.target.value))
+                  }
+                  inputMode="numeric"
+                  autoComplete="off"
+                  maxLength={14}
+                  placeholder="Digite o CPF novamente"
+                  className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                />
+              </Field>
+              <button
+                type="button"
+                onClick={onAddCpf}
+                disabled={savingCpf}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {savingCpf ? (
+                  <LoaderCircle size={16} className="animate-spin" />
+                ) : (
+                  <Save size={16} />
+                )}
+                Cadastrar CPF
+              </button>
+            </div>
+          ) : null}
         </div>
 
         {editing ? (

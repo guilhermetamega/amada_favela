@@ -26,6 +26,13 @@ export default function ProofOfResidencePage() {
   const [successMessage, setSuccessMessage] = useState("");
 
   const navigate = useNavigate();
+  const needsProfileCompletion = Boolean(
+    eligibility?.user &&
+      (!eligibility.user.fullname ||
+        !eligibility.user.cpf ||
+        !eligibility.user.zipcode ||
+        !eligibility.user.address_1),
+  );
 
   useEffect(() => {
     async function load() {
@@ -199,7 +206,13 @@ export default function ProofOfResidencePage() {
 
                     <button
                       type="button"
-                      onClick={() => navigate("/profile#partner-section")}
+                      onClick={() =>
+                        navigate(
+                          needsProfileCompletion
+                            ? "/profile#personal-section"
+                            : "/profile#partner-section",
+                        )
+                      }
                       className="group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-amber-300/80 bg-linear-to-r from-amber-300 via-yellow-300 to-orange-300 px-4 py-3 text-sm font-semibold text-amber-950 shadow-[0_12px_30px_rgba(251,191,36,0.22)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(251,191,36,0.28)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 dark:border-amber-300/20 dark:from-amber-300 dark:via-yellow-200 dark:to-orange-200 dark:text-amber-950 sm:min-w-55 sm:w-auto"
                     >
                       <span className="pointer-events-none absolute inset-y-0 left-[-30%] w-1/3 -skew-x-12 bg-white/25 blur-md transition-transform duration-700 group-hover:translate-x-[330%]" />
@@ -207,7 +220,7 @@ export default function ProofOfResidencePage() {
                         <Sparkles size={12} className="animate-pulse" />
                       </span>
                       <CreditCard size={16} />
-                      Quero Virar Sócio
+                      {needsProfileCompletion ? "Ir ao Perfil" : "Quero Virar Sócio"}
                     </button>
                   </div>
                 ) : null}

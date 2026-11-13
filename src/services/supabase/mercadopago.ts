@@ -80,6 +80,19 @@ export async function createMembershipPixCheckout(months = 1) {
   );
 
   if (error) {
+    const context = (error as Error & { context?: Response }).context;
+    if (context) {
+      try {
+        const payload = await context.clone().json();
+        if (typeof payload?.error === "string") {
+          throw new Error(payload.error);
+        }
+      } catch (parseError) {
+        if (parseError instanceof Error && parseError.message !== "Unexpected end of JSON input") {
+          throw parseError;
+        }
+      }
+    }
     throw new Error(error.message || "Não foi possível gerar o pagamento Pix.");
   }
 

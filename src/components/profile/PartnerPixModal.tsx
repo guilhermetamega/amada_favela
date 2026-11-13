@@ -15,8 +15,10 @@ type Props = {
   errorMessage: string;
   months: number;
   pixData: MembershipPixCheckout | null;
+  cpfMissing: boolean;
   onClose: () => void;
   onGeneratePix: () => void;
+  onGoToProfile: () => void;
 };
 
 function formatDate(value: string | null) {
@@ -51,8 +53,10 @@ export default function PartnerPixModal({
   errorMessage,
   months,
   pixData,
+  cpfMissing,
   onClose,
   onGeneratePix,
+  onGoToProfile,
 }: Props) {
   const [copied, setCopied] = useState(false);
 
@@ -132,10 +136,23 @@ export default function PartnerPixModal({
                     {formattedAmount ? ` no valor total de ${formattedAmount}` : ""}.
                   </p>
 
+                  {cpfMissing ? (
+                    <div className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-left text-sm text-amber-700 dark:text-amber-300">
+                      <p>Cadastre um CPF válido no seu perfil para gerar o Pix.</p>
+                      <button
+                        type="button"
+                        onClick={onGoToProfile}
+                        className="mt-3 inline-flex items-center justify-center rounded-xl border border-amber-500/40 px-4 py-2 font-semibold transition hover:bg-amber-500/10"
+                      >
+                        Cadastrar CPF no Perfil
+                      </button>
+                    </div>
+                  ) : null}
+
                   <button
                     type="button"
                     onClick={onGeneratePix}
-                    disabled={loading}
+                    disabled={loading || cpfMissing}
                     className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {loading ? (

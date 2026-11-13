@@ -11,6 +11,7 @@ import type {
 import type { HomeRentItem } from "@/types/home_rent";
 import type { LostAndFoundItem } from "@/types/lost_and_found";
 import type { LostAnimalsItem } from "@/types/lost_animals";
+import { isValidCpf } from "@/utils/cpf";
 
 const PROFILE_BUCKET = "profile_pic";
 const LOST_ANIMALS_BUCKET = "lost_animals";
@@ -237,6 +238,21 @@ export async function updateMyProfile(input: UpdateProfileInput) {
   }
 
   return data;
+}
+
+export async function addMyCpf(value: string) {
+  const cpf = value.replace(/\D/g, "");
+
+  if (!isValidCpf(cpf)) {
+    throw new Error("Informe um CPF válido.");
+  }
+
+  const { data, error } = await supabase.rpc("set_my_cpf", {
+    p_cpf: cpf,
+  });
+
+  if (error) throw new Error(error.message);
+  if (data !== true) throw new Error("O CPF já foi cadastrado e não pode ser alterado.");
 }
 
 export async function getSignedFileUrl(

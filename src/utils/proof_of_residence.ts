@@ -1,10 +1,12 @@
 import { buildAddressLine } from "@/utils/address";
 
-export function onlyDigits(value: string) {
-  return value.replace(/\D/g, "");
+export function onlyDigits(value: string | null | undefined) {
+  return (value ?? "").replace(/\D/g, "");
 }
 
-export function maskCpf(cpf: string) {
+export function maskCpf(cpf: string | null | undefined) {
+  if (!cpf) return "Não informado";
+
   const digits = onlyDigits(cpf);
 
   if (digits.length !== 11) return cpf;

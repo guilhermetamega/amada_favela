@@ -15,6 +15,7 @@ import {
   closeMyLostAnimal,
   deleteMyAccount,
   deleteMyAvatar,
+  addMyCpf,
   deleteMyHomeRent,
   deleteMyLostAndFound,
   deleteMyLostAnimal,
@@ -68,6 +69,7 @@ import ProfileDeleteAccountSection from "@/components/profile/DeleteAccountSecti
 import MainLayout from "@/components/layout/MainLayout";
 import { LogOut } from "lucide-react";
 import { useRefreshOnVisible } from "@/hooks/useRefreshOnVisible";
+import { isValidCpf } from "@/utils/cpf";
 
 type ProfileFormState = UpdateProfileInput;
 
@@ -276,6 +278,9 @@ export default function ProfilePage() {
   const [profileForm, setProfileForm] =
     useState<ProfileFormState>(EMPTY_PROFILE_FORM);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [cpfValue, setCpfValue] = useState("");
+  const [cpfConfirmation, setCpfConfirmation] = useState("");
+  const [savingCpf, setSavingCpf] = useState(false);
 
   const [passwordForm, setPasswordForm] =
     useState<PasswordFormState>(EMPTY_PASSWORD_FORM);
@@ -729,6 +734,11 @@ export default function ProfilePage() {
   }
 
   async function handleGeneratePixPayment() {
+    if (!isValidCpf(profile?.cpf ?? "")) {
+      setPixPaymentError("Cadastre um CPF válido no seu perfil antes de gerar o Pix.");
+      return;
+    }
+
     const hasLivePixInMemory =
       !!pixCheckout &&
       !!pixCheckout.expiresAt &&
@@ -805,6 +815,52 @@ export default function ProfilePage() {
       setSuccessMessage("");
     } finally {
       setSavingProfile(false);
+    }
+  }
+
+  async function handleAddCpf() {
+    const cpf = cpfValue.replace(/\D/g, "");
+    const confirmation = cpfConfirmation.replace(/\D/g, "");
+
+    if (!isValidCpf(cpf)) {
+      setErrorMessage("Informe um CPF válido.");
+      setSuccessMessage("");
+      return;
+    }
+
+    if (cpf !== confirmation) {
+      setErrorMessage("A confirmação do CPF não corresponde.");
+      setSuccessMessage("");
+      return;
+    }
+
+    try {
+      setSavingCpf(true);
+      await addMyCpf(cpf);
+      const updatedProfile = profile
+        ? { ...profile, cpf }
+        : await getMyProfile();
+      setProfile(updatedProfile);
+      setCpfValue("");
+      setCpfConfirmation("");
+      setFeedbackSuccess(
+        "CPF cadastrado com sucesso. Ele não poderá ser alterado.",
+      );
+      saveProfileCache({
+        profile: updatedProfile,
+        partnerHistory,
+        listings,
+        avatarUrl,
+      });
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível cadastrar o CPF.",
+      );
+      setSuccessMessage("");
+    } finally {
+      setSavingCpf(false);
     }
   }
 
@@ -1139,6 +1195,8 @@ export default function ProfilePage() {
                   onStartEdit={() => setIsEditingProfile(true)}
                   onCancelEdit={() => {
                     setIsEditingProfile(false);
+                    setCpfValue("");
+                    setCpfConfirmation("");
                     setProfileForm({
                       fullname: profile.fullname ?? "",
                       address_1: profile.address_1 ?? "",
@@ -1149,6 +1207,12 @@ export default function ProfilePage() {
                   }}
                   onChange={setProfileForm}
                   onSubmit={handleProfileSubmit}
+                  cpfValue={cpfValue}
+                  cpfConfirmation={cpfConfirmation}
+                  savingCpf={savingCpf}
+                  onCpfChange={setCpfValue}
+                  onCpfConfirmationChange={setCpfConfirmation}
+                  onAddCpf={handleAddCpf}
                 />
 
                 <ProfilePartnerSection
@@ -1248,6 +1312,11 @@ export default function ProfilePage() {
         errorMessage={pixPaymentError}
         months={membershipMonths}
         pixData={pixCheckout}
+        cpfMissing={!isValidCpf(profile?.cpf ?? "")}
+        onGoToProfile={() => {
+          setIsPartnerPixModalOpen(false);
+          navigate("/profile#personal-section");
+        }}
         onClose={() => {
           setIsPartnerPixModalOpen(false);
           setPixSuccessHandled(false);
