@@ -9,6 +9,7 @@ import QRCode from "qrcode";
 import type { Association, ProofUserProfile } from "@/types/proof_of_residence";
 import { getDefaultCommunities } from "@/lib/communities";
 import { getCommunityLabelByKey } from "@/utils/communities";
+import { normalizeAddressNumber } from "@/utils/address";
 import {
   buildAssociationAddress,
   formatDate,
@@ -346,6 +347,12 @@ export async function generateResidenceProofPdf(
 
   const assocAddress = buildAssociationAddress(input.association);
   const residentAddress = input.user.address_1.trim();
+  const normalizedAddressNumber = normalizeAddressNumber(
+    input.user.address_number,
+  );
+  const residentAddressNumber = normalizedAddressNumber
+    ? `N° ${normalizedAddressNumber}`
+    : null;
   const residentComplement = input.user.address_2?.trim() || null;
   const defaultCommunityLabel = getDefaultCommunities().find(
     (community) => community.key === input.user.community,
@@ -354,10 +361,11 @@ export async function generateResidenceProofPdf(
     defaultCommunityLabel ?? getCommunityLabelByKey(input.user.community);
   const residenceAddress = [
     residentAddress,
-    residentComplement,
+    residentAddressNumber,
     communityLabel,
     input.association.headquarters_neighborhood?.trim() || null,
     input.association.headquarters_city.trim(),
+    residentComplement,
   ]
     .filter(Boolean)
     .join(", ");
